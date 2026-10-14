@@ -1,0 +1,466 @@
+﻿________________
+
+
+GDD Parcial — Simulaciones I
+Integrantes: Luciano Mareco, Franco Iannone
+Profesor: Facundo Saiegh
+________________
+
+
+1. Información general
+Título
+Simulación de Ecosistemas
+Género
+Simulación / Vida Artificial / Mundo Procedural
+Vista
+2D, vista desde arriba (top-down).
+Sistemas principales
+* Vida Artificial
+* Generación Procedural de Mundos
+________________
+
+
+2. Concepto general
+El proyecto consiste en una simulación de un ecosistema autónomo dentro de un mundo generado proceduralmente.
+El jugador no controla directamente a las entidades. En cambio, observa cómo diferentes organismos interactúan entre sí y con el entorno, buscando satisfacer sus necesidades básicas para sobrevivir y reproducirse.
+El mundo estará compuesto por diferentes tipos de terreno, principalmente agua, tierra y arena, distribuidos mediante generación procedural.
+La simulación estará inspirada en sistemas de vida artificial como los presentados en Coding Adventure: Simulating an Ecosystem, adaptando el concepto a un entorno 2D basado en una cuadrícula.
+La principal finalidad del proyecto es observar cómo, a partir de reglas relativamente simples para cada entidad, pueden surgir comportamientos y dinámicas complejas dentro del ecosistema.
+________________
+
+
+3. Objetivos del proyecto
+Objetivo principal
+Desarrollar una simulación de un ecosistema en la que distintas entidades puedan nacer, desplazarse, alimentarse, reproducirse y morir, interactuando tanto con otras entidades como con el entorno.
+Objetivos específicos
+* Generar proceduralmente un mundo 2D compuesto por distintos tipos de terreno.
+* Implementar entidades con comportamientos autónomos.
+* Crear un sistema de necesidades para las entidades.
+* Implementar búsqueda y consumo de recursos.
+* Implementar reproducción y muerte.
+* Crear un sistema de movimiento suave entre las celdas del mundo.
+* Observar la evolución de las poblaciones a lo largo del tiempo.
+* Generar interacciones entre diferentes especies que puedan producir cambios en el ecosistema.
+________________
+
+
+4 .Unidades de la materia utilizadas
+El proyecto utilizará principalmente contenidos de las Unidades 1 y 4 de la materia, integrándose para construir un ecosistema procedural en el que las entidades puedan desarrollar comportamientos autónomos.
+Unidad 1 — Mundos procedurales 2D y 3D
+Esta unidad será utilizada para generar el mundo sobre el cual se desarrollará la simulación.
+El mapa será generado automáticamente a partir de una semilla (seed), permitiendo que una misma semilla produzca siempre el mismo mundo. Esto permitirá reproducir escenarios específicos para realizar pruebas y comparar el comportamiento de las distintas simulaciones.
+Algoritmos y conceptos utilizados
+Pseudoaleatoriedad con semilla
+Se utilizará una semilla para inicializar la generación del mundo. De esta manera, los resultados serán aleatorios pero deterministas: utilizando la misma seed se podrá reconstruir exactamente el mismo mapa.
+
+
+Ruido coherente
+Se utilizará principalmente Perlin Noise o Value Noise para generar la distribución del terreno. Los valores obtenidos del ruido serán interpretados para determinar qué tipo de terreno ocupa cada celda.
+Por ejemplo:
+Valores bajos → Agua.
+Valores intermedios → Arena.
+Valores altos → Tierra.
+Esto permitirá generar masas de tierra y agua con formas naturales en lugar de utilizar una distribución completamente aleatoria.
+Interpolación y suavizado
+Se utilizarán funciones de interpolación para suavizar las transiciones producidas por el ruido y evitar cambios demasiado abruptos entre diferentes tipos de terreno.
+Voronoi — posible extensión
+Como extensión, se podrá utilizar un diagrama de Voronoi para dividir el mapa en regiones. Estas regiones podrían utilizarse para representar diferentes zonas del ecosistema o territorios que posteriormente puedan influir en la distribución de las especies.
+Aplicación dentro del proyecto
+
+
+El resultado de estos algoritmos será una cuadrícula 2D que funcionará como el entorno de la simulación. Sobre este mapa se generarán las plantas y los animales.
+De esta manera, el terreno no será simplemente un escenario visual, sino que tendrá influencia sobre la simulación: la ubicación del agua, las zonas habitables y la distribución de recursos afectarán directamente las posibilidades de supervivencia de las entidades.
+Unidad 4 — Vida artificial y autómatas celulares
+Esta unidad será utilizada para implementar el comportamiento de los organismos que habitan el mundo.
+Las entidades no serán controladas directamente por el jugador, sino que tomarán decisiones a partir de su estado interno y de la información disponible en su entorno.
+
+
+Vida artificial
+Cada animal tendrá un conjunto de necesidades que determinará su comportamiento.
+Entre ellas:
+Hambre. Sed. Necesidad de reproducirse. Energía. Edad.
+
+
+En cada actualización, la entidad evaluará sus necesidades y seleccionará una acción.
+
+
+Por ejemplo:
+un herbívoro podría comportarse de la siguiente manera:
+Hambre alta
+     ↓
+Buscar planta
+     ↓
+Desplazarse hacia ella
+     ↓
+Comer
+     ↓
+Recuperar energía
+
+
+Mientras que un depredador podría:
+Hambre alta
+     ↓
+Buscar herbívoro
+     ↓
+Perseguirlo
+     ↓
+Cazar
+     ↓
+Alimentarse
+Esto permitirá implementar comportamientos autónomos a partir de reglas relativamente simples.
+Percepción y vecindarios
+Las entidades utilizarán un área de percepción para detectar elementos cercanos del mundo.
+Dentro de este vecindario podrán detectar recursos, presas, posibles parejas u otros elementos relevantes para su comportamiento.
+La utilización de vecindarios permitirá relacionar el sistema de vida artificial con los conceptos vistos en autómatas celulares y sistemas locales.
+Autómatas celulares
+Los autómatas celulares se utilizan principalmente para representar determinados procesos de crecimiento y expansión de la vegetación.
+Cada celda del mapa podrá almacenar información sobre su estado y actualizarse en función de las celdas vecinas.
+Por ejemplo, una planta podría expandirse cuando se cumplan determinadas condiciones:
+La expansión dependerá de reglas locales, como la disponibilidad de espacio, el tipo de terreno y la presencia de otras plantas.
+Como extensión, se podrán implementar dos especies vegetales con diferentes reglas de expansión. Esto permitiría generar una competencia territorial emergente entre ambas especies.
+4. Mundo
+El mundo estará representado mediante una cuadrícula 2D y será generado proceduralmente al comenzar una simulación.
+Cada celda tendrá un tipo de terreno que determinará qué entidades pueden habitarla y qué recursos puede contener.
+Tipos de terreno iniciales
+* Agua: fuente de hidratación. Las entidades terrestres deberán acercarse a ella para beber.
+* Tierra: principal zona habitable para las entidades.
+* Arena: terreno intermedio, principalmente utilizado como transición entre tierra y agua.
+La distribución de estos terrenos será generada proceduralmente para que cada simulación pueda producir un mapa diferente.
+Características del mundo
+* Tamaño definido previamente.
+* Generación aleatoria mediante un sistema de ruido o algoritmo equivalente.
+* Presencia de masas de agua y zonas de tierra.
+* Distribución de recursos determinada a partir del terreno generado.
+* Mundo estático durante la simulación, salvo por los cambios producidos por las entidades.
+________________
+
+
+5. Entidades
+Las entidades representan organismos vivos capaces de tomar decisiones de manera autónoma.
+Cada organismo contará con diferentes necesidades, que determinarán su comportamiento.
+Entre ellas pueden encontrarse:
+* Hambre.
+* Sed.
+* Necesidad de reproducirse.
+* Energía o salud.
+* Edad.
+Las entidades evaluarán sus necesidades y buscarán realizar acciones para satisfacerlas.
+Por ejemplo, un herbívoro con mucha hambre priorizará encontrar una planta antes que desplazarse hacia una fuente de agua.
+________________
+
+
+5.1 Planta
+Las plantas representan la base de la cadena alimenticia.
+Comportamiento
+* Nacer.
+* Crecer.
+* Expandirse.
+* Servir como alimento para los herbívoros.
+* Morir bajo determinadas condiciones.
+A diferencia de los animales, las plantas no tendrán un sistema de movimiento tradicional.
+Su crecimiento podrá generar nuevas plantas en celdas cercanas, permitiendo que la vegetación se expanda progresivamente por el mapa.
+Estados posibles
+Semilla → Planta joven → Planta adulta → Muerte
+La velocidad de crecimiento dependerá de factores como el tiempo y las condiciones del terreno.
+________________
+
+
+5.2 Herbívoro
+Los herbívoros se alimentan de plantas y necesitan mantenerse hidratados para sobrevivir.
+Necesidades
+* Hambre.
+* Sed.
+* Reproducción.
+* Supervivencia.
+Comportamiento
+Cuando sus necesidades cambian, el herbívoro seleccionará una acción prioritaria:
+1. Buscar alimento si tiene hambre.
+2. Buscar agua si tiene sed.
+3. Buscar otro individuo para reproducirse cuando corresponda.
+4. Desplazarse aleatoriamente o explorar cuando sus necesidades estén satisfechas.
+Acciones
+* Buscar plantas.
+* Comer plantas.
+* Buscar agua.
+* Beber.
+* Buscar pareja.
+* Reproducirse.
+* Moverse.
+* Morir.
+________________
+
+
+5.3 Depredador
+Los depredadores se encuentran en un nivel superior de la cadena alimenticia.
+Se alimentan de herbívoros y también necesitan beber agua y reproducirse.
+Necesidades
+* Hambre.
+* Sed.
+* Reproducción.
+* Supervivencia.
+Comportamiento
+Su prioridad dependerá de sus necesidades actuales:
+1. Buscar herbívoros cuando tenga hambre.
+2. Buscar agua cuando tenga sed.
+3. Buscar una pareja para reproducirse.
+4. Explorar el entorno cuando no tenga necesidades urgentes.
+Acciones
+* Detectar herbívoros cercanos.
+* Perseguir herbívoros.
+* Comer.
+* Buscar agua.
+* Beber.
+* Buscar pareja.
+* Reproducirse.
+* Moverse.
+* Morir.
+________________
+
+
+6. Sistema de Vida Artificial
+El comportamiento de cada entidad estará determinado por un sistema de necesidades y prioridades.
+Cada organismo evaluará periódicamente su estado interno y decidirá qué acción realizar.
+Por ejemplo:
+               Entidad
+                   ↓
+            Revisar necesidades
+                   ↓
+        ┌──────────┼──────────┐
+        ↓          ↓          ↓
+      Hambre      Sed     Reproducción
+        ↓          ↓          ↓
+    Buscar      Buscar      Buscar
+    alimento      agua       pareja
+        ↓          ↓          ↓
+      Comer      Beber    Reproducirse
+
+
+Si ninguna necesidad es prioritaria, la entidad podrá entrar en un estado de exploración, desplazándose por el mundo.
+Este sistema permitirá que las entidades tengan comportamientos autónomos sin necesidad de definir manualmente cada movimiento.
+________________
+
+
+7. Sistema de movimiento
+Las entidades se desplazarán utilizando la cuadrícula del mundo como referencia.
+Sin embargo, el movimiento visual no será instantáneo de una celda a otra.
+En lugar de teletransportarse entre posiciones, las entidades realizarán un movimiento interpolado, generando una transición suave.
+Características
+* Movimiento basado en celdas.
+* Desplazamiento progresivo entre posiciones.
+* Posibilidad de definir una velocidad para cada especie.
+* Restricciones según el tipo de terreno.
+* Las entidades podrán seleccionar destinos en función de sus necesidades.
+Por ejemplo, un herbívoro que detecte una planta podrá calcular una ruta hacia la celda donde se encuentra y desplazarse hacia ella progresivamente.
+________________
+
+
+8. Percepción y búsqueda
+Las entidades tendrán un rango limitado de percepción.
+Dentro de este rango podrán detectar elementos relevantes para sus necesidades.
+Por ejemplo:
+Herbívoro
+Puede detectar:
+* Plantas.
+* Agua.
+* Otros herbívoros.
+Depredador
+Puede detectar:
+* Herbívoros.
+* Agua.
+* Otros depredadores.
+Esto evita que las entidades tengan conocimiento absoluto de todo el mapa y permite generar comportamientos de exploración y búsqueda.
+________________
+
+
+9. Reproducción
+Las entidades podrán reproducirse cuando cumplan determinadas condiciones.
+Por ejemplo:
+* Tener suficiente energía.
+* No estar demasiado hambrientas.
+* No estar demasiado sedientas.
+* Encontrar otro individuo compatible.
+* Respetar un tiempo mínimo entre reproducciones.
+Al reproducirse, se generará un nuevo individuo cercano a los padres.
+Como posible extensión, los nuevos individuos podrán heredar pequeñas variaciones de características como:
+* Velocidad.
+* Tamaño.
+* Rango de percepción.
+* Consumo de energía.
+* Tiempo necesario para reproducirse.
+Esto permitiría observar una forma básica de evolución dentro de la población.
+________________
+
+
+10. Muerte
+Las entidades morirán cuando determinadas condiciones de supervivencia no se cumplan.
+Por ejemplo:
+* Hambre durante demasiado tiempo.
+* Sed durante demasiado tiempo.
+* Ser cazadas por un depredador.
+* Alcanzar una edad máxima.
+Cuando una entidad muere, dejará de participar en la simulación y su espacio podrá ser reutilizado por otros organismos.
+________________
+
+
+11. Cadena alimenticia
+El ecosistema tendrá inicialmente tres niveles principales:
+       Plantas
+           ↓
+       Herbívoros
+           ↓
+       Depredadores
+
+
+Las plantas sirven como fuente de alimento para los herbívoros, mientras que los herbívoros sirven como alimento para los depredadores.
+Esto permitirá observar cómo los cambios en una población afectan indirectamente a las demás.
+Por ejemplo, una disminución excesiva de plantas podría provocar una reducción de herbívoros, lo que posteriormente podría afectar a la población de depredadores.
+________________
+
+
+12. Interacción entre plantas
+Como posible sistema adicional, se implementará un segundo tipo de planta con comportamiento competitivo.
+Las dos especies competirán por el territorio disponible y podrán expandirse hacia celdas cercanas.
+Por ejemplo:
+* Pasto: especie de crecimiento rápido.
+* Micelio: especie que se expande progresivamente por el terreno.
+Cada especie tendrá diferentes características de expansión.
+Esto permitirá observar situaciones en las que una especie vegetal pueda desplazar a otra y eventualmente provocar su desaparición local o extinción.
+La idea está inspirada en la forma en que algunos sistemas de vegetación de videojuegos, como el pasto y el micelio de Minecraft, pueden propagarse por el terreno.
+________________
+
+
+13. Generación procedural
+El mapa será generado automáticamente al iniciar una nueva simulación.
+El objetivo es evitar diseñar manualmente el terreno y conseguir que cada partida pueda presentar una distribución diferente.
+Un posible método consiste en utilizar ruido procedural para determinar la altura de cada zona.
+A partir de estos valores se pueden establecer diferentes terrenos:
+Valor bajo       → Agua
+Valor medio      → Arena
+Valor alto       → Tierra
+
+
+Posteriormente se podrán agregar elementos adicionales como:
+* Vegetación.
+* Fuentes de agua.
+* Zonas de reproducción.
+* Obstáculos.
+* Diferentes biomas.
+________________
+
+
+14. Interfaz y visualización
+La interfaz tendrá como objetivo principal permitir observar el comportamiento del ecosistema.
+Se podrán mostrar:
+* Cantidad de plantas.
+* Cantidad de herbívoros.
+* Cantidad de depredadores.
+* Tiempo transcurrido.
+* Cantidad de entidades vivas.
+* Estado de la simulación.
+Como posible extensión, se podrá agregar un gráfico que muestre la evolución de las poblaciones a lo largo del tiempo.
+Por ejemplo:
+Población
+  │
+  │       Herbívoros
+  │      /\
+  │     /  \       /\
+  │    /    \_____/  \
+  │   /
+  │  / Depredadores
+  │ /    \____
+  │/           \____
+  └──────────────────── Tiempo
+
+
+Esto permitiría analizar visualmente la evolución del ecosistema.
+________________
+
+
+15. Bucle principal de simulación
+Cada ciclo de simulación actualizará el estado del mundo y de sus entidades.
+Inicio
+  ↓
+Generar mundo procedural
+  ↓
+Crear entidades iniciales
+  ↓
+┌─────────────────────────┐
+│     Ciclo de simulación │
+│                         │
+│ Actualizar necesidades  │
+│          ↓              │
+│ Detectar entorno        │
+│          ↓              │
+│ Elegir comportamiento   │
+│          ↓              │
+│ Mover entidades         │
+│          ↓              │
+│ Alimentación            │
+│          ↓              │
+│ Reproducción            │
+│          ↓              │
+│ Crecimiento de plantas  │
+│          ↓              │
+│ Muerte                   │
+└───────────┬─────────────┘
+            ↓
+      Actualizar mundo
+            ↓
+          Repetir
+
+
+________________
+
+
+16. Alcance del proyecto
+Implementación obligatoria
+Para mantener un alcance viable, la primera versión del proyecto contará con:
+* Mundo 2D procedural.
+* Agua, arena y tierra.
+* Plantas.
+* Herbívoros.
+* Depredadores.
+* Sistema de necesidades.
+* Movimiento entre celdas.
+* Búsqueda de recursos.
+* Alimentación.
+* Reproducción.
+* Muerte.
+* Crecimiento y expansión de plantas.
+Características opcionales
+Si el desarrollo principal se completa correctamente, se podrán agregar:
+* Segunda especie de planta.
+* Competencia territorial.
+* Mutaciones y herencia.
+* Evolución de características.
+* Diferentes biomas.
+* Gráficos de población.
+* Ciclo día/noche.
+* Clima.
+* Variaciones de temperatura.
+* Más especies animales.
+* Estadísticas detalladas de la simulación.
+________________
+
+
+17. Referencias
+Referencia principal:
+Coding Adventure: Simulating an Ecosystem — Sebastian Lague.
+La referencia se utilizará principalmente para estudiar conceptos relacionados con la simulación de ecosistemas y vida artificial, adaptándolos a los objetivos y alcance del proyecto.
+Referencia visual/conceptual:
+Sistemas de propagación de vegetación presentes en Minecraft, particularmente las diferencias de comportamiento entre pasto y micelio.
+________________
+
+
+18. Resultado esperado
+Al finalizar el proyecto se espera obtener una simulación visual de un ecosistema autónomo, en la que el usuario pueda observar cómo diferentes especies interactúan y cómo sus poblaciones cambian con el paso del tiempo.
+El objetivo no será crear una experiencia tradicional basada en objetivos para el jugador, sino construir un sistema en el que reglas simples de comportamiento produzcan dinámicas emergentes.
+La simulación deberá permitir observar situaciones como:
+* Aumento y disminución de poblaciones.
+* Expansión de la vegetación.
+* Competencia por recursos.
+* Migración de animales.
+* Extinción de poblaciones.
+* Aparición de desequilibrios en la cadena alimenticia.
+* Recuperación o colapso de determinadas especies.
+De esta manera, el proyecto permitirá demostrar la aplicación conjunta de vida artificial y generación procedural dentro de una simulación interactiva.
