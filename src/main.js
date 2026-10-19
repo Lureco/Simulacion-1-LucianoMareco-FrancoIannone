@@ -83,40 +83,49 @@ window.addEventListener('resize', () => {
 
 // ── Controles ──────────────────────────────────────────────────────
 
-window.addEventListener('keydown', (e) => {
-  switch (e.key.toLowerCase()) {
-    case ' ':
-      ESTADO.pausa = !ESTADO.pausa;
-      console.log(`[main] ${ESTADO.pausa ? 'PAUSA' : 'CORRIENDO'}`);
-      break;
-    case 'f': {
-      // Seguir a un herbívoro al azar.
-      const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
-      if (herbivoros.length > 0) {
-        camara.seguir(ctx.prng.pick(herbivoros), tile, 0.5);
-        console.log('[main] siguiendo a un herbívoro (F para soltar)');
+// Un `AbortController` por registro: si el módulo se re-evalúa (HMR), el
+// listener viejo se cancela y no queda disparándose dos veces.
+const controlTeclado = new AbortController();
+const opcionesTeclado = { signal: controlTeclado.signal };
+
+window.addEventListener(
+  'keydown',
+  (e) => {
+    switch (e.key.toLowerCase()) {
+      case ' ':
+        ESTADO.pausa = !ESTADO.pausa;
+        console.log(`[main] ${ESTADO.pausa ? 'PAUSA' : 'CORRIENDO'}`);
+        break;
+      case 'f': {
+        // Seguir a un herbívoro al azar.
+        const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
+        if (herbivoros.length > 0) {
+          camara.seguir(ctx.prng.pick(herbivoros), tile, 0.5);
+          console.log('[main] siguiendo a un herbívoro (F para soltar)');
+        }
+        break;
       }
-      break;
+      case 'g':
+        camara.soltar();
+        camara.x = (CONFIG.mundo.ancho * tile) / 2;
+        camara.y = (CONFIG.mundo.alto * tile) / 2;
+        break;
+      case 'r': {
+        // Regenerar con una seed nueva: es una simulación nueva, el tiempo vuelve a 0.
+        ESTADO.seed = ctx.prng.int(1, 2 ** 31);
+        console.log(`[main] nueva seed: ${ESTADO.seed}`);
+        manager.limpiar();
+        ctx.prng = new PRNG(ESTADO.seed);
+        ctx.tick = 0;
+        poblar();
+        break;
+      }
+      default:
+        break;
     }
-    case 'g':
-      camara.soltar();
-      camara.x = (CONFIG.mundo.ancho * tile) / 2;
-      camara.y = (CONFIG.mundo.alto * tile) / 2;
-      break;
-    case 'r': {
-      // Regenerar con una seed nueva: es una simulación nueva, el tiempo vuelve a 0.
-      ESTADO.seed = ctx.prng.int(1, 2 ** 31);
-      console.log(`[main] nueva seed: ${ESTADO.seed}`);
-      manager.limpiar();
-      ctx.prng = new PRNG(ESTADO.seed);
-      ctx.tick = 0;
-      poblar();
-      break;
-    }
-    default:
-      break;
-  }
-});
+  },
+  opcionesTeclado,
+);
 
 // ── Bucle principal (timestep fijo + acumulador) ─────────────────
 
