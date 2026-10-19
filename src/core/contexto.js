@@ -1,0 +1,35 @@
+/**
+ * src/core/contexto.js — Contexto de simulación
+ * =============================================
+ *
+ * El `ctx` es el único canal por el que los sistemas hablan con el mundo.
+ * Se pasa por referencia a todos los `actualizar()` y nunca se reasigna.
+ *
+ * Campos:
+ * - `prng`   → PRNG con semilla. **Única fuente de azar** de la simulación.
+ * - `mundo`  → `{ ancho, alto }` en celdas. Cuando exista la `Grid` de P1,
+ *              acá va también la referencia a la grilla.
+ * - `config` → `CONFIG` (todos los parámetros).
+ * - `tick`   → número de ticks simulados desde el arranque.
+ * - `hash`   → Spatial Hash, para consultas de vecindario.
+ * - `entidades` → `EntityManager`.
+ */
+
+/**
+ * Crea el contexto de simulación.
+ * @param {object} opciones
+ * @param {import('./prng.js').PRNG} opciones.prng
+ * @param {{ancho: number, alto: number}} opciones.mundo
+ * @param {object} [opciones.config]
+ * @returns {object} Contexto mutable.
+ */
+export function crearContexto({ prng, mundo, config }) {
+  return {
+    prng,
+    mundo,
+    config,
+    tick: 0,
+    hash: null,
+    entidades: null,
+  };
+}
