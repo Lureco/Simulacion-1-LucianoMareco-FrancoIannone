@@ -104,11 +104,12 @@ window.addEventListener('keydown', (e) => {
       camara.y = (CONFIG.mundo.alto * tile) / 2;
       break;
     case 'r': {
-      // Regenerar con una seed nueva.
+      // Regenerar con una seed nueva: es una simulación nueva, el tiempo vuelve a 0.
       ESTADO.seed = ctx.prng.int(1, 2 ** 31);
       console.log(`[main] nueva seed: ${ESTADO.seed}`);
       manager.limpiar();
       ctx.prng = new PRNG(ESTADO.seed);
+      ctx.tick = 0;
       poblar();
       break;
     }
