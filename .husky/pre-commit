@@ -1,0 +1,6 @@
+# Hook de pre-commit (T05).
+# Corre el lint y los tests antes de dejar pasar un commit.
+# Si alguno falla, el commit se aborta.
+
+npm run lint
+npm run test
