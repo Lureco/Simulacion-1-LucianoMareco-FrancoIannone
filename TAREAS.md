@@ -136,19 +136,21 @@ simulacion-ecosistemas/
 
 ### F0 · Setup y contrato de datos
 
-- [ ] **T01 · P1** — Inicializar repo Git, `README.md`, `.gitignore` (con `node_modules/`, `dist/`)
-- [ ] **T02 · P2** — `npm create vite` (vanilla), `npm i pixi.js`, `npm i -D vitest eslint prettier`
-- [ ] **T03 · P2** — `package.json` con scripts: `dev`, `build`, `preview`, `test`, `lint`, `format`
-- [ ] **T04 · P1** — `index.html` + `src/main.js` mínimo con `await app.init()` y una ventana negra
+- [x] **T01 · P1** — Inicializar repo Git, `README.md`, `.gitignore` (con `node_modules/`, `dist/`)
+- [x] **T02 · P2** — `npm create vite` (vanilla), `npm i pixi.js`, `npm i -D vitest eslint prettier`
+      *(hecho manual, sin scaffolder: `package.json` + `vite.config.js` + `index.html` escritos a mano)*
+- [x] **T03 · P2** — `package.json` con scripts: `dev`, `build`, `preview`, `test`, `lint`, `format`
+- [x] **T04 · P1** — `index.html` + `src/main.js` mínimo con `await app.init()` y una ventana negra
       (confirma que PixiJS v8 levanta antes de escribir una línea de lógica)
-- [ ] **T05 · Ambos** — ESLint + Prettier + hook de `pre-commit` con `lint` y `test`
-- [ ] **T06 · Ambos** — Crear la estructura de carpetas de la sección 4
-- [ ] **T07 · Ambos** — Escribir `docs/DECISIONES.md` (1 página): stack, tamaño del mundo, semilla
+- [x] **T05 · Ambos** — ESLint + Prettier + hook de `pre-commit` con `lint` y `test`
+- [x] **T06 · Ambos** — Crear la estructura de carpetas de la sección 4
+      *(todas menos `world/`, que es de P1 y sigue vacía)*
+- [x] **T07 · Ambos** — Escribir `docs/DECISIONES.md` (1 página): stack, tamaño del mundo, semilla
       por defecto, resolución, tamaño de celda, valores por celda
-- [ ] **T08 · Ambos** — Acordar y **documentar las clases compartidas**: `Grid`, `Celda`, `Entity`,
-      `necesidades`. Esto desbloquea todo lo demás
-- [ ] **T09 · Ambos** — `src/config.js` con todos los parámetros agrupados por sección
-- [ ] **T10 · Ambos** — `core/prng.js`: PRNG seeded (`mulberry32` o `xorshift32`) + tests de
+- [x] **T08 · Ambos** — Acordar y **documentar las clases compartidas**: `Grid`, `Celda`, `Entity`,
+      `necesidades`. Esto desbloquea todo lo demás → `docs/CONTRATO.md`
+- [x] **T09 · Ambos** — `src/config.js` con todos los parámetros agrupados por sección
+- [x] **T10 · Ambos** — `core/prng.js`: PRNG seeded (`mulberry32` o `xorshift32`) + tests de
       determinismo. **Va primero**: sin esto no hay mapa reproducible
 
 > **Hito F0:** los dos pueden clonar, `npm install`, `npm run dev`, cambiar un parámetro de
@@ -181,12 +183,12 @@ simulacion-ecosistemas/
       `Int32Array` de id de entidad por celda. Índices paralelos, nunca objetos por celda
 - [ ] **T21 · P1** — Consultas sobre la grilla: es habitable, tiene agua, está libre, es borde.
       Todo con inline hints de V8 (`(x + W) | 0`) en los bucles calientes
-- [ ] **T22 · P2** — `entities/entity.js`: posición (celda + offset), energía, edad, velocidad, estado
-- [ ] **T23 · P2** — Contenedor de entidades con alta/baja y separación por especie
-- [ ] **T24 · Ambos** — **Spatial hash**: indexar entidades por celda para que el vecindario sea
+- [x] **T22 · P2** — `entities/entity.js`: posición (celda + offset), energía, edad, velocidad, estado
+- [x] **T23 · P2** — Contenedor de entidades con alta/baja y separación por especie
+- [x] **T24 · Ambos** — **Spatial hash**: indexar entidades por celda para que el vecindario sea
       O(vecinos) y no O(n²). Es la pieza más importante para que aguante la simulación
-- [ ] **T25 · Ambos** — Bucle principal con **timestep fijo + acumulador** y `requestAnimationFrame`
-- [ ] **T26 · Ambos** — **Pool de objetos** para entidades: crear/borrar sin generar basura
+- [x] **T25 · Ambos** — Bucle principal con **timestep fijo + acumulador** y `requestAnimationFrame`
+- [x] **T26 · Ambos** — **Pool de objetos** para entidades: crear/borrar sin generar basura
 
 > **Hito F2:** puntos de colores moviéndose sobre el mapa a 60 FPS, sin comportamiento todavía.
 
@@ -248,8 +250,12 @@ simulacion-ecosistemas/
 - [ ] **T51 · P1** — **Movimiento interpolado**: la entidad no salta de celda, transiciona
       (lerp de la posición visual hacia el destino)
 - [ ] **T52 · P1** — Velocidad por especie y orientación del sprite según el rumbo
-- [ ] **T53 · P1** — Cámara si el mundo es mayor que la ventana, con seguimiento de una entidad
+- [x] **T53 · P1** — Cámara si el mundo es mayor que la ventana, con seguimiento de una entidad
+      *(adelantada por P2 en `src/render/camera.js`: pan, zoom, seguimiento y límites.
+      La API se acuerda en la reunión de sincronización — ver `docs/DECISIONES.md` D3)*
 - [ ] **T54 · P2** — **HUD**: plantas / herbívoros / depredadores / total / tiempo / seed
+      *(hecho a medias: herbívoros, carnívoros, total, tiempo, seed y FPS. Falta el contador
+      de plantas, que depende de F3)*
 - [ ] **T55 · P2** — **Gráfico de evolución de poblaciones** en el tiempo (canvas 2D aparte o
       `Graphics` redibujado una vez por segundo, **nunca** por frame)
 - [ ] **T56 · P2** — Leyenda de colores + vista de depuración de necesidades
