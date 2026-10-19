@@ -32,6 +32,7 @@ export class Hud {
 
     this.ultimaActualizacion = 0;
     this.datos = {
+      plantas: 0,
       herbivoros: 0,
       depredadores: 0,
       total: 0,
@@ -54,6 +55,7 @@ export class Hud {
     const d = this.datos;
     const segundos = (d.ticks / 60).toFixed(1);
     this.elemento.textContent = [
+      `plantas     ${String(d.plantas).padStart(4)}`,
       `herbívoros  ${String(d.herbivoros).padStart(4)}`,
       `carnívoros  ${String(d.depredadores).padStart(4)}`,
       `total       ${String(d.total).padStart(4)}`,

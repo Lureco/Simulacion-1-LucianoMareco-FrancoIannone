@@ -56,41 +56,51 @@ depredadores y, más adelante, las crías.
 
 ---
 
-## 2 · `Grid` — `src/world/grid.js` (P1) — *PENDIENTE*
+## 2 · `Grid` — `src/world/grid.js` (P1) — ✅ IMPLEMENTADA (F1)
 
-Todavía no está escrita. Propuesta de Luciano a discutir en la reunión:
+Implementada en `src/world/grid.js`. Capas contiguas (índices paralelos:
+`idx = y * ancho + x`):
 
 ```js
 class Grid {
   constructor(ancho, alto);
 
-  // Capas contiguas (índices paralelos: idx = y * ancho + x)
-  terreno: Uint8Array;   // 0 = AGUA, 1 = ARENA, 2 = TIERRA
-  planta:  Uint8Array;   // 0 = NADA, 1 = SEMILLA, 2 = JOVEN, 3 = ADULTA, 4 = MUERTA
-  ocupante: Int32Array;  // id de entidad por celda, -1 = libre
+  terreno: Uint8Array;   // TERRENO.*   (P1 escribe)
+  planta:  Uint8Array;   // PLANTA.*    (P1 escribe, F3)
+  ocupante: Int32Array;  // id de entidad por celda, -1 = libre (P2 escribe)
+  altura:  Float32Array; // altura normalizada 0..1 (P1 escribe)
 
+  indice(x, y): number;
+  dentro(x, y): boolean;
+
+  terrenoEn(x, y): number;   // TERRENO.*  (fuera del mundo ⇒ AGUA)
   esAgua(x, y): boolean;
   esArena(x, y): boolean;
   esTierra(x, y): boolean;
   esBorde(x, y): boolean;
-  estaLibre(x, y): boolean;   // sin entidad
+  estaLibre(x, y): boolean;   // sin entidad (fuera del mundo ⇒ false)
+
+  ocupar(x, y, id): boolean;  // false si no estaba libre
+  liberar(x, y, id): boolean; // false si la ocupaba otro id
+
+  contarTerreno(): { agua, arena, tierra };
 }
 ```
 
-**Lo que P2 necesita de la `Grid`** (y por lo tanto debe estar garantizado):
+**Lo que P2 necesita de la `Grid`** (y ya está garantizado):
 
-- Poder preguntar el **tipo de terreno** de una celda → para penalizar
-  energía al cruzar arena/agua (T40, T49).
-- Poder preguntar si una celda está **libre** → para decidir dónde nace una
-  cría (T47).
-- Poder **ocupar y liberar** celdas → `ocupante[idx] = id` / `= -1`.
+- Preguntar el **tipo de terreno** de una celda → penalizar energía al cruzar
+  arena/agua (T40, T49): `terrenoEn`, `esAgua`, `esArena`, `esTierra`.
+- Preguntar si una celda está **libre** → dónde nace una cría (T47):
+  `estaLibre`.
+- **Ocupar y liberar** celdas → `ocupar` / `liberar` (verifican id y límites).
 
 **Regla:** P2 **no** escribe en `terreno` ni en `planta`. Solo lee, y escribe
 únicamente en `ocupante`.
 
 ---
 
-## 3 · `Celda` — `src/world/cell.js` (P1) — *PENDIENTE*
+## 3 · `Celda` — `src/world/cell.js` (P1) — ✅ IMPLEMENTADA (F1)
 
 Constantes de tipo de terreno y de estado de planta, en un solo lugar:
 
@@ -99,8 +109,8 @@ export const TERRENO = { AGUA: 0, ARENA: 1, TIERRA: 2 };
 export const PLANTA = { NADA: 0, SEMILLA: 1, JOVEN: 2, ADULTA: 3, MUERTA: 4 };
 ```
 
-Además de las constantes, P2 necesita **nombres legibles** para el HUD y el
-log de depuración: `nombreTerreno(tipo)` y `nombrePlanta(tipo)`.
+Además de las constantes, `nombreTerreno(tipo)` y `nombrePlanta(estado)` dan
+**nombres legibles** para el HUD y el log de depuración.
 
 ---
 

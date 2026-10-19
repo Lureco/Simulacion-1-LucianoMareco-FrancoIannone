@@ -8,19 +8,23 @@
  */
 
 import { ESPECIE } from '../entities/entity.js';
+import { celdaHabitableAlAzar } from '../world/terrain.js';
+import { pasoVegetacion } from './plantGrowth.js';
 
 /**
- * Siembra entidades de una especie en posiciones aleatorias.
+ * Siembra entidades de una especie en celdas habitables al azar.
+ * Si el contexto todavía no tiene grilla, siembra en cualquier posición
+ * (mundo vacío): así los tests de entidades no dependen del terreno.
  * @param {object} ctx Contexto de simulacion.
  * @param {number} cantidad
  * @param {number} tipo Uno de `ESPECIE`.
  */
 export function sembrar(ctx, cantidad, tipo) {
-  const { ancho, alto } = ctx.mundo;
   for (let i = 0; i < cantidad; i++) {
+    const posicion = celdaHabitableAlAzar(ctx);
     const entidad = ctx.entidades.crear(tipo);
-    entidad.x = ctx.prng.float() * (ancho - 1);
-    entidad.y = ctx.prng.float() * (alto - 1);
+    entidad.x = posicion.x;
+    entidad.y = posicion.y;
   }
 }
 
@@ -36,6 +40,11 @@ export function pasoDeSimulacion(ctx, dt) {
     vivas[i].actualizar(dt, ctx);
   }
   ctx.hash.reconstruir(vivas);
+
+  // El autómata de vegetación va después de las entidades: en F4 los
+  // herbívoros van a comer plantas, y el orden (comer → crecer) es
+  // determinista y queda documentado acá.
+  ctx.plantasNacidas = pasoVegetacion(ctx);
 }
 
 /** Reexportado para no obligar a los tests a importar el enum a mano. */

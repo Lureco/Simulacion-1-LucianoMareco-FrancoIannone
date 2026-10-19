@@ -160,17 +160,17 @@ simulacion-ecosistemas/
 
 ### F1 · Mundo procedural
 
-- [ ] **T11 · P1** — `core/noise.js`: **Value Noise** con interpolación *fade/smoothstep*
-- [ ] **T12 · P1** — **Perlin Noise** (o eliminarlo si no aporta sobre Value Noise — decidir y
-      dejarlo escrito en DECISIONES.md)
-- [ ] **T13 · P1** — Mapeo de altura → terreno: bajos = **agua**, medios = **arena**,
-      altos = **tierra**, con umbrales en config
-- [ ] **T14 · P1** — **Test:** misma seed ⇒ mapa idéntico celda a celda
-- [ ] **T15 · P2** — Render del terreno con Pixi: **un `Sprite` tintado por celda** (o textura
-      por tipo de terreno). Prohibido crear `Graphics` por celda
-- [ ] **T16 · P2** — Input: tecla `R` regenera con seed aleatoria, `S` muestra la seed actual
-- [ ] **T17 · P2** — Mostrar FPS y tiempo de generación en pantalla
-- [ ] **T18 · P2** — Probar con 3 seeds distintas hasta que las masas de agua queden bien formadas.
+- [x] **T11 · P1** — `core/noise.js`: **Value Noise** con interpolación *fade/smoothstep*
+- [x] **T12 · P1** — **Perlin Noise** (evaluado y **descartado** a favor de Value Noise + fBm;
+      decisión escrita en `docs/DECISIONES.md` D11)
+- [x] **T13 · P1** — Mapeo de altura → terreno: bajos = **agua**, medios = **arena**,
+      altos = **tierra**, con umbrales en config (+ caída de borde para formar islas)
+- [x] **T14 · P1** — **Test:** misma seed ⇒ mapa idéntico celda a celda (`tests/terreno.test.js`)
+- [x] **T15 · P2/P1** — Render del terreno con Pixi: **un único `Sprite`** con textura de
+      1 px por celda (prohibido `Graphics` por celda) — `render/terrainRenderer.js`
+- [x] **T16 · P2** — Input: tecla `R` regenera el mundo y la población con seed nueva, `S` muestra la seed
+- [x] **T17 · P2** — FPS en pantalla (HUD); el tiempo de generación se mide en `scripts/verTerreno.mjs`
+- [x] **T18 · P2** — Probado con 5 seeds (1337/9001/42/2024/7): masas de agua y tierra bien formadas
 
 > **Hito F1:** mapa coherente, con agua y tierra de forma natural, regenerable en caliente.
 
@@ -178,11 +178,12 @@ simulacion-ecosistemas/
 
 ### F2 · Capa de datos y entidades base
 
-- [ ] **T19 · P1** — `world/grid.js` con **`Uint8Array` para terreno** (no array de objetos)
-- [ ] **T20 · P1** — Capa de contenido sobre la grilla: `Uint8Array` de tipo de planta,
-      `Int32Array` de id de entidad por celda. Índices paralelos, nunca objetos por celda
-- [ ] **T21 · P1** — Consultas sobre la grilla: es habitable, tiene agua, está libre, es borde.
-      Todo con inline hints de V8 (`(x + W) | 0`) en los bucles calientes
+- [x] **T19 · P1** — `world/grid.js` con **`Uint8Array` para terreno** (no array de objetos)
+- [x] **T20 · P1** — Capa de contenido sobre la grilla: `Uint8Array` de tipo de planta,
+      `Int32Array` de id de entidad por celda (+ `Float32Array` de altura). Índices
+      paralelos, nunca objetos por celda
+- [x] **T21 · P1** — Consultas sobre la grilla: `esAgua`, `esArena`, `esTierra`, `esBorde`,
+      `estaLibre`, `dentro`, `terrenoEn`; ocupar/liberar con verificación de id
 - [x] **T22 · P2** — `entities/entity.js`: posición (celda + offset), energía, edad, velocidad, estado
 - [x] **T23 · P2** — Contenedor de entidades con alta/baja y separación por especie
 - [x] **T24 · Ambos** — **Spatial hash**: indexar entidades por celda para que el vecindario sea

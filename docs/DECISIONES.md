@@ -80,33 +80,73 @@ celda. Es un requisito del GDD, no una comodidad.
 
 ---
 
-## D5 · Estructura de datos de la grilla
+## D5 · Estructura de datos de la grilla (T19-T21)
 
-*(Pendiente de definir por P1 — T19/T20/T21.)*
+**Decisión (implementada en `src/world/grid.js`):** la grilla es
+**memoria contigua**, no un array de objetos. Cada capa es un typed array y
+todas comparten el mismo índice plano `y * ancho + x`:
 
-Lo acordado hasta ahora:
+| Capa | Tipo | Contenido | Quién escribe |
+|---|---|---|---|
+| `terreno` | `Uint8Array` | `TERRENO.*` (0 agua, 1 arena, 2 tierra) | P1 |
+| `planta` | `Uint8Array` | `PLANTA.*` (F3) | P1 |
+| `ocupante` | `Int32Array` | id de entidad, `-1` = libre | P2 |
+| `altura` | `Float32Array` | altura normalizada 0..1 | P1 |
 
-- La grilla es **memoria contigua**, no un array de objetos:
-  `Uint8Array` para terreno, `Uint8Array` para tipo de planta,
-  `Int32Array` para id de entidad por celda.
-- Índices paralelos: todas las capas comparten el mismo índice
-  `y * ancho + x`.
-- La capa de **ocupación de entidades** la consume el Spatial Hash.
+**Consultas (T21):** `esAgua`, `esArena`, `esTierra`, `esBorde`, `estaLibre`,
+`dentro`, `terrenoEn`. Fuera del mundo el terreno se reporta como `AGUA` para
+que los vecindarios del borde no lean basura.
+
+**Ocupación (contrato §2):** P2 escribe `ocupante` solo con `ocupar`/`liberar`.
+La verificación (id + límites) vive en la grilla, no en cada llamador.
+
+**Altura aparte de terreno:** guardamos la altura cruda en `altura` además del
+tipo clasificado. Sirve para (a) sombrear el render y (b) testear la
+clasificación sin volver a correr el ruido.
 
 ---
 
-## D6 · Valores por celda
+## D6 · Valores por celda (T13)
 
-*(Pendiente — se completa con el terreno procedural, P1.)*
+**Decisión (implementada en `src/world/terrain.js`):** la altura sale de un
+**Value Noise fractal (fBm)** y se clasifica por umbrales.
 
-| Terreno | Descripción | Valor |
-|---|---|---|
-| `AGUA` | Baja, no habitable sin costo extra | 0 |
-| `ARENA` | Transición, consumo energético extra | 1 |
-| `TIERRA` | Habitable, es donde crece la vegetación | 2 |
+| Terreno | Descripción | Valor | Umbral de altura |
+|---|---|---|---|
+| `AGUA` | Baja, no habitable sin costo extra | 0 | `altura < 0.32` |
+| `ARENA` | Transición, consumo energético extra | 1 | `0.32 ≤ altura < 0.38` |
+| `TIERRA` | Habitable, es donde crece la vegetación | 2 | `altura ≥ 0.38` |
 
-Los umbrales de altura (`0.35` agua / `0.45` arena) viven en
-`CONFIG.terreno`, no hardcodeados.
+Los umbrales viven en `CONFIG.terreno`, no hardcodeados. Con la seed 1337 el
+mapa queda ~32% agua / 13% arena / 55% tierra.
+
+**Caída de borde (`caidaBorde = 0.42`):** la altura se resta con una parábola
+según la distancia al centro, así el borde tiende a agua y el mapa forma
+**islas/continentes** en vez de costas cortadas a cuchillo (T18). Con
+`caidaBorde = 0` el terreno es ruido plano.
+
+**Balance elegido por prueba:** con caída agresiva (0.85) el mapa quedaba 65-76%
+agua y la vida no tenía dónde vivir; con 0.42 la tierra es mayoría. Los cinco
+seed de prueba (`1337, 9001, 42, 2024, 7`) dan entre 35% y 55% de tierra.
+
+---
+
+## D11 · Ruido: Value Noise, no Perlin (T11/T12)
+
+**Decisión:** se implementa **Value Noise 2D** con curva `fade` (smootherstep)
++ **fBm** de 5 octavas (`src/core/noise.js`). **Se descarta Perlin.**
+
+**Por qué:** el terreno es **decorativo y procedural** (riesgo "perder el tiempo
+en el mapa perfecto", TAREAS §10). Value Noise interpolado con smootherstep da
+gradientes suaves y sin aristas, es más corto de entender y de testear, y con
+fBm produce la misma sensación de relieve que Perlin para este caso de uso.
+
+**Determinismo:** el ruido es una **función pura** de `(x, y, seed)` basada en
+el hash FNV-1a (`hashInts`). No consume el PRNG de la simulación, así generar o
+regenerar el mapa no desplaza la secuencia de azar de los animales.
+
+**Costo:** generar 256×256 tarda ~30-60 ms (medido con `scripts/verTerreno.mjs`).
+Se hace una vez al arrancar y una vez por pulsación de `R`, fuera del bucle.
 
 ---
 
@@ -158,10 +198,30 @@ ser reproducible. Y el test de determinismo (T42) no puede pasar.
 
 ---
 
+## D12 · Render del terreno con pocos sprites (T15)
+
+**Decisión (implementada en `src/render/terrainRenderer.js`):** el mapa entero
+se pinta **una sola vez** en un canvas offscreen de **1 píxel por celda** y se
+sube como **una única textura**. En pantalla es **un único `Sprite`** escalado
+a `tileSize`, con `scaleMode: 'nearest'` para que quede nítido al hacer zoom.
+
+**Por qué:** la regla del proyecto prohíbe `Graphics` por celda o por frame
+(65.536 celdas serían 65.536 objetos). Un sprite de 1 píxel-mapa no rompe el
+batch de Pixi y cuesta lo mismo con 256 celdas que con 4096.
+
+**Sombreado:** cada celda se colorea por tipo modulado por la `altura` (más
+alto = más claro) más un jitter mínimo determinista (derivado solo de `x, y`).
+Da relieve sin generar una sola textura extra.
+
+**Culling (T64):** pendiente. Con un solo sprite no aplica el culling por
+celda; si el mundo crece mucho se evaluará partir el mapa en *chunks*.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |
 |---|---|---|---|
 | 1 | API exacta de `camera.js` | P1 + P2 | Pendiente de reunión |
-| 2 | Capas de la grilla y sus tipos | P1 | Pendiente (D5) |
-| 3 | Interfaz `MundoAPI` para desacoplar los animales del terreno | P2 propone | Pendiente |
+| 2 | Capas de la grilla y sus tipos | P1 | ✅ Resuelto (D5) |
+| 3 | Interfaz `MundoAPI` para desacoplar los animales del terreno | P2 propone | Parcial: la `Grid` ya existe; ver CONTRATO §5 |

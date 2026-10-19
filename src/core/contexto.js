@@ -9,6 +9,8 @@
  * - `prng`   → PRNG con semilla. **Única fuente de azar** de la simulación.
  * - `mundo`  → `{ ancho, alto }` en celdas. Cuando exista la `Grid` de P1,
  *              acá va también la referencia a la grilla.
+ * - `grid`   → `Grid` de P1 (terreno, planta, ocupante) o `null` mientras
+ *              no se haya generado el terreno.
  * - `config` → `CONFIG` (todos los parámetros).
  * - `tick`   → número de ticks simulados desde el arranque.
  * - `hash`   → Spatial Hash, para consultas de vecindario.
@@ -27,6 +29,7 @@ export function crearContexto({ prng, mundo, config }) {
   return {
     prng,
     mundo,
+    grid: null,
     config,
     tick: 0,
     hash: null,

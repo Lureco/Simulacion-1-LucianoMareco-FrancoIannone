@@ -22,6 +22,11 @@ import { SpatialHash } from './systems/spatialHash.js';
 import { pasoDeSimulacion, sembrar } from './systems/simulacion.js';
 import { Camera } from './render/camera.js';
 import { EntityRenderer } from './render/entityRenderer.js';
+import { TerrainRenderer } from './render/terrainRenderer.js';
+import { PlantRenderer } from './render/plantRenderer.js';
+import { generarTerreno } from './world/terrain.js';
+import { TERRENO, PLANTA, nombreTerreno } from './world/cell.js';
+import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
 import { Hud } from './ui/hud.js';
 
 const app = new Application();
@@ -53,18 +58,58 @@ const ctx = crearContexto({
 ctx.entidades = manager;
 ctx.hash = new SpatialHash(CONFIG.mundo.ancho, CONFIG.mundo.alto, CONFIG.percepcion.celdaHash);
 
-/** Siembra la población inicial en posiciones aleatorias. */
+/** Colores del terreno, leídos de `CONFIG.terreno` (T58: nada hardcodeado). */
+const COLORES_TERRENO = {
+  [TERRENO.AGUA]: CONFIG.terreno.colorAgua,
+  [TERRENO.ARENA]: CONFIG.terreno.colorArena,
+  [TERRENO.TIERRA]: CONFIG.terreno.colorTierra,
+};
+
+/** Colores de cada estado de planta, leídos de `CONFIG.plantas`. */
+const COLORES_PLANTA = {
+  [PLANTA.SEMILLA]: CONFIG.plantas.colorSemilla,
+  [PLANTA.JOVEN]: CONFIG.plantas.colorJoven,
+  [PLANTA.ADULTA]: CONFIG.plantas.colorAdulta,
+};
+
+/** Genera el terreno con la seed actual y lo deja en `ctx.grid`. */
+function generarMundo() {
+  ctx.grid = generarTerreno({
+    ancho: CONFIG.mundo.ancho,
+    alto: CONFIG.mundo.alto,
+    seed: ESTADO.seed,
+    config: CONFIG.terreno,
+  });
+  return ctx.grid;
+}
+
+/** Siembra la población inicial en celdas habitables del terreno. */
 function poblar() {
   sembrar(ctx, CONFIG.herbivoro.poblacionInicial, ESPECIE.HERBIVORO);
   sembrar(ctx, CONFIG.depredador.poblacionInicial, ESPECIE.PREDADOR);
 }
 
-poblar();
-
-// ── Render ────────────────────────────────────────────────────────
+// ── Mundo y render ────────────────────────────────────────────────
+// Primero la grilla: `poblar()` la usa para elegir celdas de tierra.
 
 const tile = CONFIG.mundo.tileSize;
+const terrenoRenderer = new TerrainRenderer(app, { tileSize: tile, colores: COLORES_TERRENO });
+app.stage.addChild(terrenoRenderer.contenedor);
+
+generarMundo();
+terrenoRenderer.generar(ctx.grid);
+sembrarVegetacion(ctx);
+poblar();
+
 const renderer = new EntityRenderer(app, { tileSize: tile });
+
+const plantRenderer = new PlantRenderer(app, {
+  tileSize: tile,
+  colores: COLORES_PLANTA,
+  escala: CONFIG.plantas.escalaSprite,
+});
+// Orden de capas: terreno abajo, plantas encima, entidades arriba.
+app.stage.addChild(plantRenderer.contenedor);
 app.stage.addChild(renderer.contenedor);
 
 const camara = new Camera(
@@ -117,7 +162,23 @@ window.addEventListener(
         manager.limpiar();
         ctx.prng = new PRNG(ESTADO.seed);
         ctx.tick = 0;
+        generarMundo();
+        terrenoRenderer.generar(ctx.grid);
+        sembrarVegetacion(ctx);
+        plantRenderer.ultimoTick = -Infinity;
         poblar();
+        break;
+      }
+      case 's':
+        console.log(`[main] seed actual: ${ESTADO.seed}`);
+        break;
+      case 't': {
+        const { agua, arena, tierra } = ctx.grid.contarTerreno();
+        console.log(
+          `[main] terreno — agua: ${agua} · arena: ${arena} · tierra: ${tierra} · ` +
+            `umbrales [${CONFIG.terreno.umbralAgua}, ${CONFIG.terreno.umbralArena}] · ` +
+            `plantas: ${contarPlantas(ctx)}`,
+        );
         break;
       }
       default:
@@ -159,10 +220,14 @@ function bucle(ahora) {
     camara.seguir(camara.objetivo, tile, delta);
   }
 
+  terrenoRenderer.render(camara);
+  plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.plantas.ticksPorRefrescoRender);
+  plantRenderer.render(camara);
   renderer.render(manager, camara);
 
   hud.actualizar(
     {
+      plantas: contarPlantas(ctx),
       herbivoros: manager.contar(ESPECIE.HERBIVORO),
       depredadores: manager.contar(ESPECIE.PREDADOR),
       total: manager.total,
@@ -180,12 +245,20 @@ function bucle(ahora) {
 console.log('[main] PixiJS v8 inicializado');
 console.log(`[main] Mundo: ${CONFIG.mundo.ancho}x${CONFIG.mundo.alto} celdas`);
 console.log(`[main] Seed: ${ESTADO.seed}`);
+{
+  const { agua, arena, tierra } = ctx.grid.contarTerreno();
+  console.log(
+    `[main] Terreno: ${nombreTerreno(TERRENO.AGUA)} ${agua} · ` +
+      `${nombreTerreno(TERRENO.ARENA)} ${arena} · ${nombreTerreno(TERRENO.TIERRA)} ${tierra}`,
+  );
+}
 console.log(
   `[main] Población: ${manager.contar(ESPECIE.HERBIVORO)} herbívoros, ` +
     `${manager.contar(ESPECIE.PREDADOR)} carnívoros`,
 );
+console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
 console.log(
-  '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · espacio = pausa',
+  '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · espacio = pausa · R = nueva seed · S = ver seed · T = terreno',
 );
 
 requestAnimationFrame(bucle);

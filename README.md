@@ -7,9 +7,9 @@ herbívoros y depredadores interactúan sobre un terreno generado por ruido.
 - **Profesor:** Facundo Saiegh
 - **Stack:** JavaScript ES2022 · [PixiJS v8](https://pixijs.com) · Vite · Vitest · ESLint + Prettier
 
-> **Estado actual:** fase F2 (base de entidades). El mundo procedural todavía
-> no está: los animales deambulan sobre celdas vacías. Ver
-> [Estado](#estado-del-proyecto) para el detalle.
+> **Estado actual:** fase F3 lista para arrancar. El mundo procedural está
+> hecho: agua, arena y tierra generados por ruido con semilla, con render y
+> regeneración en caliente. Ver [Estado](#estado-del-proyecto) para el detalle.
 
 ---
 
@@ -48,7 +48,9 @@ Otros comandos:
 | **F** | Seguir a un herbívoro al azar |
 | **G** | Volver al centro del mundo |
 | **Espacio** | Pausar / reanudar |
-| **R** | Regenerar la población con una seed nueva |
+| **R** | Regenerar el mundo y la población con una seed nueva |
+| **S** | Mostrar la seed actual en consola |
+| **T** | Mostrar el conteo de terreno (agua/arena/tierra) en consola |
 
 ---
 
@@ -59,7 +61,7 @@ Hitos según `TAREAS.md`:
 | Fase | Estado | Nota |
 |---|---|---|
 | **F0** Setup y contrato | ✅ Hecho | Vite + Pixi v8 + ESLint/Prettier + hook + `config.js` + PRNG + tests |
-| **F1** Mundo procedural | ⏳ Pendiente | De Luciano (T11-T18) |
+| **F1** Mundo procedural | ✅ Hecho | Value Noise + fBm, grilla tipada, agua/arena/tierra, render y regeneración en caliente (T11-T18) |
 | **F2** Datos y entidades base | ✅ Hecho | Entidad base, herbívoro, carnívoro, manager, pool, spatial hash, timestep fijo, render |
 | **F3** Plantas y autómata | ⏳ Pendiente | De Luciano (T27-T32) |
 | **F4** IA del herbívoro | ⏳ Pendiente | Siguiente tanda de P2 (T34-T42) |
@@ -67,9 +69,12 @@ Hitos según `TAREAS.md`:
 
 ### Qué se ve hoy
 
-145 animales (120 herbívoros verdes, 25 carnívoros rojos) deambuando por un
-mundo de 256×256 celdas, a ~180 FPS. Todavía **no** tienen necesidades: no
-comen, no beben, no se reproducen y no mueren. Eso es F4/F5.
+Un **mundo 256×256** con agua, arena y tierra generados por ruido con
+semilla: islas y continentes con costas naturales, reproducibles celda a
+celda. Sobre ese mapa deambulan 145 animales (120 herbívoros verdes, 25
+carnívoros rojos), sembrados **en celdas de tierra**, a ~180 FPS. Todavía
+**no** tienen necesidades: no comen, no beben, no se reproducen y no mueren.
+Eso es F4/F5.
 
 ### Lo que ya está garantizado (y se puede romper de una forma detectable)
 
@@ -93,8 +98,13 @@ src/
 ├─ config.js            # TODOS los parámetros de la simulación
 ├─ core/
 │  ├─ prng.js           # PRNG con semilla (mulberry32)
-│  ├─ contexto.js       # ctx: { prng, mundo, config, hash, entidades }
+│  ├─ noise.js          # Value Noise + fBm con semilla (T11/T12)
+│  ├─ contexto.js       # ctx: { prng, mundo, grid, config, hash, entidades }
 │  └─ utils.js          # clamp, lerp, índices de celda
+├─ world/
+│  ├─ cell.js           # constantes TERRENO / PLANTA (contrato §3)
+│  ├─ grid.js           # grilla tipada: terreno, planta, ocupante, altura
+│  └─ terrain.js        # ruido → agua/arena/tierra + siembra habitable
 ├─ entities/
 │  ├─ entity.js         # clase base: posición, energía, edad, estado
 │  ├─ herbivore.js      # herbívoro
@@ -107,9 +117,13 @@ src/
 │  ├─ simulacion.js     # el paso de simulación (usado por main y por tests)
 ├─ render/
 │  ├─ camera.js         # pan, zoom, seguimiento  ⚠️ adelantada de P1 (T53)
+│  ├─ terrainRenderer.js# el mapa entero en UNA textura + UN sprite (T15)
 │  └─ entityRenderer.js # sprites tintados, textura única
 └─ ui/
    └─ hud.js            # contadores de población, tiempo, seed, FPS
+
+scripts/
+└─ verTerreno.mjs       # utilidad: genera el mapa en Node y reporta proporciones
 
 docs/
 ├─ DECISIONES.md        # decisiones técnicas y por qué

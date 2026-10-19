@@ -56,17 +56,29 @@ export const CONFIG = {
   // ─────────────────────────────────────────────────────────────
   terreno: {
     /** Altura normalizada 0..1. Por debajo de esto: AGUA. */
-    umbralAgua: 0.35,
+    umbralAgua: 0.32,
     /** Entre umbralAgua y este: ARENA. */
-    umbralArena: 0.45,
+    umbralArena: 0.38,
     /** Frecuencia base del ruido de altura. Más alto = más detalle. */
-    frecuenciaAltura: 0.02,
+    frecuenciaAltura: 0.018,
     /** Octavas del ruido fractal. */
-    octavasAltura: 4,
+    octavasAltura: 5,
     /** Persistencia: cuánto pesa cada octava respecto de la anterior. */
-    persistenciaAltura: 0.5,
+    persistenciaAltura: 0.55,
+    /** Cuánto multiplica la frecuencia en cada octava (lacunaridad). */
+    lacunaridadAltura: 2,
+    /**
+     * Caída de altura hacia los bordes: cuánto se hunde el mapa en la
+     * esquina más lejana. 0 = ruido plano (sin isla), 0.9 = isla marcada.
+     * Forma masas de agua cerradas en vez de costas cortadas (T18).
+     */
+    caidaBorde: 0.42,
     /** Semilla offset para que altura y humedad no se correlacionen. */
     offsetSemillaHumedad: 7919,
+    /** Colores 0xRRGGBB de cada tipo de terreno (sombreado por altura). */
+    colorAgua: 0x2a4d8f,
+    colorArena: 0xd8c596,
+    colorTierra: 0x4b7a3a,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -90,6 +102,14 @@ export const CONFIG = {
     densidadSemilla: 0.06,
     /** Energía que aporta una planta adulta al ser comida. */
     energiaPorPlanta: 12,
+    /** Colores de cada estado de planta para el render (0xRRGGBB). */
+    colorSemilla: 0x6f7f4a,
+    colorJoven: 0x6fae52,
+    colorAdulta: 0x3f8f3a,
+    /** Tamaño del sprite de una planta adulta en fracción del tile. */
+    escalaSprite: 0.55,
+    /** Actualizar el render de plantas cada N ticks (la vegetación cambia lento). */
+    ticksPorRefrescoRender: 10,
   },
 
   // ─────────────────────────────────────────────────────────────
