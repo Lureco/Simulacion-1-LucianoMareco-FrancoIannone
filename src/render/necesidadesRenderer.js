@@ -18,6 +18,7 @@
 
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { COLOR_NECESIDAD } from './paleta.js';
+import { energiaNormalizada } from '../systems/needs.js';
 
 /** Altura de cada barra en píxeles de mundo. */
 const ALTO_BARRA = 3;
@@ -28,10 +29,17 @@ const SEPARACION = 1;
 /** Ancho máximo de las barras en píxeles de mundo. */
 const ANCHO_BARRA = 16;
 
-/** Necesidades que se muestran, en orden. */
+/**
+ * Necesidades que se muestran, en orden.
+ *
+ * El orden es el de la **prioridad** de la IA (GDD §5.2): hambre > sed >
+ * reproducción > energía. Así, de un vistazo, se ve cuál necesidad está
+ * dominando y por tanto qué va a hacer el animal.
+ */
 const NECESIDADES = [
   { clave: 'hambre', etiqueta: 'hambre' },
   { clave: 'sed', etiqueta: 'sed' },
+  { clave: 'reproduccion', etiqueta: 'reproducción' },
   { clave: 'energia', etiqueta: 'energía' },
 ];
 
@@ -118,8 +126,10 @@ export class NecesidadesRenderer {
       return;
     }
 
-    // Solo redibuja si cambió algo (posición o valores).
-    const valores = NECESIDADES.map((n) => entidad.necesidades[n.clave]);
+    // Solo redibuja si cambió algo (posición o valores). Los valores se
+    // normalizan **antes** de compararlos: la energía es absoluta (0..100)
+    // y sin normalizar no se vería el cambio.
+    const valores = NECESIDADES.map((n) => this.valorNormalizado(entidad, n.clave));
     const clave = `${entidad.x.toFixed(3)},${entidad.y.toFixed(3)},${valores
       .map((v) => v.toFixed(2))
       .join(',')}`;
@@ -154,7 +164,7 @@ export class NecesidadesRenderer {
 
     for (let i = 0; i < this.barras.length; i++) {
       const { necesidad, relleno } = this.barras[i];
-      const valor = Math.max(0, Math.min(1, entidad.necesidades[necesidad.clave]));
+      const valor = this.valorNormalizado(entidad, necesidad.clave);
       const y = arriba + i * (altoPx + SEPARACION);
 
       relleno.visible = true;
@@ -164,6 +174,23 @@ export class NecesidadesRenderer {
       relleno.width = anchoPx * valor;
       relleno.height = altoPx;
     }
+  }
+
+  /**
+   * Valor de una necesidad en `[0, 1]`, listo para dibujar la barra.
+   *
+   * **Ojo:** `hambre` y `sed` ya están normalizadas, pero `energia` es un
+   * valor **absoluto** (0..`CONFIG.entidades.energiaMaxima`). Si se usara
+   * tal cual, la barra de energía saldría siempre llena (con `Math.min(1,
+   * 70)` = 1). Por eso la energía se normaliza explícitamente.
+   *
+   * @param {object} entidad
+   * @param {string} clave
+   * @returns {number}
+   */
+  valorNormalizado(entidad, clave) {
+    if (clave === 'energia') return energiaNormalizada(entidad);
+    return Math.max(0, Math.min(1, entidad.necesidades[clave]));
   }
 
   /** Libera los recursos. */

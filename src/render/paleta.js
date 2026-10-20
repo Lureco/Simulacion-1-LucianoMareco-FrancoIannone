@@ -56,6 +56,7 @@ export const NOMBRE_ESPECIE = {
 export const COLOR_NECESIDAD = {
   hambre: 0xff8c42,
   sed: 0x4aa3ff,
+  reproduccion: 0xd980ff,
   energia: 0x9dff5c,
 };
 

@@ -20,11 +20,13 @@
 import {
   COLOR_ESPECIE,
   COLOR_ESTADO,
+  COLOR_NECESIDAD,
   NOMBRE_ESPECIE,
   NOMBRE_ESTADO,
   aCss,
 } from '../render/paleta.js';
 import { ESPECIE, ESTADO_IA } from '../entities/entity.js';
+import { energiaNormalizada } from '../systems/needs.js';
 
 export class Leyenda {
   /**
@@ -70,8 +72,9 @@ export class Leyenda {
   /**
    * Redibuja la leyenda.
    * @param {object} [conteo] Cuántas entidades hay en cada estado de IA.
+   * @param {object} [seleccion] Entidad seleccionada (para sus necesidades).
    */
-  actualizar(conteo) {
+  actualizar(conteo, seleccion) {
     const lineas = [];
 
     lineas.push(
@@ -97,6 +100,36 @@ export class Leyenda {
       lineas.push(
         '<span style="color:#9aa4b2">D = colores por estado · clic = ver necesidades</span>',
       );
+    }
+
+    // Barra de progreso para un valor de necesidad.
+    const barra = (valor) => {
+      const llenos = Math.round(valor * 8);
+      return (
+        '<span style="color:#6bdc7a">' +
+        '█'.repeat(llenos) +
+        '</span><span style="color:#374151">' +
+        '░'.repeat(8 - llenos) +
+        '</span>'
+      );
+    };
+
+    // Las barras de necesidades del animal seleccionado (T56).
+    if (seleccion && seleccion.vivo) {
+      const nombre = NOMBRE_ESPECIE[seleccion.tipo] ?? 'bicho';
+      lineas.push(`<span style="color:#9aa4b2">— ${nombre} —</span>`);
+
+      const fila = (etiqueta, color, valor) =>
+        `<span style="color:${aCss(color)}">■</span> ${etiqueta.padEnd(13)} ` +
+        `${barra(valor)} ` +
+        `<span style="color:#9aa4b2">${valor.toFixed(2)}</span>`;
+
+      lineas.push(fila('hambre', COLOR_NECESIDAD.hambre, seleccion.necesidades.hambre));
+      lineas.push(fila('sed', COLOR_NECESIDAD.sed, seleccion.necesidades.sed));
+      lineas.push(
+        fila('reproducción', COLOR_NECESIDAD.reproduccion, seleccion.necesidades.reproduccion),
+      );
+      lineas.push(fila('energía', COLOR_NECESIDAD.energia, energiaNormalizada(seleccion)));
     }
 
     const html = lineas.join('<br>');

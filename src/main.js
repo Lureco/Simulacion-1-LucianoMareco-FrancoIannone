@@ -347,7 +347,11 @@ function bucle(ahora) {
     for (const entidad of manager.vivas) {
       conteo[entidad.estado] = (conteo[entidad.estado] ?? 0) + 1;
     }
-    leyenda.actualizar(conteo);
+    leyenda.actualizar(conteo, necesidadesRenderer.seleccionada);
+  } else {
+    // También se actualiza sin depuración: muestra las necesidades del
+    // animal seleccionado.
+    leyenda.actualizar(null, necesidadesRenderer.seleccionada);
   }
 
   hud.actualizar(
