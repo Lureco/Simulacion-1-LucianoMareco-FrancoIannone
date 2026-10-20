@@ -7,6 +7,8 @@
  * nada (se actualiza 5 veces por segundo, no en cada frame).
  */
 
+import { CAUSA } from '../systems/death.js';
+
 export class Hud {
   /**
    * @param {HTMLElement} contenedor
@@ -41,6 +43,14 @@ export class Hud {
       fps: 0,
       velocidad: 1,
       pausa: false,
+      muertes: {
+        [CAUSA.HAMBRE]: 0,
+        [CAUSA.SED]: 0,
+        [CAUSA.ENERGIA]: 0,
+        [CAUSA.EDAD]: 0,
+        [CAUSA.DEPREDADO]: 0,
+        total: 0,
+      },
     };
   }
 
@@ -56,6 +66,7 @@ export class Hud {
 
     const d = this.datos;
     const segundos = (d.ticks / 60).toFixed(1);
+    const m = d.muertes;
     this.elemento.textContent = [
       `plantas     ${String(d.plantas).padStart(4)}`,
       `herbívoros  ${String(d.herbivoros).padStart(4)}`,
@@ -66,6 +77,12 @@ export class Hud {
       `fps         ${String(Math.round(d.fps)).padStart(4)}`,
       `velocidad   ${String(d.velocidad).padStart(4)}×`,
       `estado      ${d.pausa ? 'PAUSA' : 'CORRIENDO'}`,
+      `— muertes —`,
+      `hambre      ${String(m[CAUSA.HAMBRE]).padStart(4)}`,
+      `sed         ${String(m[CAUSA.SED]).padStart(4)}`,
+      `energía     ${String(m[CAUSA.ENERGIA]).padStart(4)}`,
+      `edad        ${String(m[CAUSA.EDAD]).padStart(4)}`,
+      `depredado   ${String(m[CAUSA.DEPREDADO]).padStart(4)}`,
     ].join('\n');
   }
 

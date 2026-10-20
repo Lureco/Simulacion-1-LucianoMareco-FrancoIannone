@@ -34,5 +34,12 @@ export function crearContexto({ prng, mundo, config }) {
     tick: 0,
     hash: null,
     entidades: null,
+    /**
+     * Array reutilizable para las consultas al spatial hash.
+     * La percepción lo usa como buffer de salida: así no se genera basura
+     * en cada búsqueda de vecinos.
+     * @type {object[]}
+     */
+    vecinos: [],
   };
 }

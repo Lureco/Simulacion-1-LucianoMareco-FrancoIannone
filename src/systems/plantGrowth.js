@@ -192,3 +192,32 @@ export function contarPlantas(ctx) {
   }
   return n;
 }
+
+/**
+ * Una entidad come la planta de una celda (T37).
+ *
+ * **Este módulo es el dueño de la capa `planta`** (contrato §2: P2 no
+ * escribe en `terreno` ni en `planta`). Por eso la operación vive acá y no
+ * en el herbívoro: el animal llama a esta función, pero el cambio de estado
+ * lo hace el sistema de vegetación.
+ *
+ * La planta comida pasa a `MUERTA` y el autómata la retira en el próximo
+ * tick, liberando la celda para que pueda crecer otra.
+ *
+ * @param {object} ctx Contexto con `{ grid, config }`.
+ * @param {number} x Columna de la celda.
+ * @param {number} y Fila de la celda.
+ * @returns {number} Energía que aporta la planta (0 si no había nada comestible).
+ */
+export function consumirPlanta(ctx, x, y) {
+  const grid = ctx.grid;
+  if (!grid) return 0;
+  if (x < 0 || y < 0 || x >= grid.ancho || y >= grid.alto) return 0;
+
+  const indice = y * grid.ancho + x;
+  const estado = grid.planta[indice];
+  if (estado !== PLANTA.ADULTA && estado !== PLANTA.JOVEN) return 0;
+
+  grid.planta[indice] = PLANTA.MUERTA;
+  return ctx.config.plantas.energiaPorPlanta;
+}

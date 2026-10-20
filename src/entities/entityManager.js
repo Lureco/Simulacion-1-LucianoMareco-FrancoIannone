@@ -28,6 +28,8 @@ export class EntityManager {
     this.fabricas = new Map();
     /** Sube en cada alta/baja. @type {number} */
     this.version = 0;
+    /** Último id entregado. @type {number} */
+    this.ultimoId = 0;
   }
 
   /**
@@ -51,6 +53,11 @@ export class EntityManager {
     }
     const entidad = this.pool.obtener(tipo, fabrica);
     entidad.reiniciar();
+    // Cada entidad tiene un id único y **monótono**: sirve para la capa
+    // `ocupante` de la grilla, que guarda el id de quien ocupa la celda.
+    // Los ids no se reciclan (el pool recycle el objeto, no el id).
+    this.ultimoId += 1;
+    entidad.id = this.ultimoId;
     this.vivas.push(entidad);
 
     let lista = this.porTipo.get(tipo);

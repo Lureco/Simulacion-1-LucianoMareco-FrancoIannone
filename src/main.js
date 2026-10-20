@@ -27,6 +27,7 @@ import { PlantRenderer } from './render/plantRenderer.js';
 import { generarTerreno } from './world/terrain.js';
 import { TERRENO, PLANTA, nombreTerreno } from './world/cell.js';
 import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
+import { reiniciarMuertes } from './systems/death.js';
 import { Hud } from './ui/hud.js';
 import { Controles } from './ui/controles.js';
 
@@ -81,6 +82,7 @@ function generarMundo() {
     seed: ESTADO.seed,
     config: CONFIG.terreno,
   });
+  reiniciarMuertes(ctx);
   return ctx.grid;
 }
 
@@ -258,6 +260,7 @@ function bucle(ahora) {
       fps,
       velocidad: ESTADO.escalaSimulacion,
       pausa: ESTADO.pausa,
+      muertes: ctx.muertes,
     },
     ahora,
   );

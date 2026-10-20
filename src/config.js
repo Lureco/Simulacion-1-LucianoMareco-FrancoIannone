@@ -122,8 +122,14 @@ export const CONFIG = {
     edadMaximaTicks: 60 * 60 * 20, // 20 minutos de simulación
     /** Energía inicial de una entidad recién nacida. */
     energiaInicial: 70,
+    /** Energía máxima: el techo de la barra de energía. */
+    energiaMaxima: 100,
     /** Energía mínima para seguir vivo. */
     energiaMinima: 0,
+    /** Energía que se consume por segundo solo por existir (metabolismo). */
+    consumoMetabolico: 0.02,
+    /** Energía extra que se consume por segundo mientras se mueve. */
+    consumoMovimiento: 0.01,
     /** Multiplicador de coste energético al atravesar agua. */
     costeAgua: 4,
     /** Multiplicador de coste energético al atravesar arena. */
@@ -157,6 +163,18 @@ export const CONFIG = {
     edadMinimaReproduccion: 60 * 15,
     /** Multiplicador de velocidad al perseguir comida. */
     bonusVelocidadComer: 1.15,
+    /** Cuánto se le baja el hambre al comer una planta (0..1). */
+    saciedadPorPlanta: 0.45,
+    /** Cuánto se le baja la sed al beber (0..1). */
+    saciedadAlBeber: 1,
+    /** Distancia (en celdas) a la que se reproducen dos herbívoros. */
+    radioReproduccion: 1.5,
+    /** Energía que cuesta criar una cría (la paga la madre y la pareja). */
+    energiaPorCria: 25,
+    /** Cuánto sube el deseo de reproducirse por segundo (si está bien alimentado). */
+    crecimientoReproduccion: 0.004,
+    /** Cuánto baja el deseo de reproducirse por segundo (si tiene hambre o sed). */
+    decaimientoReproduccion: 0.02,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -168,13 +186,30 @@ export const CONFIG = {
     velocidad: 1.7,
     radioVision: 9,
     hambreCritica: 0.6,
+    sedCritica: 0.7,
+    umbralReproduccion: 0.6,
     consumoHambre: 0.008,
+    consumoSed: 0.013,
     energiaPorPresa: 35,
     energiaReproduccion: 70,
     cooldownReproduccion: 60 * 15,
     edadMinimaReproduccion: 60 * 25,
     /** Segundos de persecución máxima antes de abandonar (anti-twitch). */
     segundosPersecucion: 12,
+    /** Distancia (en celdas) a la que el depredador alcanza a matar a la presa. */
+    radioAtaque: 0.6,
+    /** Cuánto se le baja el hambre al comer una presa (0..1). */
+    saciedadPorPresa: 0.8,
+    /** Cuánto se le baja la sed al beber (0..1). */
+    saciedadAlBeber: 1,
+    /** Distancia (en celdas) a la que se reproducen dos depredadores. */
+    radioReproduccion: 1.5,
+    /** Energía que cuesta criar una cría (la paga la madre y la pareja). */
+    energiaPorCria: 35,
+    /** Cuánto sube el deseo de reproducirse por segundo (si está bien alimentado). */
+    crecimientoReproduccion: 0.003,
+    /** Cuánto baja el deseo de reproducirse por segundo (si tiene hambre o sed). */
+    decaimientoReproduccion: 0.02,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -185,6 +220,27 @@ export const CONFIG = {
     celdaHash: 8,
     /** Celdas a la redonda que se consultan por hash para un radio dado. */
     margenConsulta: 1,
+    /**
+     * Cada cuántos ticks una entidad vuelve a buscar comida.
+     * Buscar en cada tick es caro (recorre el vecindario de la grilla);
+     * la memoria de "dónde estaba la comida" alcanza para varios ticks.
+     */
+    ticksEntreBusqueda: 6,
+    /**
+     * Cada cuántos ticks una entidad vuelve a buscar agua.
+     * El agua no se mueve, así que se busca menos seguido que la comida.
+     */
+    ticksEntreBusquedaAgua: 20,
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // ESPECIES [P2]
+  // ─────────────────────────────────────────────────────────────
+  tipos: {
+    /** Id de la especie herbívoro. Debe coincidir con `ESPECIE.HERBIVORO`. */
+    herbivoro: 1,
+    /** Id de la especie depredador. Debe coincidir con `ESPECIE.PREDADOR`. */
+    depredador: 2,
   },
 
   // ─────────────────────────────────────────────────────────────
