@@ -41,5 +41,12 @@ export function crearContexto({ prng, mundo, config }) {
      * @type {object[]}
      */
     vecinos: [],
+    /**
+     * Distancia de cada celda al agua más cercana (BFS). Lo calcula
+     * `systems/mapaAgua.js` al generar el mundo: permite que un animal
+     * sediento camine hacia la orilla sin "ver" el agua (T38).
+     * @type {Int32Array|null}
+     */
+    mapaAgua: null,
   };
 }

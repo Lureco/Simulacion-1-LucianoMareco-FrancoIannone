@@ -25,13 +25,12 @@ import { CONFIG } from '../config.js';
 import { consumirPlanta } from '../systems/plantGrowth.js';
 import {
   buscarPlanta,
-  buscarAgua,
   buscarDepredador,
   objetivoPlantaValido,
-  objetivoAguaValido,
   plantaEnCeldaActual,
 } from '../systems/perception.js';
 import { buscarPareja, intentarReproducir } from '../systems/reproduction.js';
+import { estaEnOrillaDeAgua, direccionHaciaAgua } from '../systems/mapaAgua.js';
 
 export class Herbivore extends Entity {
   constructor() {
@@ -48,10 +47,6 @@ export class Herbivore extends Entity {
     this.objetivoPlantaY = -1;
     /** Estado de planta que se busca (adulta o joven). */
     this.objetivoPlantaEstado = 0;
-
-    /** Objetivo de agua: celda de agua buscada. */
-    this.objetivoAguaX = -1;
-    this.objetivoAguaY = -1;
 
     /** Ticks que faltan para volver a buscar comida. */
     this.ticksParaBuscarPlanta = 0;
@@ -181,29 +176,31 @@ export class Herbivore extends Entity {
   pensarBeber(_dt, ctx) {
     this.estado = ESTADO_IA.BEBIENDO;
 
-    // Ya está sobre el agua: bebe.
-    if (this.estaEnAgua(ctx)) {
+    // Si ya está en el agua o en su orilla, bebe.
+    if (estaEnOrillaDeAgua(this, ctx)) {
       this.beber();
       return;
     }
 
-    if (objetivoAguaValido(this, ctx)) {
-      this.caminarHacia(this.objetivoAguaX + 0.5, this.objetivoAguaY + 0.5);
+    // Camina cuesta abajo por el gradiente de distancia al agua (T38).
+    // Así encuentra la orilla aunque esté lejos: no depende del radio
+    // de visión, sino de la pendiente del terreno.
+    const direccion = direccionHaciaAgua(this, ctx);
+    if (direccion !== null) {
+      this.dirX = direccion.x;
+      this.dirY = direccion.y;
+      this.ticksParaBuscarAgua = ctx.config.percepcion.ticksEntreBusquedaAgua;
       return;
     }
 
+    // Sin gradiente (mundo sin agua): deambula y vuelve a intentar.
     this.ticksParaBuscarAgua -= 1;
     if (this.ticksParaBuscarAgua > 0) {
       this.pensarExplorar(_dt, ctx);
       return;
     }
     this.ticksParaBuscarAgua = ctx.config.percepcion.ticksEntreBusquedaAgua;
-
-    if (buscarAgua(this, ctx)) {
-      this.caminarHacia(this.objetivoAguaX + 0.5, this.objetivoAguaY + 0.5);
-    } else {
-      this.pensarExplorar(_dt, ctx);
-    }
+    this.pensarExplorar(_dt, ctx);
   }
 
   /**
@@ -216,11 +213,28 @@ export class Herbivore extends Entity {
 
   /**
    * Deambula: cambia de rumbo al azar cada tanto.
+   *
+   * Pero si tiene sed (por encima de `sedBusqueda`, sin ser crítica todavía),
+   * **sesga el rumbo hacia el agua** en vez de deambular al azar. Es lo que
+   * hace que el animal llegue a la orilla a tiempo: si solo buscara agua
+   * cuando la sed ya es crítica, moriría de sed en el camino.
+   *
    * @param {number} _dt
    * @param {object} ctx
    */
   pensarExplorar(_dt, ctx) {
     this.estado = ESTADO_IA.VAGO;
+
+    // ¿Tiene sed pero no es crítica? Entonces deriva hacia el agua.
+    if (this.necesidades.sed >= CONFIG.herbivoro.sedBusqueda) {
+      const direccion = direccionHaciaAgua(this, ctx);
+      if (direccion !== null) {
+        this.dirX = direccion.x;
+        this.dirY = direccion.y;
+        return;
+      }
+    }
+
     this.ticksParaGiro -= 1;
     if (this.ticksParaGiro <= 0) {
       this.ticksParaGiro = ctx.prng.intInclusive(40, 110);
@@ -243,16 +257,5 @@ export class Herbivore extends Entity {
       this.dirY = dy / largo;
     }
     this.ticksParaGiro = 20;
-  }
-
-  /**
-   * ¿Está la entidad sobre una celda de agua?
-   * @param {object} ctx
-   * @returns {boolean}
-   */
-  estaEnAgua(ctx) {
-    const grid = ctx.grid;
-    if (!grid) return false;
-    return grid.esAgua(this.celdaX, this.celdaY);
   }
 }

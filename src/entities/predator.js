@@ -14,9 +14,10 @@
 
 import { Entity, ESPECIE, ESTADO_IA } from './entity.js';
 import { CONFIG } from '../config.js';
-import { buscarPresa, buscarAgua, objetivoAguaValido } from '../systems/perception.js';
+import { buscarPresa } from '../systems/perception.js';
 import { buscarPareja, intentarReproducir } from '../systems/reproduction.js';
 import { marcarMuerte, CAUSA } from '../systems/death.js';
+import { estaEnOrillaDeAgua, direccionHaciaAgua } from '../systems/mapaAgua.js';
 
 export class Predator extends Entity {
   constructor() {
@@ -33,9 +34,6 @@ export class Predator extends Entity {
     /** Ticks que lleva persiguiendo la presa actual. */
     this.ticksPersecucion = 0;
 
-    /** Objetivo de agua: celda de agua buscada. */
-    this.objetivoAguaX = -1;
-    this.objetivoAguaY = -1;
     /** Ticks que faltan para volver a buscar agua. */
     this.ticksParaBuscarAgua = 0;
     /** Ticks desde la última reproducción. */
@@ -168,14 +166,19 @@ export class Predator extends Entity {
   pensarBeber(_dt, ctx) {
     this.estado = ESTADO_IA.BEBIENDO;
 
-    if (this.estaEnAgua(ctx)) {
+    // Si ya está en el agua o en su orilla, bebe.
+    if (estaEnOrillaDeAgua(this, ctx)) {
       const n = this.necesidades;
       n.sed = Math.max(0, n.sed - CONFIG.depredador.saciedadAlBeber);
       return;
     }
 
-    if (objetivoAguaValido(this, ctx)) {
-      this.caminarHacia(this.objetivoAguaX + 0.5, this.objetivoAguaY + 0.5);
+    // Camina cuesta abajo por el gradiente de distancia al agua (T38).
+    const direccion = direccionHaciaAgua(this, ctx);
+    if (direccion !== null) {
+      this.dirX = direccion.x;
+      this.dirY = direccion.y;
+      this.ticksParaBuscarAgua = ctx.config.percepcion.ticksEntreBusquedaAgua;
       return;
     }
 
@@ -185,21 +188,31 @@ export class Predator extends Entity {
       return;
     }
     this.ticksParaBuscarAgua = ctx.config.percepcion.ticksEntreBusquedaAgua;
-
-    if (buscarAgua(this, ctx)) {
-      this.caminarHacia(this.objetivoAguaX + 0.5, this.objetivoAguaY + 0.5);
-    } else {
-      this.pensarExplorar(_dt, ctx);
-    }
+    this.pensarExplorar(_dt, ctx);
   }
 
   /**
    * Deambula: cambia de rumbo al azar cada tanto.
+   *
+   * Con sed por encima de `sedBusqueda` (pero no crítica), sesga el rumbo
+   * hacia el agua: si solo buscara agua cuando la sed es crítica, moriría
+   * de sed en el camino.
+   *
    * @param {number} _dt
    * @param {object} ctx
    */
   pensarExplorar(_dt, ctx) {
     this.estado = ESTADO_IA.VAGO;
+
+    if (this.necesidades.sed >= CONFIG.depredador.sedBusqueda) {
+      const direccion = direccionHaciaAgua(this, ctx);
+      if (direccion !== null) {
+        this.dirX = direccion.x;
+        this.dirY = direccion.y;
+        return;
+      }
+    }
+
     this.ticksParaGiro -= 1;
     if (this.ticksParaGiro <= 0) {
       this.ticksParaGiro = ctx.prng.intInclusive(40, 110);
@@ -207,16 +220,5 @@ export class Predator extends Entity {
       this.dirX = Math.cos(angulo);
       this.dirY = Math.sin(angulo);
     }
-  }
-
-  /**
-   * ¿Está la entidad sobre una celda de agua?
-   * @param {object} ctx
-   * @returns {boolean}
-   */
-  estaEnAgua(ctx) {
-    const grid = ctx.grid;
-    if (!grid) return false;
-    return grid.esAgua(this.celdaX, this.celdaY);
   }
 }

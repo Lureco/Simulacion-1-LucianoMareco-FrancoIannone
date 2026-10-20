@@ -23,6 +23,16 @@ import { ESPECIE } from '../entities/entity.js';
 import { celdaHabitableAlAzar } from '../world/terrain.js';
 import { pasoVegetacion } from './plantGrowth.js';
 import { aplicarMuertes, reiniciarMuertes } from './death.js';
+import { calcularMapaAgua } from './mapaAgua.js';
+
+/**
+ * Prepara el mundo: terreno, mapa de distancia al agua y contadores.
+ * @param {object} ctx
+ */
+export function prepararMundo(ctx) {
+  ctx.mapaAgua = calcularMapaAgua(ctx.grid);
+  reiniciarMuertes(ctx);
+}
 
 /**
  * Siembra entidades de una especie en celdas habitables al azar.
@@ -38,6 +48,13 @@ export function sembrar(ctx, cantidad, tipo) {
     const entidad = ctx.entidades.crear(tipo);
     entidad.x = posicion.x;
     entidad.y = posicion.y;
+  }
+
+  // El hash espacial se reconstruye acá: sin esto, las entidades recién
+  // sembradas no se verían entre sí hasta el final del primer tick, y
+  // la percepción arrancaría con el vecindario vacío.
+  if (ctx.hash !== null && ctx.hash !== undefined) {
+    ctx.hash.reconstruir(ctx.entidades.vivas);
   }
 }
 

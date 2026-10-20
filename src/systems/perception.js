@@ -24,7 +24,7 @@
  * del pool.
  */
 
-import { PLANTA, TERRENO } from '../world/cell.js';
+import { PLANTA } from '../world/cell.js';
 
 /**
  * Busca la planta comestible más cercano dentro del radio de visión.
@@ -79,56 +79,6 @@ export function buscarPlanta(entidad, ctx) {
       entidad.objetivoPlantaX = mejorX;
       entidad.objetivoPlantaY = mejorY;
       entidad.objetivoPlantaEstado = mejorEstado;
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Busca la celda de agua más cercana. El agua es terreno, así que se busca
- * en la grilla, no en el hash espacial.
- *
- * @param {object} entidad
- * @param {object} ctx
- * @returns {boolean} `true` si encontró agua (queda en la entidad).
- */
-export function buscarAgua(entidad, ctx) {
-  const grid = ctx.grid;
-  if (!grid) return false;
-
-  const radio = ctx.config.herbivoro.radioVision * 2;
-  const cx = entidad.celdaX;
-  const cy = entidad.celdaY;
-
-  for (let r = 1; r <= radio; r++) {
-    let mejorX = -1;
-    let mejorY = -1;
-    let mejorD = Infinity;
-
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
-        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-
-        const x = cx + dx;
-        const y = cy + dy;
-        if (x < 0 || y < 0 || x >= grid.ancho || y >= grid.alto) continue;
-
-        if (grid.terreno[y * grid.ancho + x] !== TERRENO.AGUA) continue;
-
-        const d = dx * dx + dy * dy;
-        if (d < mejorD) {
-          mejorD = d;
-          mejorX = x;
-          mejorY = y;
-        }
-      }
-    }
-
-    if (mejorX !== -1) {
-      entidad.objetivoAguaX = mejorX;
-      entidad.objetivoAguaY = mejorY;
       return true;
     }
   }
@@ -209,20 +159,6 @@ export function objetivoPlantaValido(entidad, ctx) {
   if (x < 0 || y < 0 || x >= grid.ancho || y >= grid.alto) return false;
   const estado = grid.planta[y * grid.ancho + x];
   return estado === PLANTA.ADULTA || estado === PLANTA.JOVEN;
-}
-
-/**
- * @param {object} entidad
- * @param {object} ctx
- * @returns {boolean}
- */
-export function objetivoAguaValido(entidad, ctx) {
-  const grid = ctx.grid;
-  if (!grid) return false;
-  const x = entidad.objetivoAguaX;
-  const y = entidad.objetivoAguaY;
-  if (x < 0 || y < 0 || x >= grid.ancho || y >= grid.alto) return false;
-  return grid.terreno[y * grid.ancho + x] === TERRENO.AGUA;
 }
 
 /**

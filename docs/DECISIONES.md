@@ -252,6 +252,122 @@ simulador se "quedaba corto" y la velocidad real era menor a la pedida.
 
 ---
 
+## D14 · Sistema de necesidades (T34)
+
+**Decisión:** las 5 necesidades del GDD §5 (hambre, sed, reproducción, energía,
+edad) viven en `entidad.necesidades`, un **objeto fijo** creado una vez por
+entidad y reciclado con ella del pool. Se normalizan en `[0, 1]`, donde `0` es
+"satisfecha" y `1` es "crítica".
+
+**Por qué un objeto y no campos sueltos:** el pool de objetos (T26) recicra la
+entidad entera; si las necesidades fueran un objeto aparte, habría que
+reconstruirlo al reciclar. Con un objeto fijo, `reiniciar()` lo deja como
+nuevo. Cero `new` en el bucle.
+
+**La edad vive en la entidad, no en las necesidades.** El contrato §1 ya la
+define ahí (`entidad.edad`). Having dos fuentes de verdad haría que la edad y
+la vejez se desincronicen. `edadNormalizada()` la convierte cuando hace falta.
+
+**Prioridad (T35):** `necesidadDominante()` decide con el orden del GDD §5.2:
+`hambre crítica > sed > reproducirse > explorar`. Se usa el valor normalizado
+contra el umbral de la especie, así las dos especies comparten la misma lógica
+sin duplicar código.
+
+---
+
+## D15 · Percepción: dos fuentes de datos (T36)
+
+**Decisión:** la percepción usa **dos** mecanismos distintos según qué busca:
+
+| Qué busca | Dónde vive | Cómo se busca |
+|---|---|---|
+| Plantas | Capa `planta` de la grilla (`Uint8Array`) | Escaneo del vecindario de la grilla |
+| Agua | Capa `terreno` de la grilla | Gradiente del mapa de distancia (D16) |
+| Presas, depredadores | Entidades | Spatial hash |
+
+**Por qué no un solo mecanismo:** el spatial hash indexa **entidades**. Las
+plantas no son entidades (viven en un `Uint8Array`, T27) y el agua es un tipo
+de terreno. Meterlas en el hash obligaría a P1 a cambiar la capa `planta` y a
+romper el contrato §2.
+
+**Memoria del objetivo:** cada entidad guarda **dónde** está su objetivo
+(`objetivoPlantaX`, …) y solo vuelve a buscar cada N ticks
+(`percepcion.ticksEntreBusqueda`). Sin esto, el escaneo de la grilla por
+entidad y por tick sería el costo dominante de la simulación.
+
+---
+
+## D16 · Beber: gradiente de distancia al agua (T38)
+
+**El problema que resuelve:** el agua puede estar a 40 celdas de un animal. Con
+el radio de visión del GDD §8 (6 celdas), el herbívoro **nunca encontraba agua**
+y se moría de sed a los 77 s. Medido con `scripts/depurarSed.mjs`.
+
+**Decisión:** se calcula **una sola vez por mundo** un mapa con la distancia de
+cada celda al agua más cercana, con un **BFS multi-origen** (se encolan todas
+las celdas de agua con distancia 0 y se expande en anillos). El animal sediento
+**camina cuesta abajo por el gradiente**: mira sus 8 vecinas y se va hacia la
+de menor distancia.
+
+**Por qué no rompe el "radio de visión limitado" del GDD:** la percepción sigue
+limitada. Lo que cambia es que, con sed, el animal **sigue la pendiente** en
+vez de deambular al azar. Es comportamiento de gradiente, no conocimiento
+absoluto del mapa: sigue sin saber si hay agua antes de llegar.
+
+**Costo:** O(celdas) una vez al generar el mundo (~65.536 celdas, milisegundos)
+y **O(1)** por entidad por tick. Antes era un barrido de 169 celdas por animal
+por tick.
+
+**Dato derivado, no una capa de la grilla:** `systems/mapaAgua.js` solo **lee**
+`grid.terreno` y guarda su propio array. El contrato §2 deja `terreno` y
+`planta` al dueño P1.
+
+**`sedBusqueda`: además de `sedCritica`.** Hay dos umbrales:
+
+- `sedCritica` (0.7): la sed **manda** sobre las demás necesidades.
+- `sedBusqueda` (0.3): el animal **sesga su deambulación** hacia el agua.
+
+Con un solo umbral, el animal esperaba a estar a punto de morir de sed para
+buscar agua, y moría en el camino. Con los dos, empieza a derivar hacia la
+orilla temprano y llega a tiempo. Es la diferencia entre "buscar agua" y
+"ir hacia el agua".
+
+---
+
+## D17 · Muerte diferida al final del tick (T45)
+
+**Decisión:** la muerte se **marca** durante el tick (`entidad.porMorir`) y se
+**aplica al final**, en bloque (`aplicarMuertes()`).
+
+**Por qué:** si el depredador eliminara a la presa del array a mitad del bucle
+de entidades, el bucle se saltaría una entidad. Peor: el orden de las
+operaciones cambiaría según quién muriera primero, y la simulación dejaría de
+ser determinista.
+
+**Bug que se encontró con esto:** `aplicarMuertes()` ponía `vivo = false` antes
+de llamar a `manager.eliminar()`, que tiene la guarda `if (!entidad.vivo)
+return;`. La entidad muerta **nunca se sacaba del array** y se contaba como
+muerte en cada tick: 662.032 muertes con la población intacta. Ahora
+`eliminar()` es el único que marca `vivo = false`.
+
+---
+
+## D18 · Ocupación de celdas y nascimientos (T47)
+
+**Decisión:** cada entidad tiene un **id único y monótono** (lo asigna el
+`EntityManager`, no el pool) y ocupa la celda donde está. Al cambiar de celda,
+libera la anterior y ocupa la nueva (`actualizarOcupacion()`).
+
+**Por qué hace falta:** la cría tiene que nacer en una **celda libre adyacente
+válida** (T47), y `Grid.estaLibre()` lee la capa `ocupante`. Sin ocupación, la
+capa `ocupante` — que el contrato §2 le asigna a P2 — nunca se escribía.
+
+**Los ids no se reciclan:** el pool recycle el **objeto**, pero cada alta
+recibe un id nuevo. Así el `ocupante` de una celda nunca puede confundir dos
+entidades.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

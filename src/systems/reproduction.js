@@ -47,7 +47,8 @@ export function puedeReproducirse(entidad, ctx) {
   if (n.energia < esp.energiaReproduccion) return false;
   if (n.hambre >= esp.hambreCritica) return false;
   if (n.sed >= esp.sedCritica) return false;
-  if (n.edad < esp.edadMinimaReproduccion) return false;
+  // La edad vive en la entidad (contrato §1), no en las necesidades.
+  if (entidad.edad < esp.edadMinimaReproduccion) return false;
   if (entidad.ticksDesdeReproduccion < esp.cooldownReproduccion) return false;
 
   return true;

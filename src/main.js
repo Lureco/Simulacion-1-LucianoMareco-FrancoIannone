@@ -19,7 +19,7 @@ import { ESPECIE } from './entities/entity.js';
 import { Herbivore } from './entities/herbivore.js';
 import { Predator } from './entities/predator.js';
 import { SpatialHash } from './systems/spatialHash.js';
-import { pasoDeSimulacion, sembrar } from './systems/simulacion.js';
+import { pasoDeSimulacion, sembrar, prepararMundo } from './systems/simulacion.js';
 import { Camera } from './render/camera.js';
 import { EntityRenderer } from './render/entityRenderer.js';
 import { TerrainRenderer } from './render/terrainRenderer.js';
@@ -27,7 +27,6 @@ import { PlantRenderer } from './render/plantRenderer.js';
 import { generarTerreno } from './world/terrain.js';
 import { TERRENO, PLANTA, nombreTerreno } from './world/cell.js';
 import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
-import { reiniciarMuertes } from './systems/death.js';
 import { Hud } from './ui/hud.js';
 import { Controles } from './ui/controles.js';
 
@@ -82,7 +81,9 @@ function generarMundo() {
     seed: ESTADO.seed,
     config: CONFIG.terreno,
   });
-  reiniciarMuertes(ctx);
+  // El mapa de distancia al agua se calcula una vez por mundo: permite
+  // que un animal sediento camine hacia la orilla (T38).
+  prepararMundo(ctx);
   return ctx.grid;
 }
 

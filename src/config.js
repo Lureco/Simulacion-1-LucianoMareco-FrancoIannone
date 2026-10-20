@@ -149,6 +149,16 @@ export const CONFIG = {
     hambreCritica: 0.7,
     /** Umbral de sed a partir del cual se prioriza beber. */
     sedCritica: 0.7,
+    /**
+     * Umbral de sed a partir del cual el animal **sesga su deambulación**
+     * hacia el agua, sin abandonar lo que estaba haciendo.
+     *
+     * Por qué existe: si el animal solo busca agua cuando la sed ya es
+     * crítica, spends esos últimos segundos caminando y muere antes de
+     * llegar. Con este umbral, empieza a derivar hacia la orilla mucho
+     * antes y llega a tiempo.
+     */
+    sedBusqueda: 0.3,
     /** Umbral de deseo de reproducción. */
     umbralReproduccion: 0.6,
     /** Velocidad a la que baja el hambre por segundo. */
@@ -187,6 +197,8 @@ export const CONFIG = {
     radioVision: 9,
     hambreCritica: 0.6,
     sedCritica: 0.7,
+    /** Umbral de sed a partir del cual sesga su rumbo hacia el agua. */
+    sedBusqueda: 0.3,
     umbralReproduccion: 0.6,
     consumoHambre: 0.008,
     consumoSed: 0.013,
@@ -194,8 +206,15 @@ export const CONFIG = {
     energiaReproduccion: 70,
     cooldownReproduccion: 60 * 15,
     edadMinimaReproduccion: 60 * 25,
-    /** Segundos de persecución máxima antes de abandonar (anti-twitch). */
-    segundosPersecucion: 12,
+    /**
+     * Segundos de persecución máxima antes de abandonar (anti-twitch).
+     *
+     * Tiene que ser MAYOR que el tiempo que tarda el depredador en alcanzar
+     * a la presa: con radio de visión 9 y velocidad relativa 0,5 celdas/s,
+     * se tardan ~18 s. Con 12 s el depredador abandonaba SIEMPRE antes de
+     * cazar, y la población de carnívoros se extinguía.
+     */
+    segundosPersecucion: 30,
     /** Distancia (en celdas) a la que el depredador alcanza a matar a la presa. */
     radioAtaque: 0.6,
     /** Cuánto se le baja el hambre al comer una presa (0..1). */

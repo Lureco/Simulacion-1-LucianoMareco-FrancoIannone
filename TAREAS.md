@@ -214,18 +214,25 @@ simulacion-ecosistemas/
 
 ### F4 · IA del herbívoro (sistema de necesidades)
 
-- [ ] **T34 · P2** — Necesidades normalizadas: `hambre`, `sed`, `deseo_repro`, `energía`, `edad`
-      en `[0, 1]`
-- [ ] **T35 · P2** — **Decisión por prioridad**: hambre crítica > sed > reproducirse > explorar
-- [ ] **T36 · P2** — Percepción con el spatial hash: detectar plantas, agua y otros herbívoros
-      en el radio de visión
-- [ ] **T37 · P2** — Conducta de **comer**: acercarse → morder → la planta baja de estado o desaparece
-- [ ] **T38 · P2** — Conducta de **beber**: ir a la celda de agua adyacente más cercana
-- [ ] **T39 · P2** — Conducta de **explorar**: destino aleatorio con *wander* (ruido en el rumbo)
-- [ ] **T40 · P2** — Penalización por terreno: arena y agua consumen más energía al atravesarlas
+- [x] **T34 · P2** — Necesidades normalizadas: `hambre`, `sed`, `deseo_repro`, `energía`, `edad`
+      en `[0, 1]` *(en `src/systems/needs.js`)*
+- [x] **T35 · P2** — **Decisión por prioridad**: hambre crítica > sed > reproducirse > explorar
+      *(`necesidadDominante()`, la misma lógica para las dos especies)*
+- [x] **T36 · P2** — Percepción con el spatial hash: detectar plantas, agua y otros herbívoros
+      en el radio de visión *(las plantas y el agua no son entidades: se buscan en la grilla. Ver D15)*
+- [x] **T37 · P2** — Conducta de **comer**: acercarse → morder → la planta baja de estado o desaparece
+      *(`consumirPlanta()` en `plantGrowth.js`: P2 no escribe en la capa `planta`, contrato §2)*
+- [x] **T38 · P2** — Conducta de **beber**: ir a la celda de agua adyacente más cercana
+      *(gradiente de distancia al agua por BFS multi-origen — ver D16)*
+- [x] **T39 · P2** — Conducta de **explorar**: destino aleatorio con *wander* (ruido en el rumbo)
+- [x] **T40 · P2** — Penalización por terreno: arena y agua consumen más energía al atravesarlas
+      *(en `systems/movement.js`)*
 - [ ] **T41 · P1** — Ajustar parámetros para que el herbívoro no muera en los primeros 30 s
       (que el resultado se vea: no deambulan sin objetivo, comen y beben de verdad)
+      ⚠️ **Medido**: el herbívoro muere de sed a los ~77 s. Revisar `consumoSed`,
+      `sedCritica` y `sedBusqueda` en `config.js`.
 - [ ] **T42 · Ambos** — Test de determinismo: misma seed + mismos parámetros ⇒ misma simulación
+      *(el test existente corre; falta cubrir la IA nueva con necesidades)*
 
 > **Hito F4:** herbívoros buscando comida, yendo a beber y deamburando. Ya mueren y nacen.
 
@@ -233,16 +240,24 @@ simulacion-ecosistemas/
 
 ### F5 · Depredador, reproducción y muerte
 
-- [ ] **T43 · P2** — Depredador: detección de herbívoros en radio, **persecución** y caza
-- [ ] **T44 · P2** — Balance del depredador: más rápido pero menos eficiente (trade-off)
-- [ ] **T45 · P2** — **Muerte por causas separadas y observables**: hambre, sed, edad, depredación
-- [ ] **T46 · P2** — **Reproducción**: requiere energía, no estar hambriento/sediento, cooldown,
+- [x] **T43 · P2** — Depredador: detección de herbívoros en radio, **persecución** y caza
+- [x] **T44 · P2** — Balance del depredador: más rápido pero menos eficiente (trade-off)
+      *(1.7 vs 1.2 celdas/s; `segundosPersecucion` 12 → 30 s: con 12 abandonaba
+      SIEMPRE antes de alcanzar a la presa y se extinguía)*
+- [x] **T45 · P2** — **Muerte por causas separadas y observables**: hambre, sed, edad, depredación
+      *(en `systems/death.js`, con contadores en el HUD. La muerte se aplaza al
+      final del tick — ver D17)*
+- [x] **T46 · P2** — **Reproducción**: requiere energía, no estar hambriento/sediento, cooldown,
       y presencia de pareja del mismo tipo y edad mínima
-- [ ] **T47 · P2** — Nascimento de la cría en celda libre adyacente válida
-- [ ] **T48 · P2** — Semilla inicial de herbívoros y depredadores en zonas habitables
+- [x] **T47 · P2** — Nascimento de la cría en celda libre adyacente válida
+      *(requiere ocupación de celdas e id único por entidad — ver D18)*
+- [x] **T48 · P2** — Semilla inicial de herbívoros y depredadores en zonas habitables
+      *(`celdaHabitableAlAzar()` en `world/terrain.js`)*
 - [ ] **T49 · P1** — Restricción de terreno en el movimiento (no cruzar agua profunda sin costo)
-- [ ] **T50 · Ambos** — Test de integración: la **cadena alimenticia completa** funciona
+      ⚠️ Hoy el agua **frena** (÷4 velocidad) pero no bloquea. Falta decidir.
+- [x] **T50 · Ambos** — Test de integración: la **cadena alimenticia completa** funciona
       (planta → herbívoro → depredador) y se nota en pantalla
+      *(`tests/cadenaAlimenticia.test.js`: comer, cazar, reproducirse, causas de muerte)*
 
 > **Hito F5:** ecosistema con tres niveles tróficos. **v1 completada.**
 

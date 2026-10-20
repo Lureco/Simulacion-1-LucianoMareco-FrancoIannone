@@ -19,10 +19,9 @@ import { ESPECIE } from '../src/entities/entity.js';
 import { Herbivore } from '../src/entities/herbivore.js';
 import { Predator } from '../src/entities/predator.js';
 import { SpatialHash } from '../src/systems/spatialHash.js';
-import { pasoDeSimulacion, sembrar } from '../src/systems/simulacion.js';
+import { pasoDeSimulacion, sembrar, prepararMundo } from '../src/systems/simulacion.js';
 import { generarTerreno } from '../src/world/terrain.js';
 import { sembrarVegetacion, contarPlantas } from '../src/systems/plantGrowth.js';
-import { reiniciarMuertes } from '../src/systems/death.js';
 import { CONFIG } from '../src/config.js';
 
 const seed = Number(process.argv[2] ?? 1337);
@@ -48,7 +47,7 @@ function armar() {
     seed,
     config: CONFIG.terreno,
   });
-  reiniciarMuertes(ctx);
+  prepararMundo(ctx);
   sembrarVegetacion(ctx);
   sembrar(ctx, CONFIG.herbivoro.poblacionInicial, ESPECIE.HERBIVORO);
   sembrar(ctx, CONFIG.depredador.poblacionInicial, ESPECIE.PREDADOR);
@@ -80,7 +79,8 @@ function porEstado(manager) {
 }
 
 console.log(`seed ${seed} · ${segundos}s de simulación`);
-console.log('tiempo | plantas | herb | carn | total | hambre | sed | energía | estados');
+console.log('tiempo | plantas | herb | carn | total | H:hambre H:sed H:ener | estados');
+console.log('       |         |      |      |      |  (carnívoros)         |');
 
 for (let t = 0; t < ticks; t++) {
   pasoDeSimulacion(ctx, dt);
@@ -97,9 +97,9 @@ for (let t = 0; t < ticks; t++) {
         String(manager.contar(ESPECIE.HERBIVORO)).padStart(4),
         String(manager.contar(ESPECIE.PREDADOR)).padStart(4),
         String(manager.total).padStart(5),
-        promedio(manager, ESPECIE.HERBIVORO, 'hambre').toFixed(2).padStart(6),
-        promedio(manager, ESPECIE.HERBIVORO, 'sed').toFixed(2).padStart(4),
-        promedio(manager, ESPECIE.HERBIVORO, 'energia').toFixed(1).padStart(6),
+        promedio(manager, ESPECIE.PREDADOR, 'hambre').toFixed(2).padStart(8),
+        promedio(manager, ESPECIE.PREDADOR, 'sed').toFixed(2).padStart(5),
+        promedio(manager, ESPECIE.PREDADOR, 'energia').toFixed(1).padStart(6),
         resumen,
       ].join(' | '),
     );
