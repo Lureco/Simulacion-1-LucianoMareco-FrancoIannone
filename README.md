@@ -47,10 +47,12 @@ Otros comandos:
 |---|---|
 | **Arrastrar** | Mover la cámara (pan) |
 | **Rueda** | Zoom in/out |
+| **Clic** | Seleccionar un animal y ver sus necesidades (hambre, sed, energía) |
 | **F** | Seguir a un herbívoro al azar |
 | **G** | Volver al centro del mundo |
 | **Espacio** | Pausar / reanudar |
 | **1** / **2** / **4** | Velocidad de simulación (1× / 2× / 4×) |
+| **D** | Modo depuración: el color de cada animal pasa a ser su estado de IA |
 | **R** | Regenerar el mundo y la población con una seed nueva |
 | **S** | Mostrar la seed actual en consola |
 | **T** | Mostrar el conteo de terreno (agua/arena/tierra) en consola |
@@ -58,6 +60,10 @@ Otros comandos:
 También hay una **barra de botones** arriba a la derecha: pausa y velocidad
 (`1×` / `2×` / `4×`). Los atajos de teclado y los botones comparten el mismo
 estado (`ESTADO` en `src/config.js`).
+
+Abajo a la izquierda está la **leyenda** de colores (qué color es qué), y abajo
+a la derecha el **gráfico de evolución de poblaciones** (plantas, herbívoros y
+carnívoros a lo largo del tiempo).
 
 ---
 
@@ -133,10 +139,14 @@ src/
 │  ├─ camera.js         # pan, zoom, seguimiento  ⚠️ adelantada de P1 (T53)
 │  ├─ terrainRenderer.js# el mapa entero en UNA textura + UN sprite (T15)
 │  ├─ plantRenderer.js  # sprites de planta por estado, con pool (T32)
-│  └─ entityRenderer.js # sprites tintados, textura única
+│  ├─ entityRenderer.js # sprites tintados, textura única
+│  ├─ necesidadesRenderer.js # barras de necesidades del animal elegido (T56)
+│  └─ paleta.js         # todos los colores en un solo lugar (T56)
 └─ ui/
    ├─ hud.js            # contadores de población, tiempo, seed, FPS (T54)
-   └─ controles.js      # barra de pausa y velocidad 1×/2×/4× (T33)
+   ├─ controles.js      # barra de pausa y velocidad 1×/2×/4× (T33)
+   ├─ leyenda.js        # qué color es qué + conteo por estado (T56)
+   └─ grafico.js        # evolución de poblaciones en el tiempo (T55)
 
 scripts/
 └─ verTerreno.mjs       # utilidad: genera el mapa en Node y reporta proporciones

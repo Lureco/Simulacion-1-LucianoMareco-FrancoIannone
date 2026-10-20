@@ -29,6 +29,9 @@ import { TERRENO, PLANTA, nombreTerreno } from './world/cell.js';
 import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
 import { Hud } from './ui/hud.js';
 import { Controles } from './ui/controles.js';
+import { Leyenda } from './ui/leyenda.js';
+import { Grafico } from './ui/grafico.js';
+import { NecesidadesRenderer } from './render/necesidadesRenderer.js';
 
 const app = new Application();
 
@@ -116,6 +119,10 @@ const plantRenderer = new PlantRenderer(app, {
 app.stage.addChild(plantRenderer.contenedor);
 app.stage.addChild(renderer.contenedor);
 
+// T56: barras de necesidades sobre la entidad seleccionada.
+const necesidadesRenderer = new NecesidadesRenderer(app, { tileSize: tile });
+app.stage.addChild(necesidadesRenderer.contenedor);
+
 const camara = new Camera(
   CONFIG.mundo.ancho * tile,
   CONFIG.mundo.alto * tile,
@@ -137,6 +144,66 @@ const controles = new Controles(contenedor, {
   },
 });
 
+// T55: gráfico de evolución de poblaciones.
+const grafico = new Grafico(contenedor);
+
+// T56: leyenda de colores y modo depuración.
+const leyenda = new Leyenda(contenedor);
+
+// ── Selección de entidad (T56) ───────────────────────────────────
+// Un clic sobre un animal muestra sus necesidades. Se distingue del
+// arrastre de cámara mirando cuánto se movió el puntero: si casi no se
+// movió, fue un clic.
+
+let punteroX = 0;
+let punteroY = 0;
+let movido = false;
+
+app.canvas.addEventListener('pointerdown', (e) => {
+  punteroX = e.clientX;
+  punteroY = e.clientY;
+  movido = false;
+});
+
+app.canvas.addEventListener('pointermove', (e) => {
+  if (Math.abs(e.clientX - punteroX) > 3 || Math.abs(e.clientY - punteroY) > 3) {
+    movido = true;
+  }
+});
+
+app.canvas.addEventListener('pointerup', (e) => {
+  if (movido) return; // fue un arrastre de cámara, no un clic
+
+  // Convierte la posición de pantalla a coordenadas de mundo.
+  const rect = app.canvas.getBoundingClientRect();
+  const mundoX = (e.clientX - rect.left - app.renderer.width / 2) / camara.zoom + camara.x;
+  const mundoY = (e.clientY - rect.top - app.renderer.height / 2) / camara.zoom + camara.y;
+
+  // Busca la entidad más cercana al clic, dentro de un radio corto.
+  const radio = CONFIG.mundo.tileSize * 1.5;
+  let mejor = null;
+  let mejorDistancia = radio * radio;
+  for (const entidad of manager.vivas) {
+    const dx = (entidad.x * tile - mundoX) ** 2;
+    const dy = (entidad.y * tile - mundoY) ** 2;
+    const distancia = dx + dy;
+    if (distancia < mejorDistancia) {
+      mejorDistancia = distancia;
+      mejor = entidad;
+    }
+  }
+
+  necesidadesRenderer.seleccionar(mejor);
+  if (mejor === null) {
+    console.log('[main] selección: ninguna');
+  } else {
+    console.log(
+      `[main] seleccionado: ${mejor.tipo === ESPECIE.HERBIVORO ? 'herbívoro' : 'carnívoro'} ` +
+        `en (${mejor.celdaX}, ${mejor.celdaY}) · estado ${mejor.estado}`,
+    );
+  }
+});
+
 window.addEventListener('resize', () => {
   camara.redimensionar(app.renderer.width, app.renderer.height);
 });
@@ -152,6 +219,14 @@ window.addEventListener(
   'keydown',
   (e) => {
     switch (e.key.toLowerCase()) {
+      case 'd':
+        // T56: cambia el color de las entidades de "por especie" a
+        // "por estado de IA". Así se ve qué está haciendo cada animal.
+        ESTADO.depuracion = !ESTADO.depuracion;
+        leyenda.setDepuracion(ESTADO.depuracion);
+        renderer.setDepuracion(ESTADO.depuracion);
+        console.log(`[main] depuración: ${ESTADO.depuracion ? 'ON' : 'OFF'}`);
+        break;
       case ' ':
         ESTADO.pausa = !ESTADO.pausa;
         controles.setPausa(ESTADO.pausa);
@@ -249,12 +324,35 @@ function bucle(ahora) {
   plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.plantas.ticksPorRefrescoRender);
   plantRenderer.render(camara);
   renderer.render(manager, camara);
+  necesidadesRenderer.render(camara);
+
+  const datosPoblacion = {
+    plantas: contarPlantas(ctx),
+    herbivoros: manager.contar(ESPECIE.HERBIVORO),
+    depredadores: manager.contar(ESPECIE.PREDADOR),
+  };
+
+  // T55: el gráfico se redibuja **una vez por segundo**, no por frame.
+  // `registrar` guarda una muestra por segundo y `renderizar` solo se
+  // llama cuando cambió el segundo.
+  grafico.registrar(ctx.tick, datosPoblacion);
+  if (ctx.tick - grafico.ultimoTick >= 60) {
+    grafico.ultimoTick = ctx.tick;
+    grafico.renderizar(datosPoblacion);
+  }
+
+  // T56: el contador por estado de IA va en la leyenda.
+  if (ESTADO.depuracion) {
+    const conteo = {};
+    for (const entidad of manager.vivas) {
+      conteo[entidad.estado] = (conteo[entidad.estado] ?? 0) + 1;
+    }
+    leyenda.actualizar(conteo);
+  }
 
   hud.actualizar(
     {
-      plantas: contarPlantas(ctx),
-      herbivoros: manager.contar(ESPECIE.HERBIVORO),
-      depredadores: manager.contar(ESPECIE.PREDADOR),
+      ...datosPoblacion,
       total: manager.total,
       ticks: ctx.tick,
       seed: ESTADO.seed,

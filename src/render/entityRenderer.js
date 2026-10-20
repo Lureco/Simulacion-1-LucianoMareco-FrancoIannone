@@ -12,13 +12,10 @@
  */
 
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { ESPECIE } from '../entities/entity.js';
+import { COLOR_ESPECIE, COLOR_ESTADO } from './paleta.js';
 
 /** Color de cada especie. */
-export const COLOR_ESPECIE = {
-  [ESPECIE.HERBIVORO]: 0x6bdc7a,
-  [ESPECIE.PREDADOR]: 0xff5d5d,
-};
+export { COLOR_ESPECIE };
 
 export class EntityRenderer {
   /**
@@ -43,6 +40,34 @@ export class EntityRenderer {
     this.libres = [];
     /** Versión del manager para la que se reconstruyó la lista. */
     this.version = -1;
+
+    /**
+     * Modo depuración (T56): en vez de teñir por especie, se tiñe por el
+     * estado de la IA, para ver qué está haciendo cada animal.
+     * @type {boolean}
+     */
+    this.depuracion = false;
+  }
+
+  /**
+   * Activa o desactiva el modo depuración.
+   * @param {boolean} valor
+   */
+  setDepuracion(valor) {
+    this.depuracion = valor;
+    this.version = -1; // fuerza el recoloreado
+  }
+
+  /**
+   * Color de una entidad según el modo actual.
+   * @param {object} entidad
+   * @returns {number}
+   */
+  colorDe(entidad) {
+    if (this.depuracion) {
+      return COLOR_ESTADO[entidad.estado] ?? 0xffffff;
+    }
+    return COLOR_ESPECIE[entidad.tipo] ?? 0xffffff;
   }
 
   /**
@@ -139,6 +164,13 @@ export class EntityRenderer {
       sprite.x = (entidad.x * tile - cx) * zoom + medioX;
       sprite.y = (entidad.y * tile - cy) * zoom + medioY;
       sprite.scale.set(zoom);
+
+      // En modo depuración el color depende del estado de IA, que cambia
+      // cada tick: hay que recolorear. Fuera de ese modo, el color por
+      // especie ya se puso en `sincronizar()` y no se toca.
+      if (this.depuracion) {
+        sprite.tint = this.colorDe(entidad);
+      }
     }
   }
 }

@@ -273,10 +273,14 @@ simulacion-ecosistemas/
       La API se acuerda en la reunión de sincronización — ver `docs/DECISIONES.md` D3)*
 - [x] **T54 · P2** — **HUD**: plantas / herbívoros / depredadores / total / tiempo / seed
       *(completo: también muestra FPS, velocidad de simulación y estado pausa/corriendo)*
-- [ ] **T55 · P2** — **Gráfico de evolución de poblaciones** en el tiempo (canvas 2D aparte o
+- [x] **T55 · P2** — **Gráfico de evolución de poblaciones** en el tiempo (canvas 2D aparte o
       `Graphics` redibujado una vez por segundo, **nunca** por frame)
-- [ ] **T56 · P2** — Leyenda de colores + vista de depuración de necesidades
+      *(`src/ui/grafico.js`: canvas 2D aparte, 1 muestra por segundo, historial circular
+      de 5 minutos. Cada serie se normaliza por su propio máximo para que se vean las tres)*
+- [x] **T56 · P2** — Leyenda de colores + vista de depuración de necesidades
       (barras de hambre/sed sobre una entidad seleccionada)
+      *(`src/ui/leyenda.js` + `src/render/necesidadesRenderer.js`: clic en un animal muestra
+      sus barras; tecla `D` tiñe por estado de IA y muestra el conteo por estado)*
 - [ ] **T57 · Ambos** — Paleta y contraste: las entidades deben distinguirse del terreno
 
 > **Hito F6:** la simulación se **observa** con claridad, no solo se ejecuta.

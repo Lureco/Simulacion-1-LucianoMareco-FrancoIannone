@@ -368,6 +368,51 @@ entidades.
 
 ---
 
+## D19 · Observabilidad: leyenda, gráfico y vista de necesidades (T55, T56)
+
+**Decisión:** tres herramientas para poder **observar** la simulación, que es
+justo lo que pide el GDD §14 ("la interfaz tendrá como objetivo principal
+permitir observar el comportamiento del ecosistema").
+
+| Herramienta | Dónde | Qué hace |
+|---|---|---|
+| Leyenda | `src/ui/leyenda.js` | Qué color es qué + conteo por estado de IA |
+| Gráfico | `src/ui/grafico.js` | Plantas / herbívoros / carnívoros a lo largo del tiempo |
+| Barras | `src/render/necesidadesRenderer.js` | Hambre / sed / energía del animal que se hizo clic |
+
+**Modo depuración (tecla `D`):** en vez de teñir por especie, el sprite se
+tiñe por el **estado de IA** (`comiendo`, `bebiendo`, `huyendo`,
+`persiguiendo`…). Es la forma rápida de ver si la IA está funcionando: si
+todos están en `deambula`, algo anda mal.
+
+**Por qué el gráfico es un canvas 2D aparte y no `Graphics` de Pixi:** el
+gráfico se redibuja **una vez por segundo**, así que no necesita ir en el
+bucle de render. En HTML plano es más nítido, más simple de dibujar y no
+compite con el batch de Pixi. El `Graphics` de Pixi queda para lo que sí se
+dibuja por frame.
+
+**Por qué cada serie se normaliza por su propio máximo:** las plantas están
+en 36.000 y los carnívoros en 5. En la misma escala, la curva de carnívoros
+sería una línea pegada al eje y no se vería nada. Normalizando, se ve la
+**forma** de cada curva, que es lo interesante (¿sube? ¿baja? ¿se
+estabiliza?).
+
+**Historial circular:** las muestras van en un array de tamaño fijo (5
+minutos) que se sobrescribe. La memoria no crece aunque la simulación
+corra horas.
+
+**Las barras de necesidades usan sprites, no `Text`:** `Text` de Pixi crea
+una textura nueva por texto, y `Graphics` por frame está prohibido (TAREAS
+§2). Con un `Graphics` reutilizado para el fondo y sprites tintados para
+las barras, no se crea nada por frame.
+
+**Paleta en un solo lugar (`src/render/paleta.js`):** antes los colores
+estaban repartidos entre el renderer y el HUD. Ahora la leyenda, el gráfico
+y los sprites usan la misma paleta, así que lo que dice la leyenda es
+exactamente lo que se ve en pantalla.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

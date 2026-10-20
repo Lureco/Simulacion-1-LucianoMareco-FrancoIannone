@@ -278,4 +278,6 @@ export const ESTADO = {
   seed: CONFIG.mundo.seedPorDefecto,
   pausa: false,
   escalaSimulacion: CONFIG.tiempo.escalaSimulacion,
+  /** Modo depuración (T56): el color de las entidades es su estado de IA. */
+  depuracion: false,
 };
