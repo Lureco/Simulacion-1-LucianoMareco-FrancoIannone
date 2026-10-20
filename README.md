@@ -35,6 +35,16 @@ Otros comandos:
 | `npm run lint:prod` | ESLint forbids `console.log` en `src/` (para la entrega) |
 | `npm run format` | Prettier aplica formato |
 
+Scripts de verificación (corren la simulación **sin navegador**):
+
+```bash
+node scripts/verSimulacion.mjs 1337 240   # seed y segundos: poblaciones cada 5 s
+node scripts/depurarSed.mjs 1337 0 90      # sigue a un herbívoro tick a tick
+```
+
+Son la forma rápida de probar un cambio de `config.js` sin abrir la
+pantalla: imprimen las poblaciones y las muertes por causa.
+
 > **Node.js:** hace falta **v20.19+ o v22.12+** (probado en v24.20.0).
 > Si `node` no está en el PATH de Windows, agregá
 > `C:\Program Files\nodejs` a las variables de entorno.

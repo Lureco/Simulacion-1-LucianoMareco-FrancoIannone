@@ -223,7 +223,9 @@ simulacion-ecosistemas/
 - [x] **T37 · P2** — Conducta de **comer**: acercarse → morder → la planta baja de estado o desaparece
       *(`consumirPlanta()` en `plantGrowth.js`: P2 no escribe en la capa `planta`, contrato §2)*
 - [x] **T38 · P2** — Conducta de **beber**: ir a la celda de agua adyacente más cercana
-      *(gradiente de distancia al agua por BFS multi-origen — ver D16)*
+      *(gradiente de distancia al agua por BFS multi-origen — ver D16.
+      Con `distanciaOrilla` el animal mantiene una franja alrededor del agua
+      en vez de amontonarse en la orilla)*
 - [x] **T39 · P2** — Conducta de **explorar**: destino aleatorio con *wander* (ruido en el rumbo)
 - [x] **T40 · P2** — Penalización por terreno: arena y agua consumen más energía al atravesarlas
       *(en `systems/movement.js`)*

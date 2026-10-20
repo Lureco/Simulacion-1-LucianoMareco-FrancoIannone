@@ -30,7 +30,11 @@ import {
   plantaEnCeldaActual,
 } from '../systems/perception.js';
 import { buscarPareja, intentarReproducir } from '../systems/reproduction.js';
-import { estaEnOrillaDeAgua, direccionHaciaAgua } from '../systems/mapaAgua.js';
+import {
+  estaEnOrillaDeAgua,
+  direccionAjustadaAlAgua,
+  distanciaObjetivoAlAgua,
+} from '../systems/mapaAgua.js';
 
 export class Herbivore extends Entity {
   constructor() {
@@ -182,10 +186,10 @@ export class Herbivore extends Entity {
       return;
     }
 
-    // Camina cuesta abajo por el gradiente de distancia al agua (T38).
-    // Así encuentra la orilla aunque esté lejos: no depende del radio
-    // de visión, sino de la pendiente del terreno.
-    const direccion = direccionHaciaAgua(this, ctx);
+    // Camina hacia la orilla siguiendo el gradiente de distancia al agua.
+    // Con sed crítica el objetivo es 1 celda: llega al borde y bebe desde
+    // ahí, sin meterse al agua.
+    const direccion = direccionAjustadaAlAgua(this, ctx, 1);
     if (direccion !== null) {
       this.dirX = direccion.x;
       this.dirY = direccion.y;
@@ -214,10 +218,11 @@ export class Herbivore extends Entity {
   /**
    * Deambula: cambia de rumbo al azar cada tanto.
    *
-   * Pero si tiene sed (por encima de `sedBusqueda`, sin ser crítica todavía),
-   * **sesga el rumbo hacia el agua** en vez de deambular al azar. Es lo que
-   * hace que el animal llegue a la orilla a tiempo: si solo buscara agua
-   * cuando la sed ya es crítica, moriría de sed en el camino.
+   * Pero **mantiene la distancia al agua** (`distanciaOrilla`): si está
+   * más cerca de la orilla de lo que quiere, se aleja; si está más lejos,
+   * se acerca. Así los herbívoros se reparten en una franja alrededor del
+   * agua en vez de amontonarse en la playa, y además llegan a tiempo a
+   * beber cuando les hace falta.
    *
    * @param {number} _dt
    * @param {object} ctx
@@ -225,14 +230,13 @@ export class Herbivore extends Entity {
   pensarExplorar(_dt, ctx) {
     this.estado = ESTADO_IA.VAGO;
 
-    // ¿Tiene sed pero no es crítica? Entonces deriva hacia el agua.
-    if (this.necesidades.sed >= CONFIG.herbivoro.sedBusqueda) {
-      const direccion = direccionHaciaAgua(this, ctx);
-      if (direccion !== null) {
-        this.dirX = direccion.x;
-        this.dirY = direccion.y;
-        return;
-      }
+    // Ajusta la distancia al agua según cuán sediento está.
+    const objetivo = distanciaObjetivoAlAgua(this.necesidades.sed, CONFIG.herbivoro);
+    const direccion = direccionAjustadaAlAgua(this, ctx, objetivo);
+    if (direccion !== null) {
+      this.dirX = direccion.x;
+      this.dirY = direccion.y;
+      return;
     }
 
     this.ticksParaGiro -= 1;

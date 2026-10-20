@@ -17,7 +17,11 @@ import { CONFIG } from '../config.js';
 import { buscarPresa } from '../systems/perception.js';
 import { buscarPareja, intentarReproducir } from '../systems/reproduction.js';
 import { marcarMuerte, CAUSA } from '../systems/death.js';
-import { estaEnOrillaDeAgua, direccionHaciaAgua } from '../systems/mapaAgua.js';
+import {
+  estaEnOrillaDeAgua,
+  direccionAjustadaAlAgua,
+  distanciaObjetivoAlAgua,
+} from '../systems/mapaAgua.js';
 
 export class Predator extends Entity {
   constructor() {
@@ -173,8 +177,9 @@ export class Predator extends Entity {
       return;
     }
 
-    // Camina cuesta abajo por el gradiente de distancia al agua (T38).
-    const direccion = direccionHaciaAgua(this, ctx);
+    // Camina hacia la orilla: con sed crítica el objetivo es 1 celda, así
+    // que llega al borde y bebe sin meterse al agua.
+    const direccion = direccionAjustadaAlAgua(this, ctx, 1);
     if (direccion !== null) {
       this.dirX = direccion.x;
       this.dirY = direccion.y;
@@ -194,9 +199,9 @@ export class Predator extends Entity {
   /**
    * Deambula: cambia de rumbo al azar cada tanto.
    *
-   * Con sed por encima de `sedBusqueda` (pero no crítica), sesga el rumbo
-   * hacia el agua: si solo buscara agua cuando la sed es crítica, moriría
-   * de sed en el camino.
+   * Mantiene la distancia al agua (`distanciaOrilla`): si está más cerca de
+   * la orilla de lo que quiere, se aleja. Así los carnívoros también se
+   * reparten por el mapa en vez de amontonarse en la playa.
    *
    * @param {number} _dt
    * @param {object} ctx
@@ -204,13 +209,12 @@ export class Predator extends Entity {
   pensarExplorar(_dt, ctx) {
     this.estado = ESTADO_IA.VAGO;
 
-    if (this.necesidades.sed >= CONFIG.depredador.sedBusqueda) {
-      const direccion = direccionHaciaAgua(this, ctx);
-      if (direccion !== null) {
-        this.dirX = direccion.x;
-        this.dirY = direccion.y;
-        return;
-      }
+    const objetivo = distanciaObjetivoAlAgua(this.necesidades.sed, CONFIG.depredador);
+    const direccion = direccionAjustadaAlAgua(this, ctx, objetivo);
+    if (direccion !== null) {
+      this.dirX = direccion.x;
+      this.dirY = direccion.y;
+      return;
     }
 
     this.ticksParaGiro -= 1;

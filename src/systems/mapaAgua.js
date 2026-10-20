@@ -130,6 +130,114 @@ export function estaEnOrillaDeAgua(entidad, ctx) {
 }
 
 /**
+ * Distancia de la celda de la entidad al agua más cercana.
+ * @param {object} entidad
+ * @param {object} ctx
+ * @returns {number} Distancia en celdas. `-1` si no hay agua alcanzable.
+ */
+export function distanciaAlAgua(entidad, ctx) {
+  const grid = ctx.grid;
+  const mapa = ctx.mapaAgua;
+  if (!grid || !mapa) return -1;
+
+  const x = entidad.celdaX;
+  const y = entidad.celdaY;
+  if (x < 0 || y < 0 || x >= grid.ancho || y >= grid.alto) return -1;
+
+  return mapa[y * grid.ancho + x];
+}
+
+/**
+ * Distancia objetivo al agua según cuán sediento está el animal.
+ *
+ * - Sed crítica → va a la orilla (1 celda) a beber.
+ * - Sed media → se acerca a la orilla, pero no la toca.
+ * - Tranquilo → mantiene la distancia de deambulación (`distanciaOrilla`).
+ *
+ * @param {number} sed Sed normalizada (0..1).
+ * @param {object} cfg Configuración de la especie.
+ * @returns {number} Distancia objetivo en celdas.
+ */
+export function distanciaObjetivoAlAgua(sed, cfg) {
+  if (sed >= cfg.sedCritica) return 1;
+  if (sed >= cfg.sedBusqueda) return Math.max(1, Math.floor(cfg.distanciaOrilla / 2));
+  return cfg.distanciaOrilla;
+}
+
+/**
+ * Dirección para **ajustar** la distancia al agua: la acerca si está más
+ * lejos de lo que quiere, o la aleja si está más cerca.
+ *
+ * Es la función que implementa la "distancia de deambulación" (T38): el
+ * animal mantiene una franja alrededor del agua en vez de amontonarse en
+ * la orilla.
+ *
+ * @param {object} entidad
+ * @param {object} ctx
+ * @param {number} distanciaObjetivo Distancia deseada al agua, en celdas.
+ * @returns {{x: number, y: number}|null} `null` si ya está en la zona.
+ */
+export function direccionAjustadaAlAgua(entidad, ctx, distanciaObjetivo) {
+  const grid = ctx.grid;
+  const mapa = ctx.mapaAgua;
+  if (!grid || !mapa) return null;
+
+  const x = entidad.celdaX;
+  const y = entidad.celdaY;
+  if (x < 0 || y < 0 || x >= grid.ancho || y >= grid.alto) return null;
+
+  const actual = mapa[y * grid.ancho + x];
+  if (actual < 0) return null; // no hay agua alcanzable
+  if (actual === distanciaObjetivo) return null; // ya está en la zona
+
+  let mejorX = 0;
+  let mejorY = 0;
+  let mejorDistancia = actual;
+
+  if (actual > distanciaObjetivo) {
+    // Está más lejos de lo que quiere: busca la vecina más cerca del agua,
+    // sin entrar en la zona prohibida (nunca baja del objetivo).
+    for (let n = 0; n < VECINOS_8.length; n++) {
+      const nx = x + VECINOS_8[n][0];
+      const ny = y + VECINOS_8[n][1];
+      if (nx < 0 || ny < 0 || nx >= grid.ancho || ny >= grid.alto) continue;
+
+      const d = mapa[ny * grid.ancho + nx];
+      if (d < 0 || d < distanciaObjetivo) continue;
+      if (d < mejorDistancia) {
+        mejorDistancia = d;
+        mejorX = nx;
+        mejorY = ny;
+      }
+    }
+  } else {
+    // Está más cerca de lo que quiere: busca la vecina más lejos del agua.
+    for (let n = 0; n < VECINOS_8.length; n++) {
+      const nx = x + VECINOS_8[n][0];
+      const ny = y + VECINOS_8[n][1];
+      if (nx < 0 || ny < 0 || nx >= grid.ancho || ny >= grid.alto) continue;
+
+      const d = mapa[ny * grid.ancho + nx];
+      if (d > mejorDistancia) {
+        mejorDistancia = d;
+        mejorX = nx;
+        mejorY = ny;
+      }
+    }
+  }
+
+  if (mejorDistancia === actual) return null; // no se puede mejorar
+
+  // Normaliza la dirección hacia el centro de la celda objetivo.
+  const dx = mejorX + 0.5 - entidad.x;
+  const dy = mejorY + 0.5 - entidad.y;
+  const largo = Math.hypot(dx, dy);
+  if (largo === 0) return null;
+
+  return { x: dx / largo, y: dy / largo };
+}
+
+/**
  * Dirección (unitaria) hacia el agua más cercana, siguiendo el gradiente.
  *
  * @param {object} entidad

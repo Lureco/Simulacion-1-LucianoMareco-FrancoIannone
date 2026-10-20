@@ -332,6 +332,33 @@ buscar agua, y moría en el camino. Con los dos, empieza a derivar hacia la
 orilla temprano y llega a tiempo. Es la diferencia entre "buscar agua" y
 "ir hacia el agua".
 
+**`distanciaOrilla`: los animales no se amontonan en la playa.** La distancia
+al agua que el animal quiere mantener depende de cuán sediento está:
+
+| Sed | Distancia objetivo | Qué hace |
+|---|---|---|
+| Tranquila (< `sedBusqueda`) | `distanciaOrilla` (10) | Deambula a 10 celdas del agua |
+| Media (`sedBusqueda`..`sedCritica`) | `distanciaOrilla / 2` | Se acerca a la orilla, sin tocarla |
+| Crítica (≥ `sedCritica`) | 1 celda | Va a la orilla y bebe desde el borde |
+
+**Por qué:** sin esto, todos los animales que van a beber se quedan pegados
+a la orilla y la población se amontona en la playa en vez de repartirse por
+el mapa. Con `distanciaOrilla` se forma una **franja** alrededor del agua:
+se ve en pantalla y distributes la presión sobre la vegetación.
+
+**Efecto colateral útil:** como el animal siempre está a ~10 celdas del
+agua, cuando le llega la sed crítica solo tiene que caminar 9 celdas para
+beber. Antes podía estar a 40 celdas y morir en el camino. Medido: las
+muertes por sed bajaron y las de depredación subieron (los carnívoros
+encuentran más presas).
+
+**El animal nunca entra al agua:** el objetivo mínimo es 1 celda (la orilla)
+y la función `direccionAjustadaAlAgua()` nunca propone una celda con
+distancia 0. Bebe desde el borde.
+
+**Configurable:** `herbivoro.distanciaOrilla` y `depredador.distanciaOrilla`.
+Con `0` el animal puede meterse al agua; con `20` se mantiene muy lejos.
+
 ---
 
 ## D17 · Muerte diferida al final del tick (T45)

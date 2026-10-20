@@ -150,6 +150,19 @@ export const CONFIG = {
     /** Umbral de sed a partir del cual se prioriza beber. */
     sedCritica: 0.7,
     /**
+     * Distancia (en celdas) a la que el animal se mantiene del agua cuando
+     * **deambula**.
+     *
+     * Por qué existe: si el animal va hasta la orilla a beber y después
+     * sigue paseando por la orilla, se amontona en la playa y no se
+     * distribuye por el mapa. Con esta distancia, el herbívoro se queda en
+     * una franja alrededor del agua: lo bastante cerca para beber rápido,
+     * lo bastante lejos para repartir la población.
+     *
+     * 0 = puede meterse al agua. 10 = deambula a 10 celdas del agua.
+     */
+    distanciaOrilla: 10,
+    /**
      * Umbral de sed a partir del cual el animal **sesga su deambulación**
      * hacia el agua, sin abandonar lo que estaba haciendo.
      *
@@ -199,6 +212,8 @@ export const CONFIG = {
     sedCritica: 0.7,
     /** Umbral de sed a partir del cual sesga su rumbo hacia el agua. */
     sedBusqueda: 0.3,
+    /** Distancia al agua que mantiene el carnívoro al deambular (celdas). */
+    distanciaOrilla: 10,
     umbralReproduccion: 0.6,
     consumoHambre: 0.008,
     consumoSed: 0.013,
