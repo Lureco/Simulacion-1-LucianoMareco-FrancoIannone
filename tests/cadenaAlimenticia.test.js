@@ -15,8 +15,15 @@
  *   3. La cadena se sostiene: hay plantas, herbívoros y depredadores
  *      vivos a la vez, y la población **cambia** con el tiempo.
  *
- * Estos tests corren la MISMA lógica que la pantalla
+ * Estos tests usan la MISMA lógica que la pantalla
  * (`src/systems/simulacion.js`).
+ *
+ * ⚠️ **Regla del proyecto:** los tests que corren la simulación real
+ * (cientos de ticks) **no** son automáticos: los verifica el humano, con
+ * `scripts/verSimulacion.mjs` y mirando la pantalla. Los que hay acá
+ * prueban **funciones** con el estado puesto a mano, así que corren en
+ * milisegundos. Los quecorrensimulación están comentados abajo, con el
+ * motivo.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -27,9 +34,9 @@ import { ESPECIE } from '../src/entities/entity.js';
 import { Herbivore } from '../src/entities/herbivore.js';
 import { Predator } from '../src/entities/predator.js';
 import { SpatialHash } from '../src/systems/spatialHash.js';
-import { pasoDeSimulacion, sembrar, prepararMundo } from '../src/systems/simulacion.js';
+import { sembrar, prepararMundo } from '../src/systems/simulacion.js';
 import { generarTerreno } from '../src/world/terrain.js';
-import { sembrarVegetacion, contarPlantas, consumirPlanta } from '../src/systems/plantGrowth.js';
+import { sembrarVegetacion, consumirPlanta } from '../src/systems/plantGrowth.js';
 import { PLANTA, TERRENO } from '../src/world/cell.js';
 import { CONFIG } from '../src/config.js';
 import { aplicarMuertes, CAUSA } from '../src/systems/death.js';
@@ -155,17 +162,21 @@ describe('cadena alimenticia', () => {
     expect(consumirPlanta(ctx, -1, -1)).toBe(0);
   });
 
-  it('la simulación completa mantiene los tres niveles tróficos', () => {
-    const { ctx, manager } = armar(1337, 30, 8);
-
-    for (let i = 0; i < 600; i++) {
-      pasoDeSimulacion(ctx, CONFIG.tiempo.pasoFijo);
-    }
-
-    expect(contarPlantas(ctx)).toBeGreaterThan(0);
-    expect(manager.contar(ESPECIE.HERBIVORO)).toBeGreaterThan(0);
-    expect(manager.contar(ESPECIE.PREDADOR)).toBeGreaterThan(0);
-  });
+  // ⚠️ COMENTADO a pedido de P2: los tests que corren la simulación real no
+  // son automáticos, los verifica el humano (con `scripts/verSimulacion.mjs`
+  // y mirando la pantalla). Este en particular costaba ~600 ticks.
+  //
+  // it('la simulación completa mantiene los tres niveles tróficos', () => {
+  //   const { ctx, manager } = armar(1337, 30, 8);
+  //
+  //   for (let i = 0; i < 600; i++) {
+  //     pasoDeSimulacion(ctx, CONFIG.tiempo.pasoFijo);
+  //   }
+  //
+  //   expect(contarPlantas(ctx)).toBeGreaterThan(0);
+  //   expect(manager.contar(ESPECIE.HERBIVORO)).toBeGreaterThan(0);
+  //   expect(manager.contar(ESPECIE.PREDADOR)).toBeGreaterThan(0);
+  // });
 
   it('se reproduce cuando tiene pareja, energía y edad', () => {
     const { ctx, manager } = armar();
@@ -228,15 +239,17 @@ describe('cadena alimenticia', () => {
     expect(intentarReproducir(madre, ctx)).toBeNull();
   });
 
-  it('la población de herbívoros crece con el tiempo', () => {
-    // TODO: este test quedó pendiente. El problema es que la reproducción
-    // tarda 15 min de edad + 8 min de cooldown, así que hace falta correr
-    // miles de ticks (minutos de CPU) para que se vea. La versión corta
-    // con parámetros Override no era representativa de la simulación real.
-    // Se resuelve con el test de balance (T59/T60) o con un reloj de
-    // simulación acelerado en los tests.
-    expect(true).toBe(true);
-  });
+  // ⚠️ COMENTADO a pedido de P2: los tests que corren la simulación real no
+  // son automáticos, los verifica el humano (con `scripts/verSimulacion.mjs`
+  // y mirando la pantalla).
+  //
+  // it('la población de herbívoros crece con el tiempo', () => {
+  //   // El problema es que la reproducción tarda 15 min de edad + 8 min de
+  //   // cooldown: hacen falta miles de ticks (minutos de CPU) para que se
+  //   // vea. La versión corta con parámetros override no era representativa
+  //   // de la simulación real. Se resuelve con el test de balance (T59/T60).
+  //   expect(true).toBe(true);
+  // });
 
   it('el herbívoro huye del depredador que tiene cerca', () => {
     const { ctx, manager } = armar();
@@ -262,35 +275,38 @@ describe('cadena alimenticia', () => {
     expect(distanciaAntes).toBeLessThan(CONFIG.depredador.radioVision);
   });
 
-  it('el herbívoro come de verdad en una simulación completa', () => {
-    const { ctx, manager } = armar(1337, 40, 0);
-
-    // 60 segundos: la hambre crítica llega al minuto, así que forzamos
-    // el hambre y comprobamos que la planta desaparece de verdad.
-    for (let i = 0; i < 300; i++) {
-      pasoDeSimulacion(ctx, CONFIG.tiempo.pasoFijo);
-    }
-
-    const herb = manager.deTipo(ESPECIE.HERBIVORO)[0];
-    const antes = herb.necesidades.energia;
-    herb.necesidades.hambre = 0.9;
-
-    // Se pone sobre una planta.
-    let plantada = false;
-    for (let y = 0; y < ctx.grid.alto && !plantada; y++) {
-      for (let x = 0; x < ctx.grid.ancho && !plantada; x++) {
-        if (ctx.grid.planta[y * ctx.grid.ancho + x] === PLANTA.ADULTA) {
-          herb.x = x + 0.5;
-          herb.y = y + 0.5;
-          plantada = true;
-        }
-      }
-    }
-    expect(plantada).toBe(true);
-
-    herb.comer(ctx);
-    expect(herb.necesidades.energia).toBeGreaterThan(antes);
-  });
+  // ⚠️ COMENTADO a pedido de P2: los tests que corren la simulación real no
+  // son automáticos, los verifica el humano.
+  //
+  // it('el herbívoro come de verdad en una simulación completa', () => {
+  //   const { ctx, manager } = armar(1337, 40, 0);
+  //
+  //   // 60 segundos: la hambre crítica llega al minuto, así que forzamos
+  //   // el hambre y comprobamos que la planta desaparece de verdad.
+  //   for (let i = 0; i < 300; i++) {
+  //     pasoDeSimulacion(ctx, CONFIG.tiempo.pasoFijo);
+  //   }
+  //
+  //   const herb = manager.deTipo(ESPECIE.HERBIVORO)[0];
+  //   const antes = herb.necesidades.energia;
+  //   herb.necesidades.hambre = 0.9;
+  //
+  //   // Se pone sobre una planta.
+  //   let plantada = false;
+  //   for (let y = 0; y < ctx.grid.alto && !plantada; y++) {
+  //     for (let x = 0; x < ctx.grid.ancho && !plantada; x++) {
+  //       if (ctx.grid.planta[y * ctx.grid.ancho + x] === PLANTA.ADULTA) {
+  //         herb.x = x + 0.5;
+  //         herb.y = y + 0.5;
+  //         plantada = true;
+  //       }
+  //     }
+  //   }
+  //   expect(plantada).toBe(true);
+  //
+  //   herb.comer(ctx);
+  //   expect(herb.necesidades.energia).toBeGreaterThan(antes);
+  // });
 
   it('la muerte por sed se registra con su propia causa', () => {
     const { ctx, manager } = armar();
