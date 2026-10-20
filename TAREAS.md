@@ -197,14 +197,16 @@ simulacion-ecosistemas/
 
 ### F3 · Plantas y autómata celular
 
-- [ ] **T27 · P1** — Estados de planta: `SEMILLA → JOVEN → ADULTA → MUERTA`, guardados en el
+- [x] **T27 · P1** — Estados de planta: `SEMILLA → JOVEN → ADULTA → MUERTA`, guardados en el
       `Uint8Array` de la grilla
-- [ ] **T28 · P1** — Crecimiento por tick, condicionado al tipo de terreno y humedad
-- [ ] **T29 · P1** — **Expansión (autómata celular)**: reglas locales de vecindad para extenderse
-- [ ] **T30 · P1** — Muerte de plantas: edad, falta de agua, pisadas de herbívoros
-- [ ] **T31 · P1** — Semillado inicial de vegetación sobre el terreno generado
-- [ ] **T32 · P2** — Render de plantas con tamaño/color según estado (que el crecimiento se vea)
-- [ ] **T33 · P2** — Botón de pausa y velocidad de simulación (`1× / 2× / 4×`)
+- [x] **T28 · P1** — Crecimiento por tick, condicionado al tipo de terreno y humedad
+- [x] **T29 · P1** — **Expansión (autómata celular)**: reglas locales de vecindad para extenderse
+- [x] **T30 · P1** — Muerte de plantas: edad, falta de agua, pisadas de herbívoros
+- [x] **T31 · P1** — Semillado inicial de vegetación sobre el terreno generado
+- [x] **T32 · P2** — Render de plantas con tamaño/color según estado (que el crecimiento se vea)
+      *(`render/plantRenderer.js`: 3 texturas + pool de sprites, refresco cada N ticks)*
+- [x] **T33 · P2** — Botón de pausa y velocidad de simulación (`1× / 2× / 4×`)
+      *(`ui/controles.js`: barra de botones + atajos `1`/`2`/`4` y `espacio`)*
 
 > **Hito F3:** la vegetación **crece y coloniza** el mapa sola, visiblemente.
 
@@ -254,9 +256,8 @@ simulacion-ecosistemas/
 - [x] **T53 · P1** — Cámara si el mundo es mayor que la ventana, con seguimiento de una entidad
       *(adelantada por P2 en `src/render/camera.js`: pan, zoom, seguimiento y límites.
       La API se acuerda en la reunión de sincronización — ver `docs/DECISIONES.md` D3)*
-- [ ] **T54 · P2** — **HUD**: plantas / herbívoros / depredadores / total / tiempo / seed
-      *(hecho a medias: herbívoros, carnívoros, total, tiempo, seed y FPS. Falta el contador
-      de plantas, que depende de F3)*
+- [x] **T54 · P2** — **HUD**: plantas / herbívoros / depredadores / total / tiempo / seed
+      *(completo: también muestra FPS, velocidad de simulación y estado pausa/corriendo)*
 - [ ] **T55 · P2** — **Gráfico de evolución de poblaciones** en el tiempo (canvas 2D aparte o
       `Graphics` redibujado una vez por segundo, **nunca** por frame)
 - [ ] **T56 · P2** — Leyenda de colores + vista de depuración de necesidades

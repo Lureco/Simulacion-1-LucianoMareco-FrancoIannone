@@ -28,6 +28,7 @@ import { generarTerreno } from './world/terrain.js';
 import { TERRENO, PLANTA, nombreTerreno } from './world/cell.js';
 import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
 import { Hud } from './ui/hud.js';
+import { Controles } from './ui/controles.js';
 
 const app = new Application();
 
@@ -122,6 +123,17 @@ camara.conectar(app.canvas);
 
 const hud = new Hud(contenedor);
 
+// T33: barra de pausa y velocidad. La barra solo notifica; el estado real
+// vive en `ESTADO`, que es lo que lee el bucle principal.
+const controles = new Controles(contenedor, {
+  alCambiarPausa: (pausada) => {
+    ESTADO.pausa = pausada;
+  },
+  alCambiarVelocidad: (velocidad) => {
+    ESTADO.escalaSimulacion = velocidad;
+  },
+});
+
 window.addEventListener('resize', () => {
   camara.redimensionar(app.renderer.width, app.renderer.height);
 });
@@ -139,8 +151,18 @@ window.addEventListener(
     switch (e.key.toLowerCase()) {
       case ' ':
         ESTADO.pausa = !ESTADO.pausa;
+        controles.setPausa(ESTADO.pausa);
         console.log(`[main] ${ESTADO.pausa ? 'PAUSA' : 'CORRIENDO'}`);
         break;
+      case '1':
+      case '2':
+      case '4': {
+        const velocidad = Number(e.key);
+        ESTADO.escalaSimulacion = velocidad;
+        controles.setVelocidad(velocidad);
+        console.log(`[main] velocidad de simulación: ${velocidad}×`);
+        break;
+      }
       case 'f': {
         // Seguir a un herbívoro al azar.
         const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
@@ -234,6 +256,8 @@ function bucle(ahora) {
       ticks: ctx.tick,
       seed: ESTADO.seed,
       fps,
+      velocidad: ESTADO.escalaSimulacion,
+      pausa: ESTADO.pausa,
     },
     ahora,
   );
@@ -258,7 +282,8 @@ console.log(
 );
 console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
 console.log(
-  '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · espacio = pausa · R = nueva seed · S = ver seed · T = terreno',
+  '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · ' +
+    'espacio = pausa · 1/2/4 = velocidad · R = nueva seed · S = ver seed · T = terreno',
 );
 
 requestAnimationFrame(bucle);

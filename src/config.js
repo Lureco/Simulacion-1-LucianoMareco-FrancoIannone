@@ -46,7 +46,7 @@ export const CONFIG = {
     /** Timestep fijo de la simulación, en segundos. 60 Hz lógicos. */
     pasoFijo: 1 / 60,
     /** Máximo de pasos fijos por frame. Evita la "spiraling death" si la pestaña se congela. */
-    maxPasosPorFrame: 5,
+    maxPasosPorFrame: 10,
     /** Multiplicador de velocidad del usuario: 1, 2 o 4. */
     escalaSimulacion: 1,
   },

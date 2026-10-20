@@ -7,9 +7,11 @@ herbívoros y depredadores interactúan sobre un terreno generado por ruido.
 - **Profesor:** Facundo Saiegh
 - **Stack:** JavaScript ES2022 · [PixiJS v8](https://pixijs.com) · Vite · Vitest · ESLint + Prettier
 
-> **Estado actual:** fase F3 lista para arrancar. El mundo procedural está
-> hecho: agua, arena y tierra generados por ruido con semilla, con render y
-> regeneración en caliente. Ver [Estado](#estado-del-proyecto) para el detalle.
+> **Estado actual:** fase F3 completa. El mundo procedural está hecho (agua,
+> arena y tierra por ruido con semilla, con render y regeneración en caliente)
+> y la vegetación **crece y coloniza el mapa sola** por autómata celular.
+> Falta la vida artificial: necesidades, comer, beber, reproducirse y morir
+> (F4/F5). Ver [Estado](#estado-del-proyecto) para el detalle.
 
 ---
 
@@ -48,9 +50,14 @@ Otros comandos:
 | **F** | Seguir a un herbívoro al azar |
 | **G** | Volver al centro del mundo |
 | **Espacio** | Pausar / reanudar |
+| **1** / **2** / **4** | Velocidad de simulación (1× / 2× / 4×) |
 | **R** | Regenerar el mundo y la población con una seed nueva |
 | **S** | Mostrar la seed actual en consola |
 | **T** | Mostrar el conteo de terreno (agua/arena/tierra) en consola |
+
+También hay una **barra de botones** arriba a la derecha: pausa y velocidad
+(`1×` / `2×` / `4×`). Los atajos de teclado y los botones comparten el mismo
+estado (`ESTADO` en `src/config.js`).
 
 ---
 
@@ -63,7 +70,7 @@ Hitos según `TAREAS.md`:
 | **F0** Setup y contrato | ✅ Hecho | Vite + Pixi v8 + ESLint/Prettier + hook + `config.js` + PRNG + tests |
 | **F1** Mundo procedural | ✅ Hecho | Value Noise + fBm, grilla tipada, agua/arena/tierra, render y regeneración en caliente (T11-T18) |
 | **F2** Datos y entidades base | ✅ Hecho | Entidad base, herbívoro, carnívoro, manager, pool, spatial hash, timestep fijo, render |
-| **F3** Plantas y autómata | ⏳ Pendiente | De Luciano (T27-T32) |
+| **F3** Plantas y autómata | ✅ Hecho | Semillas → jóvenes → adultas, expansión celular, render por estado, pausa y velocidad (T27-T33) |
 | **F4** IA del herbívoro | ⏳ Pendiente | Siguiente tanda de P2 (T34-T42) |
 | **F5** Depredador y cadena | ⏳ Pendiente | De P2 (T43-T50) |
 
@@ -71,10 +78,16 @@ Hitos según `TAREAS.md`:
 
 Un **mundo 256×256** con agua, arena y tierra generados por ruido con
 semilla: islas y continentes con costas naturales, reproducibles celda a
-celda. Sobre ese mapa deambulan 145 animales (120 herbívoros verdes, 25
-carnívoros rojos), sembrados **en celdas de tierra**, a ~180 FPS. Todavía
-**no** tienen necesidades: no comen, no beben, no se reproducen y no mueren.
-Eso es F4/F5.
+celda. La **vegetación coloniza el mapa sola** por autómata celular: se
+sembran semillas, pasan a jóvenes, luego a adultas y estas se expanden a las
+celdas de tierra vacías vecinas (unas 35.000 plantas a los 35 s de simulación).
+
+Sobre ese mapa deambulan 145 animales (120 herbívoros verdes, 25 carnívoros
+rojos) sembrados **en celdas de tierra**. Todavía **no** tienen necesidades:
+no comen, no beben, no se reproducen y no mueren. Eso es F4/F5.
+
+La simulación se puede **pausar** y acelerar a **1× / 2× / 4×** (botones o
+teclas `1`/`2`/`4`), para ver la expansión vegetal sin esperar en tiempo real.
 
 ### Lo que ya está garantizado (y se puede romper de una forma detectable)
 
@@ -114,13 +127,16 @@ src/
 │  ├─ pool.js           # pool de objetos (T26)
 │  ├─ spatialHash.js    # vecindario O(vecinos) (T24)
 │  ├─ movement.js       # integración y rebote en los bordes
+│  ├─ plantGrowth.js    # autómata celular de plantas (T27-T31)
 │  ├─ simulacion.js     # el paso de simulación (usado por main y por tests)
 ├─ render/
 │  ├─ camera.js         # pan, zoom, seguimiento  ⚠️ adelantada de P1 (T53)
 │  ├─ terrainRenderer.js# el mapa entero en UNA textura + UN sprite (T15)
+│  ├─ plantRenderer.js  # sprites de planta por estado, con pool (T32)
 │  └─ entityRenderer.js # sprites tintados, textura única
 └─ ui/
-   └─ hud.js            # contadores de población, tiempo, seed, FPS
+   ├─ hud.js            # contadores de población, tiempo, seed, FPS (T54)
+   └─ controles.js      # barra de pausa y velocidad 1×/2×/4× (T33)
 
 scripts/
 └─ verTerreno.mjs       # utilidad: genera el mapa en Node y reporta proporciones

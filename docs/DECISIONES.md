@@ -78,6 +78,12 @@ mundo.
 **Consecuencia:** misma seed + mismos parámetros ⇒ misma simulación, celda a
 celda. Es un requisito del GDD, no una comodidad.
 
+**Velocidad de simulación:** la velocidad del usuario (`1× / 2× / 4×`) es un
+**multiplicador del acumulador**, no un cambio del timestep fijo. El paso
+lógico sigue siendo de 1/60 s siempre: a 4× se ejecutan cuatro pasos fijos
+por frame. Así, la misma seed da la misma secuencia de estados a cualquier
+velocidad (ver D13).
+
 ---
 
 ## D5 · Estructura de datos de la grilla (T19-T21)
@@ -215,6 +221,34 @@ Da relieve sin generar una sola textura extra.
 
 **Culling (T64):** pendiente. Con un solo sprite no aplica el culling por
 celda; si el mundo crece mucho se evaluará partir el mapa en *chunks*.
+
+---
+
+## D13 · Pausa y velocidad de simulación (T33)
+
+**Decisión:** la velocidad es un **multiplicador del acumulador**, no un
+cambio del timestep. El timestep fijo sigue siendo de 1/60 s: a 4× se ejecutan
+**cuatro pasos fijos por frame**, no un paso de 1/15 s.
+
+**Por qué:** si el timestep cambiara, la simulación dejaría de ser reproducible
+entre velocidades y el test de determinismo (T42) compararía estados de
+distintas duraciones. Con el multiplicador, 1× y 4× producen **exactamente la
+misma secuencia de estados**, solo que más rápido o más lento. Es la diferencia
+entre "acelerar" y "cambiar la física".
+
+**Por qué el multiplicador vive en `ESTADO` y no en `CONFIG`:** `CONFIG.tiempo.escalaSimulacion`
+es el valor por defecto (1); `ESTADO.escalaSimulacion` es el valor en runtime,
+el que cambia el usuario. Lo mismo para la pausa. `main.js` lee `ESTADO`; nadie
+más lo escribe.
+
+**Interfaz:** barra de botones HTML sobre el canvas (`src/ui/controles.js`) con
+pausa y `1× / 2× / 4×`, más atajos `espacio` y `1`/`2`/`4`. Los botones y el
+teclado comparten estado: cada uno **notifica** el cambio y quien decide
+(`main.js`) escribe en `ESTADO`.
+
+**`maxPasosPorFrame` sube de 5 a 10:** a 4× hacen falta 4 pasos por frame en
+60 FPS, pero con la pestaña a 30 FPS o menos hace falta el doble. Con 5 el
+simulador se "quedaba corto" y la velocidad real era menor a la pedida.
 
 ---
 

@@ -39,6 +39,8 @@ export class Hud {
       ticks: 0,
       seed: 0,
       fps: 0,
+      velocidad: 1,
+      pausa: false,
     };
   }
 
@@ -62,6 +64,8 @@ export class Hud {
       `tiempo      ${segundos.padStart(8)} s`,
       `seed        ${d.seed}`,
       `fps         ${String(Math.round(d.fps)).padStart(4)}`,
+      `velocidad   ${String(d.velocidad).padStart(4)}×`,
+      `estado      ${d.pausa ? 'PAUSA' : 'CORRIENDO'}`,
     ].join('\n');
   }
 

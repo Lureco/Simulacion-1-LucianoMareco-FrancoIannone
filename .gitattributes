@@ -1,0 +1,10 @@
+# Normalización de finales de línea.
+#
+# `endOfLine: "lf"` en .prettierrc.json y `core.autocrlf` de Windows se
+# contradicen: el checkout traía CRLF, Prettier exigía LF y `npm run
+# format:check` fallaba en todos los archivos.
+#
+# Con `eol=lf` el working tree queda siempre en LF, que es lo que quiere
+# Prettier, y el repositorio guarda LF en el índice. El proyecto es de
+# texto puro, así que no hay archivos binarios que proteger.
+* text=auto eol=lf
