@@ -1,6 +1,11 @@
 # Hook de pre-commit (T05).
-# Corre el lint y los tests antes de dejar pasar un commit.
+# Corre el lint, los tests y el check de formato antes de dejar pasar un commit.
 # Si alguno falla, el commit se aborta.
+#
+# `format:check` hace falta porque Prettier y Git discrepaban en los finales
+# de línea (Prettier pide LF, el checkout de Windows daba CRLF) y eso hacia
+# fallar el check en los 25 archivos del repo. Ver `.gitattributes`.
 
 npm run lint
 npm run test
+npm run format:check
