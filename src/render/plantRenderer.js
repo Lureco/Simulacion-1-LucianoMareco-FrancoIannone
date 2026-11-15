@@ -42,8 +42,34 @@ export class PlantRenderer {
     this.sprites = [];
     /** @type {Sprite[]} Sprites libres para reutilizar. */
     this.libres = [];
+    /**
+     * Posición de **mundo** (píxeles) de cada sprite, en arrays paralelos.
+     * Es la fuente de verdad de la posición: `render()` la proyecta a pantalla
+     * SIN sobreescribirla. (Antes se sobreescribía `sprite.x/y` con la
+     * posición de pantalla y las plantas "vibraban": cada frame reproyectaba
+     * una posición ya proyectada.)
+     * @type {Float32Array}
+     */
+    this.mundoX = new Float32Array(0);
+    /** @type {Float32Array} */
+    this.mundoY = new Float32Array(0);
     /** Último tick en el que se reconstruyó la lista. */
     this.ultimoTick = -Infinity;
+  }
+
+  /**
+   * Asegura que los arrays de posición tengan capacidad para `n` sprites.
+   * @param {number} n
+   */
+  reservar(n) {
+    if (n <= this.mundoX.length) return;
+    const capacidad = Math.max(n, this.mundoX.length * 2, 64);
+    const nuevoX = new Float32Array(capacidad);
+    const nuevoY = new Float32Array(capacidad);
+    nuevoX.set(this.mundoX);
+    nuevoY.set(this.mundoY);
+    this.mundoX = nuevoX;
+    this.mundoY = nuevoY;
   }
 
   /**
@@ -79,6 +105,7 @@ export class PlantRenderer {
     const ancho = grid.ancho;
     const planta = grid.planta;
     const tile = this.tileSize;
+    this.reservar(grid.total);
     let usados = 0;
 
     for (let i = 0; i < grid.total; i++) {
@@ -87,17 +114,17 @@ export class PlantRenderer {
 
       const sprite = this.sprites[usados] ?? this.libres.pop() ?? this.crearSprite();
       this.sprites[usados] = sprite;
-      usados++;
 
       const x = i % ancho;
       const y = (i / ancho) | 0;
 
       sprite.texture = this.texturas.get(estado) ?? this.texturas.get(PLANTA.JOVEN);
       sprite.tint = this.colores[estado] ?? 0xffffff;
-      // Anclaje: centro de la celda, en píxeles de mundo.
-      sprite.x = (x + 0.5) * tile;
-      sprite.y = (y + 0.5) * tile;
+      // Posición de mundo (centro de la celda). El render la proyecta.
+      this.mundoX[usados] = (x + 0.5) * tile;
+      this.mundoY[usados] = (y + 0.5) * tile;
       sprite.visible = true;
+      usados++;
     }
 
     // Los sprites que sobran vuelven al pool.
@@ -132,8 +159,8 @@ export class PlantRenderer {
 
     for (let i = 0; i < this.sprites.length; i++) {
       const sprite = this.sprites[i];
-      sprite.x = (sprite.x - cx) * zoom + medioX;
-      sprite.y = (sprite.y - cy) * zoom + medioY;
+      sprite.x = (this.mundoX[i] - cx) * zoom + medioX;
+      sprite.y = (this.mundoY[i] - cy) * zoom + medioY;
       sprite.scale.set(escalaFinal);
     }
   }
@@ -145,6 +172,8 @@ export class PlantRenderer {
     for (const textura of this.texturas.values()) textura.destroy(true);
     this.sprites.length = 0;
     this.libres.length = 0;
+    this.mundoX = new Float32Array(0);
+    this.mundoY = new Float32Array(0);
     this.texturas.clear();
   }
 }
