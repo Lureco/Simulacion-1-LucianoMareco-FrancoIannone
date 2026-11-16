@@ -37,7 +37,7 @@ export class Camera {
     this.zoomMin = 0.2;
     this.zoomMax = 4;
 
-    /** Entidad que se está siguiendo, si hay. */
+    /** Id de la entidad que se está siguiendo, si hay. @type {number|null} */
     this.objetivo = null;
 
     /** @type {{x: number, y: number}} Reutilizable para no generar basura. */
@@ -112,16 +112,25 @@ export class Camera {
 
   /**
    * Sigue suavemente a una entidad (en píxeles de mundo).
-   * @param {object} entidad
+   *
+   * ⚠️ REFACTOR SoA (D13): el objetivo es un `id` (número) y la posición se
+   * lee del almacén de entidades. Ojo: un `id` puede ser `0`, así que para
+   * preguntar si hay objetivo hay que comparar contra `null`, no por verdad.
+   *
+   * @param {import('../entities/entityManager.js').EntityManager} almacen
+   * @param {number|null} id
    * @param {number} tileSize
    * @param {number} dt
    * @param {number} [suavizado=0.12]
    */
-  seguir(entidad, tileSize, dt, suavizado = 0.12) {
-    this.objetivo = entidad;
-    if (!entidad) return;
-    const objetivoX = entidad.x * tileSize;
-    const objetivoY = entidad.y * tileSize;
+  seguir(almacen, id, tileSize, dt, suavizado = 0.12) {
+    if (id === null || id === undefined || !almacen.vivo[id]) {
+      this.soltar();
+      return;
+    }
+    this.objetivo = id;
+    const objetivoX = almacen.x[id] * tileSize;
+    const objetivoY = almacen.y[id] * tileSize;
     const k = 1 - Math.pow(1 - suavizado, dt * 60);
     this.x += (objetivoX - this.x) * k;
     this.y += (objetivoY - this.y) * k;

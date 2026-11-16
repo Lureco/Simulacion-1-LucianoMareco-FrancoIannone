@@ -4,6 +4,9 @@
  *
  * Integra la posición de una entidad según su rumbo y su velocidad.
  *
+ * ⚠️ REFACTOR SoA (D13): ya no recibe un objeto entidad, recibe su `id` y
+ * escribe en los arrays tipados de `ctx.entidades`.
+ *
  * La posición está en **celdas** (float). El borde del mundo se maneja
  * rebotando: la entidad da la vuelta en vez de quedarse pegada.
  *
@@ -14,31 +17,32 @@
 
 /**
  * Mueve una entidad un paso de `dt` segundos.
- * @param {import('../entities/entity.js').Entity} entidad
+ * @param {number} id
  * @param {number} dt Segundos del timestep fijo.
- * @param {object} ctx Contexto `{ prng, mundo, config }`.
+ * @param {object} ctx Contexto `{ prng, mundo, config, entidades }`.
  */
-export function mover(entidad, dt, ctx) {
+export function mover(id, dt, ctx) {
   const { ancho, alto } = ctx.mundo;
+  const a = ctx.entidades;
 
-  entidad.x += entidad.dirX * entidad.velocidad * dt;
-  entidad.y += entidad.dirY * entidad.velocidad * dt;
+  a.x[id] += a.dirX[id] * a.velocidad[id] * dt;
+  a.y[id] += a.dirY[id] * a.velocidad[id] * dt;
 
   // Rebote contra los bordes. El dépassement siempre es menor a una celda
   // (velocidad * dt << 1), así que la reflexión es exacta.
-  if (entidad.x < 0) {
-    entidad.x = -entidad.x;
-    entidad.dirX = Math.abs(entidad.dirX);
-  } else if (entidad.x > ancho - 1) {
-    entidad.x = 2 * (ancho - 1) - entidad.x;
-    entidad.dirX = -Math.abs(entidad.dirX);
+  if (a.x[id] < 0) {
+    a.x[id] = -a.x[id];
+    a.dirX[id] = Math.abs(a.dirX[id]);
+  } else if (a.x[id] > ancho - 1) {
+    a.x[id] = 2 * (ancho - 1) - a.x[id];
+    a.dirX[id] = -Math.abs(a.dirX[id]);
   }
 
-  if (entidad.y < 0) {
-    entidad.y = -entidad.y;
-    entidad.dirY = Math.abs(entidad.dirY);
-  } else if (entidad.y > alto - 1) {
-    entidad.y = 2 * (alto - 1) - entidad.y;
-    entidad.dirY = -Math.abs(entidad.dirY);
+  if (a.y[id] < 0) {
+    a.y[id] = -a.y[id];
+    a.dirY[id] = Math.abs(a.dirY[id]);
+  } else if (a.y[id] > alto - 1) {
+    a.y[id] = 2 * (alto - 1) - a.y[id];
+    a.dirY[id] = -Math.abs(a.dirY[id]);
   }
 }

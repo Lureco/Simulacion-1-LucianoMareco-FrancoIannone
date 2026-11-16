@@ -16,8 +16,6 @@ import { PRNG } from './core/prng.js';
 import { crearContexto } from './core/contexto.js';
 import { EntityManager } from './entities/entityManager.js';
 import { ESPECIE } from './entities/entity.js';
-import { Herbivore } from './entities/herbivore.js';
-import { Predator } from './entities/predator.js';
 import { SpatialHash } from './systems/spatialHash.js';
 import { pasoDeSimulacion, sembrar } from './systems/simulacion.js';
 import { Camera } from './render/camera.js';
@@ -47,8 +45,6 @@ contenedor.appendChild(app.canvas);
 
 const prng = new PRNG(ESTADO.seed);
 const manager = new EntityManager();
-manager.registrar(ESPECIE.HERBIVORO, () => new Herbivore());
-manager.registrar(ESPECIE.PREDADOR, () => new Predator());
 
 const ctx = crearContexto({
   prng,
@@ -56,7 +52,12 @@ const ctx = crearContexto({
   config: CONFIG,
 });
 ctx.entidades = manager;
-ctx.hash = new SpatialHash(CONFIG.mundo.ancho, CONFIG.mundo.alto, CONFIG.percepcion.celdaHash);
+ctx.hash = new SpatialHash(
+  manager,
+  CONFIG.mundo.ancho,
+  CONFIG.mundo.alto,
+  CONFIG.percepcion.celdaHash,
+);
 
 /** Colores del terreno, leídos de `CONFIG.terreno` (T58: nada hardcodeado). */
 const COLORES_TERRENO = {
@@ -145,7 +146,7 @@ window.addEventListener(
         // Seguir a un herbívoro al azar.
         const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
         if (herbivoros.length > 0) {
-          camara.seguir(ctx.prng.pick(herbivoros), tile, 0.5);
+          camara.seguir(manager, ctx.prng.pick(herbivoros), tile, 0.5);
           console.log('[main] siguiendo a un herbívoro (F para soltar)');
         }
         break;
@@ -216,8 +217,8 @@ function bucle(ahora) {
     }
   }
 
-  if (camara.objetivo) {
-    camara.seguir(camara.objetivo, tile, delta);
+  if (camara.objetivo !== null) {
+    camara.seguir(manager, camara.objetivo, tile, delta);
   }
 
   terrenoRenderer.render(camara);

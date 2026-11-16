@@ -15,8 +15,6 @@ import { PRNG } from '../src/core/prng.js';
 import { crearContexto } from '../src/core/contexto.js';
 import { EntityManager } from '../src/entities/entityManager.js';
 import { ESPECIE } from '../src/entities/entity.js';
-import { Herbivore } from '../src/entities/herbivore.js';
-import { Predator } from '../src/entities/predator.js';
 import { SpatialHash } from '../src/systems/spatialHash.js';
 import { pasoDeSimulacion, sembrar } from '../src/systems/simulacion.js';
 import { CONFIG } from '../src/config.js';
@@ -30,8 +28,6 @@ import { CONFIG } from '../src/config.js';
 function correrSimulacion(seed, ticks) {
   const prng = new PRNG(seed);
   const manager = new EntityManager();
-  manager.registrar(ESPECIE.HERBIVORO, () => new Herbivore());
-  manager.registrar(ESPECIE.PREDADOR, () => new Predator());
 
   const ctx = crearContexto({
     prng,
@@ -39,7 +35,12 @@ function correrSimulacion(seed, ticks) {
     config: CONFIG,
   });
   ctx.entidades = manager;
-  ctx.hash = new SpatialHash(CONFIG.mundo.ancho, CONFIG.mundo.alto, CONFIG.percepcion.celdaHash);
+  ctx.hash = new SpatialHash(
+    manager,
+    CONFIG.mundo.ancho,
+    CONFIG.mundo.alto,
+    CONFIG.percepcion.celdaHash,
+  );
 
   sembrar(ctx, 30, ESPECIE.HERBIVORO);
   sembrar(ctx, 10, ESPECIE.PREDADOR);
@@ -53,15 +54,19 @@ function correrSimulacion(seed, ticks) {
 
 /** Huella de la simulación: posición, edad y energía de cada entidad. */
 function huella(manager) {
-  return manager.vivas.map((e) => ({
-    tipo: e.tipo,
-    x: e.x,
-    y: e.y,
-    edad: e.edad,
-    energia: e.energia,
-    dirX: e.dirX,
-    dirY: e.dirY,
-  }));
+  const salida = [];
+  for (const id of manager.vivos) {
+    salida.push({
+      tipo: manager.tipo[id],
+      x: manager.x[id],
+      y: manager.y[id],
+      edad: manager.edad[id],
+      energia: manager.energia[id],
+      dirX: manager.dirX[id],
+      dirY: manager.dirY[id],
+    });
+  }
+  return salida;
 }
 
 describe('determinismo de la simulación', () => {
@@ -74,9 +79,9 @@ describe('determinismo de la simulación', () => {
   it('la simulación avanza: las entidades no quedan quietas', () => {
     const { ctx, manager } = correrSimulacion(1337, 120);
     expect(ctx.tick).toBe(120);
-    expect(manager.vivas[0].edad).toBe(120);
+    expect(manager.edad[manager.vivos[0]]).toBe(120);
     // Alguien tiene que haberse movido del punto de partida.
-    const algunoSeMovio = manager.vivas.some((e) => e.x !== 0 || e.y !== 0);
+    const algunoSeMovio = manager.vivos.some((id) => manager.x[id] !== 0 || manager.y[id] !== 0);
     expect(algunoSeMovio).toBe(true);
   });
 
@@ -91,12 +96,12 @@ describe('determinismo de la simulación', () => {
     expect(ctx.hash.total).toBe(manager.total);
   });
 
-  it('el pool recycle: correr y reciclar no crea objetos nuevos', () => {
+  it('el almacén recicla: limpiar y volver a sembrar no crea ids nuevos', () => {
     const a = correrSimulacion(1337, 30);
-    const creadosPrimera = a.manager.pool.totalCreados;
-    // Se liberan todas y se vuelven a sembrar: el pool las recicla.
+    const creadosPrimera = a.manager.totalCreados;
+    // Se liberan todas y se vuelven a sembrar: el almacén recicla los ids.
     a.manager.limpiar();
     sembrar(a.ctx, 30, ESPECIE.HERBIVORO);
-    expect(a.manager.pool.totalCreados).toBe(creadosPrimera);
+    expect(a.manager.totalCreados).toBe(creadosPrimera);
   });
 });

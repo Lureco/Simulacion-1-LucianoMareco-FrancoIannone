@@ -5,27 +5,32 @@
  * Indexa las entidades por celda para que el vecindario sea **O(vecinos)**
  * y no O(n²). Es la pieza más importante para que la simulación aguante.
  *
+ * ⚠️ REFACTOR SoA (D13): el hash indexa **ids** (números), no objetos. Las
+ * posiciones las lee del almacén de entidades, que recibe en el constructor.
+ *
  * Diseño:
  * - El mundo se divide en celdas de `celdaHash` × `celdaHash` celdas.
- * - Cada celda del hash guarda la lista de entidades que la cruzan.
+ * - Cada celda del hash guarda la lista de ids que la cruzan.
  * - `consultar()` devuelve un **array reutilizable** (el que le pasa el
  *   llamador), para no generar basura en cada búsqueda de vecinos.
  */
 
 export class SpatialHash {
   /**
+   * @param {import('../entities/entityManager.js').EntityManager} almacen
    * @param {number} ancho Ancho del mundo en celdas.
    * @param {number} alto Alto del mundo en celdas.
    * @param {number} celdaHash Tamaño del bucket, en celdas del mundo.
    */
-  constructor(ancho, alto, celdaHash) {
+  constructor(almacen, ancho, alto, celdaHash) {
+    this.almacen = almacen;
     this.ancho = ancho;
     this.alto = alto;
     this.celdaHash = celdaHash;
     this.celdasX = Math.ceil(ancho / celdaHash);
     this.celdasY = Math.ceil(alto / celdaHash);
 
-    /** @type {object[][]} Un array por bucket. Los arrays se reutilizan. */
+    /** @type {number[][]} Un array de ids por bucket. Los arrays se reutilizan. */
     this.buckets = new Array(this.celdasX * this.celdasY);
     for (let i = 0; i < this.buckets.length; i++) {
       this.buckets[i] = [];
@@ -52,21 +57,20 @@ export class SpatialHash {
   }
 
   /**
-   * Inserta una entidad en su bucket.
-   * @param {object} entidad
+   * Inserta un id en el bucket de su posición actual.
+   * @param {number} id
    */
-  insertar(entidad) {
-    this.buckets[this.indiceBucket(entidad.celdaX, entidad.celdaY)].push(entidad);
+  insertar(id) {
+    const a = this.almacen;
+    this.buckets[this.indiceBucket(a.celdaX(id), a.celdaY(id))].push(id);
   }
 
-  /**
-   * Reconstruye el hash completo desde una lista de entidades.
-   * @param {object[]} entidades
-   */
-  reconstruir(entidades) {
+  /** Reconstruye el hash completo desde las entidades vivas del almacén. */
+  reconstruir() {
     this.limpiar();
-    for (let i = 0; i < entidades.length; i++) {
-      this.insertar(entidades[i]);
+    const vivos = this.almacen.vivos;
+    for (let i = 0; i < vivos.length; i++) {
+      this.insertar(vivos[i]);
     }
   }
 
@@ -76,12 +80,12 @@ export class SpatialHash {
    * @param {number} x Centro en X (celdas).
    * @param {number} y Centro en Y (celdas).
    * @param {number} radio Radio en celdas.
-   * @param {object[]} salida Array reutilizable donde se acumulan los
-   *   resultados. Se vacía antes de empezar.
-   * @param {object} [excluir] Entidad a no incluir en el resultado.
-   * @returns {object[]} La misma array `salida`.
+   * @param {number[]} salida Array reutilizable donde se acumulan los ids.
+   *   Se vacía antes de empezar.
+   * @param {number} [excluirId] Id a no incluir en el resultado.
+   * @returns {number[]} El mismo array `salida`.
    */
-  consultar(x, y, radio, salida, excluir) {
+  consultar(x, y, radio, salida, excluirId) {
     salida.length = 0;
 
     const minX = Math.max(0, Math.floor(x - radio));
@@ -95,17 +99,18 @@ export class SpatialHash {
     const byMax = Math.floor(maxY / this.celdaHash);
 
     const radio2 = radio * radio;
+    const a = this.almacen;
 
     for (let by = byMin; by <= byMax; by++) {
       for (let bx = bxMin; bx <= bxMax; bx++) {
         const bucket = this.buckets[by * this.celdasX + bx];
         for (let i = 0; i < bucket.length; i++) {
-          const e = bucket[i];
-          if (e === excluir) continue;
-          const dx = e.x - x;
-          const dy = e.y - y;
+          const id = bucket[i];
+          if (id === excluirId) continue;
+          const dx = a.x[id] - x;
+          const dy = a.y[id] - y;
           if (dx * dx + dy * dy <= radio2) {
-            salida.push(e);
+            salida.push(id);
           }
         }
       }

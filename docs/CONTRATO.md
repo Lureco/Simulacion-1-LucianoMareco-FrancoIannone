@@ -9,49 +9,58 @@
 
 ---
 
-## 1 · `Entity` — `src/entities/entity.js` (P2)
+## 1 · Entidades — SoA en `src/entities/entityManager.js` (P2) — ✅ REFACTOR (D13)
 
-Clase base de todo ser vivo. La define Franco y la consumen herbívoros,
-depredadores y, más adelante, las crías.
+> **Cambio de contrato.** La clase `Entity` (un objeto por animal) se reemplazó
+> por un diseño **SoA** (arrays tipados), a pedido del profesor (ver D13). La
+> identidad de un bicho es su **`id`** (entero); sus datos viven en arrays
+> paralelos. El **comportamiento** sigue en clases, **una por especie**.
 
-### Campos
+### Datos (`EntityManager`, arrays indexados por `id`)
 
-| Campo | Tipo | Unidad | Significado |
+| Array | Tipo | Unidad | Significado |
 |---|---|---|---|
-| `tipo` | `number` | — | `ESPECIE.HERBIVORO` / `ESPECIE.PREDADOR` |
-| `x` | `number` | celdas | Posición horizontal (float) |
-| `y` | `number` | celdas | Posición vertical (float) |
-| `energia` | `number` | — | Energía actual |
-| `edad` | `number` | ticks | Antigüedad en ticks de simulación |
-| `velocidad` | `number` | celdas/s | Velocidad base |
-| `dirX`, `dirY` | `number` | — | Rumbo normalizado (longitud ≈ 1) |
-| `vivo` | `boolean` | — | `false` cuando la entidad fue liberada |
-| `estado` | `string` | — | Estado de la IA (`'vago'`, `'comiendo'`, …) |
+| `tipo` | `Int32Array` | — | `ESPECIE.HERBIVORO` / `ESPECIE.PREDADOR` |
+| `x`, `y` | `Float32Array` | celdas | Posición (float) |
+| `energia` | `Float32Array` | — | Energía actual |
+| `edad` | `Int32Array` | ticks | Antigüedad en ticks |
+| `velocidad` | `Float32Array` | celdas/s | Velocidad base (copiada de la especie al crear) |
+| `dirX`, `dirY` | `Float32Array` | — | Rumbo normalizado (longitud ≈ 1) |
+| `ticksParaGiro` | `Int32Array` | ticks | Cuánto falta para volver a sortear rumbo |
+| `estado` | `Uint8Array` | — | Estado de la IA (`ESTADO_IA.*`, numérico) |
+| `vivo` | `Uint8Array` | — | `1` viva, `0` liberada |
 
-### Getters
-
-| Getter | Devuelve | Uso |
-|---|---|---|
-| `celdaX` | `number` entero | Índice de celda en X (para queries a la grilla) |
-| `celdaY` | `number` entero | Índice de celda en Y |
-| `offsetX` | `number` en [0,1) | Fracción dentro de la celda |
-| `offsetY` | `number` en [0,1) | Fracción dentro de la celda |
-
-### Métodos
+### Métodos del almacén
 
 | Método | Firma | Contrato |
 |---|---|---|
-| `actualizar` | `(dt, ctx) => void` | Avanza la entidad un paso. **Nunca** recibe el `dt` del frame, sino el del timestep fijo. |
-| `reiniciar` | `() => void` | Deja la entidad como recién salida del pool, sin reasignar el objeto. |
-| `celda` | `() => number` | Índice plano `y * ancho + x` de su celda actual. |
+| `crear` | `(tipo) => number` | Da de alta y devuelve el `id` (recicla un `id` libre si hay). |
+| `eliminar` | `(id) => void` | Da de baja y libera el `id`. |
+| `especie` | `(id) => Especie` | Especie de esa entidad (para `pensar`). |
+| `contar` / `deTipo` | `(tipo) => number \| number[]` | Población viva por tipo. |
+| `celdaX/celdaY` | `(id) => number` | Índice de celda (para queries a la grilla). |
+| `offsetX/offsetY` | `(id) => number` | Fracción dentro de la celda, en `[0,1)`. |
+| `celda` | `(id, ancho) => number` | Índice plano `y * ancho + x`. |
+| `total` | `number` (getter) | Total de entidades vivas. |
+| `version` | `number` | Sube en cada alta/baja (el render lo usa). |
+
+### Comportamiento (`Especie`, una instancia por especie)
+
+| Método | Firma | Contrato |
+|---|---|---|
+| `pensar` | `(id, dt, ctx) => void` | Decide el rumbo. Escribe en `ctx.entidades`. |
+| `velocidad` | `number` | Velocidad base de la especie. |
+
+El paso por entidad (`edad++`, `pensar`, `mover`) vive en
+`src/systems/simulacion.js` (`actualizarEntidad`).
 
 ### Invariantes
 
-1. `vivo === false` ⇒ la entidad **no está** en el `EntityManager` ni en el
-   Spatial Hash. Nadie la consulta.
+1. `vivo[id] === 0` ⇒ la entidad **no está** en `vivos` ni en el Spatial Hash.
+   Nadie la consulta.
 2. `dirX² + dirY² ≈ 1` salvo que la entidad esté parada.
 3. `edad` solo crece (ticks), nunca se asigna a mano salvo al crear.
-4. La entidad **no conoce** el terreno, la grilla ni el render. Habla con el
+4. La especie **no conoce** el terreno, la grilla ni el render. Habla con el
    mundo a través de `ctx` (el contexto de simulación).
 
 ---

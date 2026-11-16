@@ -184,12 +184,15 @@ simulacion-ecosistemas/
       paralelos, nunca objetos por celda
 - [x] **T21 · P1** — Consultas sobre la grilla: `esAgua`, `esArena`, `esTierra`, `esBorde`,
       `estaLibre`, `dentro`, `terrenoEn`; ocupar/liberar con verificación de id
-- [x] **T22 · P2** — `entities/entity.js`: posición (celda + offset), energía, edad, velocidad, estado
-- [x] **T23 · P2** — Contenedor de entidades con alta/baja y separación por especie
+- [x] **T22 · P2** — `entities/entity.js`: **especie base** (comportamiento) + enums. Los datos
+      de cada bicho van a **arrays tipados** (SoA, ver D13), no a un objeto por animal
+- [x] **T23 · P2** — Contenedor de entidades **SoA**: arrays tipados + alta/baja por `id` y
+      separación por especie (`entityManager.js`)
 - [x] **T24 · Ambos** — **Spatial hash**: indexar entidades por celda para que el vecindario sea
       O(vecinos) y no O(n²). Es la pieza más importante para que aguante la simulación
 - [x] **T25 · Ambos** — Bucle principal con **timestep fijo + acumulador** y `requestAnimationFrame`
-- [x] **T26 · Ambos** — **Pool de objetos** para entidades: crear/borrar sin generar basura
+- [x] **T26 · Ambos** — **Reciclado de entidades**: crear/borrar sin generar basura. Con SoA (D13)
+      es una **lista de `id` libres**; el pool de objetos (`systems/pool.js`) se eliminó
 
 > **Hito F2:** puntos de colores moviéndose sobre el mapa a 60 FPS, sin comportamiento todavía.
 

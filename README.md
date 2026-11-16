@@ -106,12 +106,12 @@ src/
 │  ├─ grid.js           # grilla tipada: terreno, planta, ocupante, altura
 │  └─ terrain.js        # ruido → agua/arena/tierra + siembra habitable
 ├─ entities/
-│  ├─ entity.js         # clase base: posición, energía, edad, estado
-│  ├─ herbivore.js      # herbívoro
-│  ├─ predator.js       # carnívoro
-│  └─ entityManager.js  # alta/baja, separación por especie
+│  ├─ entity.js         # Especie base (comportamiento) + enums ESPECIE/ESTADO_IA
+│  ├─ herbivore.js      # especie herbívoro (comportamiento)
+│  ├─ predator.js       # especie carnívoro (comportamiento)
+│  ├─ especies.js       # registro tipo → especie
+│  └─ entityManager.js  # almacén SoA: arrays tipados + alta/baja por id
 ├─ systems/
-│  ├─ pool.js           # pool de objetos (T26)
 │  ├─ spatialHash.js    # vecindario O(vecinos) (T24)
 │  ├─ movement.js       # integración y rebote en los bordes
 │  ├─ simulacion.js     # el paso de simulación (usado por main y por tests)

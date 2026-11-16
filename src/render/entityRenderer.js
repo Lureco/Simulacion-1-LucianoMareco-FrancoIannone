@@ -9,6 +9,9 @@
  *   no rompe el batch de Pixi.
  * - Los sprites se reciclan con un pool: no se crean ni se destruyen
  *   durante la simulación.
+ *
+ * ⚠️ REFACTOR SoA (D13): los datos llegan por `id` desde `EntityManager`.
+ * El sprite de cada `id` se guarda en un array indexado por `id`.
  */
 
 import { Container, Graphics, Sprite } from 'pixi.js';
@@ -35,9 +38,9 @@ export class EntityRenderer {
     /** Textura base de una entidad (se genera UNA vez). */
     this.textura = this.crearTextura();
 
-    /** @type {Map<object, {entidad: object, sprite: Sprite}>} */
-    this.registros = new Map();
-    /** @type {{entidad: object, sprite: Sprite}[]} Lista para iterar sin asignar. */
+    /** @type {(Sprite|undefined)[]} Sprite de cada id. */
+    this.spritePorId = [];
+    /** @type {number[]} Ids con sprite, en orden (para iterar sin buscar). */
     this.lista = [];
     /** @type {Sprite[]} Sprites libres para reutilizar. */
     this.libres = [];
@@ -67,13 +70,13 @@ export class EntityRenderer {
    * Aclara el contenido (se llama si el renderer se destruye).
    */
   destruir() {
-    for (const registro of this.registros.values()) {
-      registro.sprite.destroy();
+    for (const id of this.lista) {
+      this.spritePorId[id]?.destroy();
     }
     for (const sprite of this.libres) {
       sprite.destroy();
     }
-    this.registros.clear();
+    this.spritePorId.length = 0;
     this.lista.length = 0;
     this.libres.length = 0;
     this.textura.destroy(true);
@@ -88,31 +91,32 @@ export class EntityRenderer {
     if (manager.version === this.version) return;
     this.version = manager.version;
 
-    const vivos = new Set();
+    const vivos = new Set(manager.vivos);
     const nuevaLista = [];
 
-    for (const entidad of manager.vivas) {
-      vivos.add(entidad);
-      let registro = this.registros.get(entidad);
-      if (registro === undefined) {
-        const sprite = this.libres.pop() ?? new Sprite(this.textura);
+    for (const id of manager.vivos) {
+      let sprite = this.spritePorId[id];
+      if (sprite === undefined) {
+        sprite = this.libres.pop() ?? new Sprite(this.textura);
         sprite.anchor.set(0.5);
-        sprite.visible = true;
         this.contenedor.addChild(sprite);
-        registro = { entidad, sprite };
-        this.registros.set(entidad, registro);
+        this.spritePorId[id] = sprite;
       }
-      registro.sprite.tint = COLOR_ESPECIE[entidad.tipo] ?? 0xffffff;
-      nuevaLista.push(registro);
+      sprite.visible = true;
+      sprite.tint = COLOR_ESPECIE[manager.tipo[id]] ?? 0xffffff;
+      nuevaLista.push(id);
     }
 
-    // Las que se fueron: su sprite vuelve al pool.
-    for (const [entidad, registro] of this.registros) {
-      if (!vivos.has(entidad)) {
-        registro.sprite.visible = false;
-        this.contenedor.removeChild(registro.sprite);
-        this.libres.push(registro.sprite);
-        this.registros.delete(entidad);
+    // Los ids que ya no están vivos: su sprite vuelve al pool.
+    for (const id of this.lista) {
+      if (!vivos.has(id)) {
+        const sprite = this.spritePorId[id];
+        if (sprite !== undefined) {
+          sprite.visible = false;
+          this.contenedor.removeChild(sprite);
+          this.libres.push(sprite);
+          this.spritePorId[id] = undefined;
+        }
       }
     }
 
@@ -134,10 +138,16 @@ export class EntityRenderer {
     const cx = camara.x;
     const cy = camara.y;
 
-    for (let i = 0; i < this.lista.length; i++) {
-      const { entidad, sprite } = this.lista[i];
-      sprite.x = (entidad.x * tile - cx) * zoom + medioX;
-      sprite.y = (entidad.y * tile - cy) * zoom + medioY;
+    const lista = this.lista;
+    const sprites = this.spritePorId;
+    const xs = manager.x;
+    const ys = manager.y;
+
+    for (let i = 0; i < lista.length; i++) {
+      const id = lista[i];
+      const sprite = /** @type {Sprite} */ (sprites[id]);
+      sprite.x = (xs[id] * tile - cx) * zoom + medioX;
+      sprite.y = (ys[id] * tile - cy) * zoom + medioY;
       sprite.scale.set(zoom);
     }
   }

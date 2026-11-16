@@ -1,206 +1,176 @@
 /**
- * tests/entity.test.js — Entidad base, manager y pool (T22, T23, T26)
+ * tests/entity.test.js — Especie, almacén SoA y reciclado (T22, T23, T26)
+ * ======================================================================
+ *
+ * ⚠️ REFACTOR SoA (D13): ya no existe una clase por animal. La identidad de
+ * un bicho es su `id`, y sus datos viven en arrays tipados dentro del
+ * `EntityManager`.
  */
 
 import { describe, it, expect } from 'vitest';
-import { Entity, ESPECIE, ESTADO_IA } from '../src/entities/entity.js';
-import { Herbivore } from '../src/entities/herbivore.js';
-import { Predator } from '../src/entities/predator.js';
+import { ESPECIE, ESTADO_IA } from '../src/entities/entity.js';
+import { Herbivoro } from '../src/entities/herbivore.js';
+import { Depredador } from '../src/entities/predator.js';
+import { especieDe } from '../src/entities/especies.js';
 import { EntityManager } from '../src/entities/entityManager.js';
-import { Pool } from '../src/systems/pool.js';
 import { PRNG } from '../src/core/prng.js';
 import { CONFIG } from '../src/config.js';
 
-/** Contexto de simulación mínimo para los tests. */
+/** Contexto mínimo con almacén, para probar comportamiento. */
 function contexto(seed = 1) {
   return {
     prng: new PRNG(seed),
     mundo: { ancho: 256, alto: 256 },
     config: CONFIG,
+    entidades: new EntityManager(),
   };
 }
 
-describe('Entity', () => {
+describe('Especie y almacén (SoA)', () => {
+  it('los datos viven en arrays tipados', () => {
+    const m = new EntityManager();
+    expect(m.x).toBeInstanceOf(Float32Array);
+    expect(m.edad).toBeInstanceOf(Int32Array);
+    expect(m.estado).toBeInstanceOf(Uint8Array);
+  });
+
   it('arranca viva, con energía inicial y en estado vago', () => {
-    const e = new Entity(ESPECIE.HERBIVORO);
-    expect(e.vivo).toBe(true);
-    expect(e.edad).toBe(0);
-    expect(e.energia).toBe(CONFIG.entidades.energiaInicial);
-    expect(e.estado).toBe(ESTADO_IA.VAGO);
+    const m = new EntityManager();
+    const id = m.crear(ESPECIE.HERBIVORO);
+    expect(m.vivo[id]).toBe(1);
+    expect(m.edad[id]).toBe(0);
+    expect(m.energia[id]).toBe(CONFIG.entidades.energiaInicial);
+    expect(m.estado[id]).toBe(ESTADO_IA.VAGO);
   });
 
   it('expone la celda y el offset desde la posición float', () => {
-    const e = new Entity(ESPECIE.HERBIVORO);
-    e.x = 10.4;
-    e.y = 7.75;
-    expect(e.celdaX).toBe(10);
-    expect(e.celdaY).toBe(7);
-    expect(e.offsetX).toBeCloseTo(0.4, 6);
-    expect(e.offsetY).toBeCloseTo(0.75, 6);
+    const m = new EntityManager();
+    const id = m.crear(ESPECIE.HERBIVORO);
+    m.x[id] = 10.4;
+    m.y[id] = 7.75;
+    expect(m.celdaX(id)).toBe(10);
+    expect(m.celdaY(id)).toBe(7);
+    expect(m.offsetX(id)).toBeCloseTo(0.4, 6);
+    expect(m.offsetY(id)).toBeCloseTo(0.75, 6);
   });
 
   it('el índice de celda usa el formato y * ancho + x', () => {
-    const e = new Entity(ESPECIE.HERBIVORO);
-    e.x = 3;
-    e.y = 5;
-    expect(e.celda(256)).toBe(5 * 256 + 3);
-  });
-
-  it('la edad sube un tick por actualización', () => {
-    const e = new Entity(ESPECIE.HERBIVORO);
-    const ctx = contexto();
-    e.actualizar(1 / 60, ctx);
-    e.actualizar(1 / 60, ctx);
-    expect(e.edad).toBe(2);
+    const m = new EntityManager();
+    const id = m.crear(ESPECIE.HERBIVORO);
+    m.x[id] = 3;
+    m.y[id] = 5;
+    expect(m.celda(id, 256)).toBe(5 * 256 + 3);
   });
 
   it('el rumbo siempre está normalizado', () => {
-    const e = new Entity(ESPECIE.HERBIVORO);
     const ctx = contexto();
+    const id = ctx.entidades.crear(ESPECIE.HERBIVORO);
+    const especie = especieDe(ESPECIE.HERBIVORO);
     for (let i = 0; i < 500; i++) {
-      e.actualizar(1 / 60, ctx);
-      const largo = Math.hypot(e.dirX, e.dirY);
+      especie.pensar(id, 1 / 60, ctx);
+      const largo = Math.hypot(ctx.entidades.dirX[id], ctx.entidades.dirY[id]);
       expect(largo).toBeCloseTo(1, 6);
     }
   });
 });
 
-describe('Herbivore y Predator', () => {
+describe('Herbivoro y Depredador', () => {
   it('tienen la velocidad de su especie', () => {
-    expect(new Herbivore().velocidad).toBe(CONFIG.herbivoro.velocidad);
-    expect(new Predator().velocidad).toBe(CONFIG.depredador.velocidad);
+    expect(new Herbivoro().velocidad).toBe(CONFIG.herbivoro.velocidad);
+    expect(new Depredador().velocidad).toBe(CONFIG.depredador.velocidad);
   });
 
   it('el depredador es más rápido que el herbívoro', () => {
-    expect(new Predator().velocidad).toBeGreaterThan(new Herbivore().velocidad);
+    expect(new Depredador().velocidad).toBeGreaterThan(new Herbivoro().velocidad);
   });
 
-  it('reiniciar deja la velocidad de la especie (no la borra)', () => {
-    const h = new Herbivore();
-    h.velocidad = 0;
-    h.reiniciar();
-    expect(h.velocidad).toBe(CONFIG.herbivoro.velocidad);
-  });
-
-  it('el tipo de entidad es el correcto', () => {
-    expect(new Herbivore().tipo).toBe(ESPECIE.HERBIVORO);
-    expect(new Predator().tipo).toBe(ESPECIE.PREDADOR);
-  });
-});
-
-describe('Pool', () => {
-  it('devuelve el mismo objeto al reciclar', () => {
-    const pool = new Pool();
-    const a = pool.obtener('x', () => ({}));
-    pool.liberar('x', a);
-    const b = pool.obtener('x', () => ({}));
-    expect(b).toBe(a);
-  });
-
-  it('no mezcla claves distintas', () => {
-    const pool = new Pool();
-    const a = pool.obtener('herbivoro', () => ({ tipo: 'h' }));
-    pool.liberar('herbivoro', a);
-    const b = pool.obtener('depredador', () => ({ tipo: 'p' }));
-    expect(b.tipo).toBe('p');
-  });
-
-  it('cuenta lo que recycle', () => {
-    const pool = new Pool();
-    const a = pool.obtener('x', () => ({}));
-    pool.liberar('x', a);
-    pool.obtener('x', () => ({}));
-    expect(pool.totalCreados).toBe(1);
-    expect(pool.totalLiberados).toBe(1);
-    expect(pool.totalReutilizados).toBe(1);
-  });
-});
-
-describe('EntityManager', () => {
-  function manager() {
+  it('al crear, la entidad copia la velocidad de su especie', () => {
     const m = new EntityManager();
-    m.registrar(ESPECIE.HERBIVORO, () => new Herbivore());
-    m.registrar(ESPECIE.PREDADOR, () => new Predator());
-    return m;
-  }
+    const h = m.crear(ESPECIE.HERBIVORO);
+    const p = m.crear(ESPECIE.PREDADOR);
+    // `velocidad` es Float32Array: comparar con tolerancia.
+    expect(m.velocidad[h]).toBeCloseTo(CONFIG.herbivoro.velocidad, 5);
+    expect(m.velocidad[p]).toBeCloseTo(CONFIG.depredador.velocidad, 5);
+  });
 
+  it('el tipo de la entidad es el correcto', () => {
+    const m = new EntityManager();
+    expect(m.tipo[m.crear(ESPECIE.HERBIVORO)]).toBe(ESPECIE.HERBIVORO);
+    expect(m.tipo[m.crear(ESPECIE.PREDADOR)]).toBe(ESPECIE.PREDADOR);
+  });
+});
+
+describe('EntityManager (almacén SoA)', () => {
   it('separa las entidades por especie', () => {
-    const m = manager();
+    const m = new EntityManager();
     m.crear(ESPECIE.HERBIVORO);
     m.crear(ESPECIE.HERBIVORO);
     m.crear(ESPECIE.PREDADOR);
-
     expect(m.contar(ESPECIE.HERBIVORO)).toBe(2);
     expect(m.contar(ESPECIE.PREDADOR)).toBe(1);
     expect(m.total).toBe(3);
   });
 
-  it('el total baja al eliminar y la entidad queda con vivo = false', () => {
-    const m = manager();
-    const e = m.crear(ESPECIE.HERBIVORO);
-    m.eliminar(e);
+  it('el total baja al eliminar y el id queda libre', () => {
+    const m = new EntityManager();
+    const id = m.crear(ESPECIE.HERBIVORO);
+    m.eliminar(id);
     expect(m.total).toBe(0);
     expect(m.contar(ESPECIE.HERBIVORO)).toBe(0);
-    expect(e.vivo).toBe(false);
+    expect(m.vivo[id]).toBe(0);
   });
 
-  it('eliminar dos veces la misma entidad no la rompe', () => {
-    const m = manager();
-    const e = m.crear(ESPECIE.HERBIVORO);
-    m.eliminar(e);
-    m.eliminar(e);
+  it('eliminar dos veces el mismo id no lo rompe', () => {
+    const m = new EntityManager();
+    const id = m.crear(ESPECIE.HERBIVORO);
+    m.eliminar(id);
+    m.eliminar(id);
     expect(m.total).toBe(0);
   });
 
-  it('el pool recicla: 100 altas y bajas no crean 100 objetos nuevos', () => {
-    const m = manager();
-    const creadas = [];
-    for (let i = 0; i < 100; i++) {
-      creadas.push(m.crear(ESPECIE.HERBIVORO));
-    }
-    for (const e of creadas) {
-      m.eliminar(e);
-    }
-    for (let i = 0; i < 100; i++) {
-      m.crear(ESPECIE.HERBIVORO);
-    }
-    expect(m.pool.totalCreados).toBe(100);
-    expect(m.pool.totalReutilizados).toBe(100);
+  it('recicla ids: 100 altas y bajas no crean 100 ids nuevos', () => {
+    const m = new EntityManager();
+    const ids = [];
+    for (let i = 0; i < 100; i++) ids.push(m.crear(ESPECIE.HERBIVORO));
+    for (const id of ids) m.eliminar(id);
+    for (let i = 0; i < 100; i++) m.crear(ESPECIE.HERBIVORO);
+    expect(m.totalCreados).toBe(100);
+    expect(m.totalReutilizados).toBe(100);
     expect(m.total).toBe(100);
   });
 
-  it('la entidad reciclada vuelve como nueva', () => {
-    const m = manager();
-    const e = m.crear(ESPECIE.HERBIVORO);
-    e.x = 50;
-    e.edad = 999;
-    m.eliminar(e);
-
-    const f = m.crear(ESPECIE.HERBIVORO);
-    expect(f.x).toBe(0);
-    expect(f.edad).toBe(0);
-    expect(f.vivo).toBe(true);
+  it('un id reciclado vuelve como nuevo', () => {
+    const m = new EntityManager();
+    const id = m.crear(ESPECIE.HERBIVORO);
+    m.x[id] = 50;
+    m.edad[id] = 999;
+    m.eliminar(id);
+    const nuevo = m.crear(ESPECIE.HERBIVORO);
+    expect(nuevo).toBe(id);
+    expect(m.x[nuevo]).toBe(0);
+    expect(m.edad[nuevo]).toBe(0);
+    expect(m.vivo[nuevo]).toBe(1);
   });
 
   it('el version sube con cada alta y baja', () => {
-    const m = manager();
+    const m = new EntityManager();
     const v0 = m.version;
-    const e = m.crear(ESPECIE.HERBIVORO);
+    const id = m.crear(ESPECIE.HERBIVORO);
     expect(m.version).toBe(v0 + 1);
-    m.eliminar(e);
+    m.eliminar(id);
     expect(m.version).toBe(v0 + 2);
   });
 
-  it('limpiar deja el manager vacío', () => {
-    const m = manager();
+  it('limpiar deja el almacén vacío y los ids libres', () => {
+    const m = new EntityManager();
     for (let i = 0; i < 10; i++) m.crear(ESPECIE.HERBIVORO);
     m.limpiar();
     expect(m.total).toBe(0);
-    expect(m.pool.disponibles(ESPECIE.HERBIVORO)).toBe(10);
+    expect(m.libres.length).toBe(10);
   });
 
-  it('lanza si se pide un tipo sin fábrica registrada', () => {
+  it('lanza si se pide una especie desconocida', () => {
     const m = new EntityManager();
-    expect(() => m.crear(ESPECIE.HERBIVORO)).toThrow();
+    expect(() => m.crear(99)).toThrow();
   });
 });

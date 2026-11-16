@@ -180,7 +180,8 @@ ser reproducible. Y el test de determinismo (T42) no puede pasar.
 
 ## D9 · Sin `new` en el bucle
 
-- Las entidades se crean y se reciclan con un **pool** (`src/systems/pool.js`).
+- Las entidades se reciclan **reutilizando `id`**: no hay un objeto por animal
+  (ver D13). Cuando una muere, su `id` vuelve a la lista de libres.
 - El render usa **sprites con `tint`**, no `Graphics` por celda ni por frame.
   La textura base se genera **una sola vez** al arrancar.
 - El Spatial Hash devuelve un **array reutilizable** para las consultas, para
@@ -215,6 +216,39 @@ Da relieve sin generar una sola textura extra.
 
 **Culling (T64):** pendiente. Con un solo sprite no aplica el culling por
 celda; si el mundo crece mucho se evaluará partir el mapa en *chunks*.
+
+---
+
+## D13 · Entidades con arrays tipados (SoA) — refactor
+
+**Contexto.** Facundo (profesor) observó que con muchos animales un diseño
+orientado a objetos "se pone lento" y recomendó guardar los datos en arrays
+tipados. Franco lo resumió: *"sigo usando clases, pero los datos vienen de
+arrays tipados"*.
+
+**Decisión (implementada):** los datos de las entidades usan el patrón
+**Structure of Arrays (SoA)**:
+
+- `src/entities/entityManager.js` guarda **un array tipado por propiedad**
+  (`Float32Array x`, `y`, `dirX`, `dirY`, `energia`, `velocidad`; `Int32Array`
+  `edad`, `tipo`, `ticksParaGiro`; `Uint8Array` `estado`, `vivo`).
+- La identidad de un bicho es su **`id`** (entero), que indexa todos los arrays.
+- El **comportamiento** sigue en **clases**, una por **especie** (no por
+  animal): `src/entities/entity.js` (`Especie`), `herbivore.js`, `predator.js`
+  y el registro `especies.js`. `especie.pensar(id, dt, ctx)` lee/escribe los
+  arrays vía `ctx.entidades`.
+- El reciclado ya no es un pool de objetos: es una **lista de `id` libres**.
+- El `SpatialHash` indexa **ids** y lee posiciones del almacén.
+- Los `Float32Array` pierden algo de precisión (p. ej. `1.2` → `1.200000047`):
+  es esperable y determinista; los tests comparan con tolerancia.
+
+**Por qué:** recorrer las posiciones de 5000 animales es recorrer 5000 floats
+contiguos en memoria (buena localidad de caché, cero basura por entidad), en
+vez de saltar entre 5000 objetos con punteros. Es la base para escalar a mapas
+grandes y a más especies (F8) sin que el recolector se ahogue.
+
+**Archivos eliminados:** `src/systems/pool.js` (reemplazado por la lista de
+`id` libres).
 
 ---
 
