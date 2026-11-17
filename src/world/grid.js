@@ -37,6 +37,18 @@ export class Grid {
     this.ocupante = new Int32Array(this.total).fill(-1);
     /** @type {Float32Array} Altura normalizada 0..1. */
     this.altura = new Float32Array(this.total);
+    /** @type {Int32Array} Distancia en celdas al agua más cercana; -1 = sin dato. */
+    this.aguaDist = new Int32Array(this.total).fill(-1);
+    /** @type {Int8Array} Componente X hacia el agua más cercana (-1/0/1). */
+    this.aguaDirX = new Int8Array(this.total);
+    /** @type {Int8Array} Componente Y hacia el agua más cercana (-1/0/1). */
+    this.aguaDirY = new Int8Array(this.total);
+    /** @type {Int32Array} Distancia en celdas a la tierra más cercana; -1 = sin dato. */
+    this.tierraDist = new Int32Array(this.total).fill(-1);
+    /** @type {Int8Array} Componente X hacia la tierra más cercana (-1/0/1). */
+    this.tierraDirX = new Int8Array(this.total);
+    /** @type {Int8Array} Componente Y hacia la tierra más cercana (-1/0/1). */
+    this.tierraDirY = new Int8Array(this.total);
 
     // Por defecto todo es tierra: un mundo sin terreno generado es habitable.
     this.terreno.fill(TERRENO.TIERRA);

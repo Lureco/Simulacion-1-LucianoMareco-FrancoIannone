@@ -25,6 +25,80 @@ import { clamp } from '../core/utils.js';
 import { Grid } from './grid.js';
 import { TERRENO } from './cell.js';
 
+/** Desplazamientos ortogonales (vecindad 4), en orden fijo. */
+const DX4 = [1, -1, 0, 0];
+const DY4 = [0, 0, 1, -1];
+
+/**
+ * BFS multi-fuente genérico: para cada celda, la distancia y la dirección
+ * (un paso de {-1,0,1} por eje) hacia la celda-fuente más cercana.
+ *
+ * Determinista: los orígenes y los vecinos se recorren en orden fijo.
+ *
+ * @param {Grid} grid
+ * @param {number} tipoFuente Uno de `TERRENO`: la clase que actúa de fuente.
+ * @param {Int32Array} dist Distancia en celdas; -1 = inalcanzable.
+ * @param {Int8Array} dirX Componente X hacia la fuente.
+ * @param {Int8Array} dirY Componente Y hacia la fuente.
+ */
+function calcularCampo(grid, tipoFuente, dist, dirX, dirY) {
+  const { ancho, alto, total } = grid;
+
+  dist.fill(-1);
+  dirX.fill(0);
+  dirY.fill(0);
+
+  const cola = new Int32Array(total);
+  let cabeza = 0;
+  let fin = 0;
+
+  for (let i = 0; i < total; i++) {
+    if (grid.terreno[i] === tipoFuente) {
+      dist[i] = 0;
+      cola[fin++] = i;
+    }
+  }
+
+  while (cabeza < fin) {
+    const i = cola[cabeza++];
+    const x = i % ancho;
+    const y = (i / ancho) | 0;
+    const siguiente = dist[i] + 1;
+
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DX4[k];
+      const ny = y + DY4[k];
+      if (nx < 0 || ny < 0 || nx >= ancho || ny >= alto) continue;
+      const j = ny * ancho + nx;
+      if (dist[j] !== -1) continue;
+      dist[j] = siguiente;
+      // `j` se alcanzó desde `i`, que está más cerca de la fuente: apuntamos a `i`.
+      dirX[j] = x - nx;
+      dirY[j] = y - ny;
+      cola[fin++] = j;
+    }
+  }
+}
+
+/**
+ * Calcula los **campos derivados** del terreno, una sola vez al generar el
+ * mapa (el terreno no cambia durante la simulación):
+ *
+ * - `aguaDist/aguaDirX/aguaDirY`   → hacia el agua más cercana (sed, T38).
+ * - `tierraDist/tierraDirX/tierraDirY` → hacia la tierra más cercana: un
+ *   herbívoro que quedó sobre agua o arena camina de vuelta a tierra, donde
+ *   está la comida (T37/T40).
+ *
+ * Así la IA resuelve una navegación de largo alcance leyendo 2 bytes por
+ * tick, en vez de barrer un radio enorme cada vez.
+ *
+ * @param {Grid} grid
+ */
+export function calcularCampos(grid) {
+  calcularCampo(grid, TERRENO.AGUA, grid.aguaDist, grid.aguaDirX, grid.aguaDirY);
+  calcularCampo(grid, TERRENO.TIERRA, grid.tierraDist, grid.tierraDirX, grid.tierraDirY);
+}
+
 /**
  * Genera el terreno completo de una vez.
  * @param {object} opciones
@@ -78,6 +152,9 @@ export function generarTerreno({ ancho, alto, seed, config }) {
       }
     }
   }
+
+  // Campos derivados para la navegación de los herbívoros (agua/tierra).
+  calcularCampos(grid);
 
   return grid;
 }

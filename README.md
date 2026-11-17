@@ -7,9 +7,9 @@ herbívoros y depredadores interactúan sobre un terreno generado por ruido.
 - **Profesor:** Facundo Saiegh
 - **Stack:** JavaScript ES2022 · [PixiJS v8](https://pixijs.com) · Vite · Vitest · ESLint + Prettier
 
-> **Estado actual:** fase F3 lista para arrancar. El mundo procedural está
-> hecho: agua, arena y tierra generados por ruido con semilla, con render y
-> regeneración en caliente. Ver [Estado](#estado-del-proyecto) para el detalle.
+> **Estado actual:** F4 hecha. Los herbívoros tienen necesidades: buscan
+> comida, van a beber, se reproducen y mueren (de hambre, sed o vejez). El
+> mundo procedural y las plantas ya están. Ver [Estado](#estado-del-proyecto).
 
 ---
 
@@ -62,29 +62,34 @@ Hitos según `TAREAS.md`:
 |---|---|---|
 | **F0** Setup y contrato | ✅ Hecho | Vite + Pixi v8 + ESLint/Prettier + hook + `config.js` + PRNG + tests |
 | **F1** Mundo procedural | ✅ Hecho | Value Noise + fBm, grilla tipada, agua/arena/tierra, render y regeneración en caliente (T11-T18) |
-| **F2** Datos y entidades base | ✅ Hecho | Entidad base, herbívoro, carnívoro, manager, pool, spatial hash, timestep fijo, render |
-| **F3** Plantas y autómata | ⏳ Pendiente | De Luciano (T27-T32) |
-| **F4** IA del herbívoro | ⏳ Pendiente | Siguiente tanda de P2 (T34-T42) |
+| **F2** Datos y entidades base | ✅ Hecho | Entidad base, herbívoro, carnívoro, manager SoA, spatial hash, timestep fijo, render |
+| **F3** Plantas y autómata | ✅ Hecho | Crecimiento por autómata sobre la grilla, estados, render y `comerPlanta` (T27-T32) |
+| **F4** IA del herbívoro | ✅ Hecho | Necesidades, prioridad, comer/beber, penalización de terreno, reproducción y muerte (T34-T42 + T45-T47 lado herbívoro) |
 | **F5** Depredador y cadena | ⏳ Pendiente | De P2 (T43-T50) |
 
 ### Qué se ve hoy
 
 Un **mundo 256×256** con agua, arena y tierra generados por ruido con
 semilla: islas y continentes con costas naturales, reproducibles celda a
-celda. Sobre ese mapa deambulan 145 animales (120 herbívoros verdes, 25
-carnívoros rojos), sembrados **en celdas de tierra**, a ~180 FPS. Todavía
-**no** tienen necesidades: no comen, no beben, no se reproducen y no mueren.
-Eso es F4/F5.
+celda. Las plantas cubren la tierra y crecen por un autómata celular. Sobre
+ese mapa, **120 herbívoros** con necesidades (hambre, sed y deseo de
+reproducirse) y **25 carnívoros** que todavía solo deambulan. Los herbívoros
+**comen** cuando tienen hambre, **van a beber** a la costa cuando tienen sed
+(y si no ven agua, caminan hacia ella siguiendo un campo precalculado),
+**se reproducen** cuando juntan energía y encuentran pareja, y **mueren** de
+hambre, sed o vejez — cada causa contada por separado en el HUD.
 
 ### Lo que ya está garantizado (y se puede romper de una forma detectable)
 
-- **Determinismo**: misma seed ⇒ misma simulación, tick a tick. Hay un test
-  (`tests/determinismo.test.js`) que corre la misma lógica que la pantalla.
+- **Determinismo**: misma seed ⇒ misma simulación, tick a tick. Hay tests
+  (`tests/determinismo.test.js`) que corren la misma lógica que la pantalla,
+  incluso con terreno y vegetación.
 - **Sin `Math.random()` ni `Date.now()`** dentro de la simulación: ESLint lo
   bloquea con `no-restricted-properties`.
 - **Timestep fijo** de 1/60 s con acumulador: la simulación no depende del
   framerate.
-- **Sin `new` en el bucle**: pool de objetos para entidades y para sprites.
+- **Sin `new` en el bucle**: entidades en **arrays tipados (SoA)** con lista de
+  `id` libres, y pool de sprites en el render.
 - **Sin `Graphics` por celda o por frame**: una sola textura generada al
   arrancar, y sprites con `tint` por especie.
 
@@ -103,27 +108,33 @@ src/
 │  └─ utils.js          # clamp, lerp, índices de celda
 ├─ world/
 │  ├─ cell.js           # constantes TERRENO / PLANTA (contrato §3)
-│  ├─ grid.js           # grilla tipada: terreno, planta, ocupante, altura
-│  └─ terrain.js        # ruido → agua/arena/tierra + siembra habitable
+│  ├─ grid.js           # grilla tipada: terreno, planta, ocupante, altura + campos agua/tierra
+│  └─ terrain.js        # ruido → agua/arena/tierra + campos BFS de navegación
 ├─ entities/
 │  ├─ entity.js         # Especie base (comportamiento) + enums ESPECIE/ESTADO_IA
-│  ├─ herbivore.js      # especie herbívoro (comportamiento)
+│  ├─ herbivore.js      # especie herbívoro: IA de necesidades (F4)
 │  ├─ predator.js       # especie carnívoro (comportamiento)
 │  ├─ especies.js       # registro tipo → especie
 │  └─ entityManager.js  # almacén SoA: arrays tipados + alta/baja por id
 ├─ systems/
 │  ├─ spatialHash.js    # vecindario O(vecinos) (T24)
 │  ├─ movement.js       # integración y rebote en los bordes
-│  ├─ simulacion.js     # el paso de simulación (usado por main y por tests)
+│  ├─ plantGrowth.js    # autómata de vegetación + `comerPlanta` (T27-T32)
+│  ├─ needs.js          # hambre/sed/deseoRepro + causas de muerte (T34/T45)
+│  ├─ perception.js     # buscar plantas/agua/pareja en el radio de visión (T36)
+│  ├─ eventos.js        # nacimientos y muertes diferidos (T46/T47)
+│  └─ simulacion.js     # el paso de simulación (usado por main y por tests)
 ├─ render/
 │  ├─ camera.js         # pan, zoom, seguimiento  ⚠️ adelantada de P1 (T53)
 │  ├─ terrainRenderer.js# el mapa entero en UNA textura + UN sprite (T15)
+│  ├─ plantRenderer.js  # sprites de plantas por estado (F3)
 │  └─ entityRenderer.js # sprites tintados, textura única
 └─ ui/
-   └─ hud.js            # contadores de población, tiempo, seed, FPS
+   └─ hud.js            # contadores de población, tiempo, seed, FPS, nacidos/muertos
 
 scripts/
-└─ verTerreno.mjs       # utilidad: genera el mapa en Node y reporta proporciones
+├─ verTerreno.mjs       # genera el mapa en Node y reporta proporciones
+└─ simular.mjs          # corre la simulación sin navegador (balance/rendimiento)
 
 docs/
 ├─ DECISIONES.md        # decisiones técnicas y por qué

@@ -177,6 +177,34 @@ function buscarVecinaLibre(i, ancho, alto, terreno, planta, vecinos, prng) {
 }
 
 /**
+ * Un herbívoro muerde la planta de una celda (T37).
+ *
+ * El contrato §2 dice que P2 **no** escribe la capa `planta`. Por eso el
+ * bocado no se hace desde la IA: se pide por acá, que es la API del sistema
+ * de vegetación. La planta desaparece (`NADA`) y devolvemos la energía del
+ * bocado para que el herbívoro se la sume.
+ *
+ * @param {object} ctx
+ * @param {number} indice Índice plano `y * ancho + x` de la celda.
+ * @returns {number} Energía del bocado (0 si no había nada comestible).
+ */
+export function comerPlanta(ctx, indice) {
+  const grid = ctx.grid;
+  if (!grid) return 0;
+
+  const cfg = ctx.config.plantas;
+  const estado = grid.planta[indice];
+  if (estado !== PLANTA.ADULTA && estado !== PLANTA.JOVEN) return 0;
+
+  grid.planta[indice] = PLANTA.NADA;
+  capaEdad(ctx)[indice] = 0;
+
+  return estado === PLANTA.ADULTA
+    ? cfg.energiaPorPlanta
+    : cfg.energiaPorPlanta * cfg.fraccionEnergiaJoven;
+}
+
+/**
  * Cuenta las celdas con vegetación viva (cualquier estado salvo NADA/MUERTA).
  * @param {object} ctx
  * @returns {number}

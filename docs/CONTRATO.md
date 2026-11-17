@@ -22,7 +22,11 @@
 |---|---|---|---|
 | `tipo` | `Int32Array` | — | `ESPECIE.HERBIVORO` / `ESPECIE.PREDADOR` |
 | `x`, `y` | `Float32Array` | celdas | Posición (float) |
-| `energia` | `Float32Array` | — | Energía actual |
+| `energia` | `Float32Array` | — | Energía actual (`[0, energiaMaxima]`) |
+| `hambre` | `Float32Array` | — | Hambre normalizada `[0, 1]` (F4) |
+| `sed` | `Float32Array` | — | Sed normalizada `[0, 1]` (F4) |
+| `deseoRepro` | `Float32Array` | — | Deseo de reproducirse `[0, 1]` (F4) |
+| `cooldown` | `Int32Array` | ticks | Ticks que faltan para poder volver a reproducirse (F4) |
 | `edad` | `Int32Array` | ticks | Antigüedad en ticks |
 | `velocidad` | `Float32Array` | celdas/s | Velocidad base (copiada de la especie al crear) |
 | `dirX`, `dirY` | `Float32Array` | — | Rumbo normalizado (longitud ≈ 1) |
@@ -48,18 +52,22 @@
 
 | Método | Firma | Contrato |
 |---|---|---|
-| `pensar` | `(id, dt, ctx) => void` | Decide el rumbo. Escribe en `ctx.entidades`. |
+| `actualizar` | `(id, dt, ctx) => void` | Paso completo de la entidad: envejece, decide (`pensar`) y se mueve. La base solo deambula; el herbívoro (F4) la sobreescribe. |
+| `pensar` | `(id, dt, ctx) => void` | Decide el rumbo/estado. Escribe en `ctx.entidades`. |
 | `velocidad` | `number` | Velocidad base de la especie. |
 
-El paso por entidad (`edad++`, `pensar`, `mover`) vive en
-`src/systems/simulacion.js` (`actualizarEntidad`).
+El paso por entidad lo orquesta `src/systems/simulacion.js`
+(`actualizarEntidad`), que además clasifica muertes y aplica nacimientos
+diferidos (F4).
 
 ### Invariantes
 
 1. `vivo[id] === 0` ⇒ la entidad **no está** en `vivos` ni en el Spatial Hash.
    Nadie la consulta.
 2. `dirX² + dirY² ≈ 1` salvo que la entidad esté parada.
-3. `edad` solo crece (ticks), nunca se asigna a mano salvo al crear.
+3. `edad` solo crece (ticks). Solo se asigna al crear, al repartir edades
+   iniciales (`repartirEdadesIniciales`, para que la primera generación no
+   muera toda a la vez) y a la cría recién nacida (`edad = 0`).
 4. La especie **no conoce** el terreno, la grilla ni el render. Habla con el
    mundo a través de `ctx` (el contexto de simulación).
 
@@ -78,6 +86,14 @@ class Grid {
   planta:  Uint8Array;   // PLANTA.*    (P1 escribe, F3)
   ocupante: Int32Array;  // id de entidad por celda, -1 = libre (P2 escribe)
   altura:  Float32Array; // altura normalizada 0..1 (P1 escribe)
+
+  // Campos derivados del terreno (P1 escribe UNA vez, al generar el mapa):
+  aguaDist:  Int32Array; // distancia en celdas al agua más cercana, -1 = sin dato
+  aguaDirX:  Int8Array;  // paso {-1,0,1} en X hacia el agua más cercana
+  aguaDirY:  Int8Array;  // paso {-1,0,1} en Y hacia el agua más cercana
+  tierraDist: Int32Array; // distancia en celdas a la tierra más cercana
+  tierraDirX: Int8Array;  // paso {-1,0,1} en X hacia la tierra más cercana
+  tierraDirY: Int8Array;  // paso {-1,0,1} en Y hacia la tierra más cercana
 
   indice(x, y): number;
   dentro(x, y): boolean;
@@ -103,6 +119,11 @@ class Grid {
 - Preguntar si una celda está **libre** → dónde nace una cría (T47):
   `estaLibre`.
 - **Ocupar y liberar** celdas → `ocupar` / `liberar` (verifican id y límites).
+- **Navegar de largo alcance** leyendo los campos derivados
+  (`aguaDirX/Y`, `tierraDirX/Y`): un herbívoro sediento que no ve agua camina
+  hacia ella, y uno varado en agua o arena vuelve a tierra. Los calcula
+  `calcularCampos(grid)` de `terrain.js` **una sola vez** por BFS multi-fuente
+  (el terreno no cambia durante la simulación).
 
 **Regla:** P2 **no** escribe en `terreno` ni en `planta`. Solo lee, y escribe
 únicamente en `ocupante`.
@@ -123,22 +144,39 @@ Además de las constantes, `nombreTerreno(tipo)` y `nombrePlanta(estado)` dan
 
 ---
 
-## 4 · Necesidades — `src/systems/needs.js` (P2)
+## 4 · Necesidades — `src/systems/needs.js` (P2) — ✅ IMPLEMENTADA (F4)
 
-Sistema de necesidades normalizadas. **Todas en `[0, 1]`**, donde `0` es
-"satisfecha" y `1` es "crítica".
+Sistema de necesidades. **Normalizadas en `[0, 1]`**: `hambre`, `sed` y
+`deseoRepro`, donde `0` es "satisfecha" y `1` es "crítica". `energia` y `edad`
+**no** se normalizan porque tienen unidad propia (`energia` en
+`[0, energiaMaxima]`, `edad` en **ticks**).
 
-| Necesidad | Significado | Umbral crítico |
-|---|---|---|
-| `hambre` | Necesidad de comer | `CONFIG.herbivoro.hambreCritica` |
-| `sed` | Necesidad de beber | `CONFIG.herbivoro.sedCritica` |
-| `deseoReproduccion` | Necesidad de reproducirse | `CONFIG.herbivoro.umbralReproduccion` |
-| `energia` | Energía física | `< CONFIG.entidades.energiaMinima` ⇒ muerte |
-| `edad` | Edad normalizada | `> 1` ⇒ muerte por vejez |
+| Necesidad | Rango | Significado | Umbral |
+|---|---|---|---|
+| `hambre` | `[0, 1]` | Necesidad de comer | `CONFIG.herbivoro.hambreCritica` |
+| `sed` | `[0, 1]` | Necesidad de beber | `CONFIG.herbivoro.sedCritica` |
+| `deseoRepro` | `[0, 1]` | Necesidad de reproducirse | `CONFIG.herbivoro.umbralReproduccion` |
+| `energia` | `[0, 100]` | Energía física | `<= CONFIG.entidades.energiaMinima` ⇒ muerte por hambre |
+| `edad` | ticks | Edad | `>= CONFIG.entidades.edadMaximaTicks` ⇒ muerte por vejez |
+
+Además de actualizar las necesidades, el módulo expone:
+
+- `causaDeMuerte(id, ctx)` → `CAUSA_MUERTE.*` (`HAMBRE`, `SED`, `VEJEZ`) o
+  `NINGUNA` si sigue viva (T45); `NOMBRE_CAUSA_MUERTE` da el nombre legible.
+- `debeMorir(id, ctx)` → atajo booleano.
+- `quiereReproducir(id, ctx)` → si el deseo supera el umbral, la energía alcanza
+  y el cooldown terminó.
+- `gastarEnergia(id, dt, ctx)` → descuenta energía según el terreno que pisa
+  (T40): `costeAgua`, `costeArena` multiplican el gasto base.
 
 **Por qué normalizadas:** las dos especies pueden tener escalas distintas
 (una sedienta, otra hambrienta) y al normalizar, la **misma IA por prioridad**
 sirve para las dos sin código duplicado.
+
+**Desviación documentada:** el contrato original (§4, primera versión) pedía
+`energía` y `edad` también en `[0, 1]`. Se implementaron con su unidad natural
+para no introducir divisiones por tick en el bucle caliente; la IA solo compara
+contra umbrales, así que la escala es indistinta.
 
 ---
 

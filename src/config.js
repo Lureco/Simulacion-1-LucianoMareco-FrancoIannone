@@ -101,7 +101,9 @@ export const CONFIG = {
     /** Densidad inicial de semilla al generar el mundo (0..1 sobre celdas de tierra). */
     densidadSemilla: 0.06,
     /** Energía que aporta una planta adulta al ser comida. */
-    energiaPorPlanta: 12,
+    energiaPorPlanta: 15,
+    /** Fracción de `energiaPorPlanta` que aporta una planta joven (T37). */
+    fraccionEnergiaJoven: 0.5,
     /** Colores de cada estado de planta para el render (0xRRGGBB). */
     colorSemilla: 0x6f7f4a,
     colorJoven: 0x6fae52,
@@ -119,11 +121,15 @@ export const CONFIG = {
     /** Máximo de entidades vivas simultáneas (evita colapso de memoria). */
     maxEntidades: 4000,
     /** Vida máxima en ticks antes de morir por edad. */
-    edadMaximaTicks: 60 * 60 * 20, // 20 minutos de simulación
+    edadMaximaTicks: 60 * 60 * 12, // 12 minutos de simulación
     /** Energía inicial de una entidad recién nacida. */
     energiaInicial: 70,
+    /** Energía máxima: tope al que se puede llegar comiendo. */
+    energiaMaxima: 100,
     /** Energía mínima para seguir vivo. */
     energiaMinima: 0,
+    /** Gasto energético base por segundo, sobre tierra (T40). */
+    gastoEnergiaBase: 0.12,
     /** Multiplicador de coste energético al atravesar agua. */
     costeAgua: 4,
     /** Multiplicador de coste energético al atravesar arena. */
@@ -145,18 +151,30 @@ export const CONFIG = {
     sedCritica: 0.7,
     /** Umbral de deseo de reproducción. */
     umbralReproduccion: 0.6,
-    /** Velocidad a la que baja el hambre por segundo. */
+    /** Velocidad a la que sube el hambre por segundo (T34). */
     consumoHambre: 0.01,
-    /** Velocidad a la que baja la sed por segundo. */
-    consumoSed: 0.013,
+    /** Velocidad a la que sube la sed por segundo (T34). */
+    consumoSed: 0.004,
+    /** Velocidad a la que sube el deseo de reproducirse por segundo, tras madurar (T34). */
+    consumoDeseoRepro: 0.004,
     /** Energía mínima para reproducirse. */
     energiaReproduccion: 55,
-    /** Ticks entre Reproduction y el siguiente intento. */
+    /** Ticks entre reproducción y el siguiente intento. */
     cooldownReproduccion: 60 * 8,
     /** Edad mínima (en ticks) para reproducirse. */
     edadMinimaReproduccion: 60 * 15,
-    /** Multiplicador de velocidad al perseguir comida. */
+    /** Energía que le cuesta cada cría a cada progenitor. */
+    energiaPorCria: 20,
+    /** Multiplicador de velocidad al ir a comer. */
     bonusVelocidadComer: 1.15,
+    /** Distancia (celdas) a la que se puede morder una planta (T37). */
+    radioComer: 0.7,
+    /** Distancia (celdas) a la que se considera que está bebiendo (T38). */
+    radioBeber: 1.5,
+    /** Distancia (celdas) a la que dos herbívoros dispuestos se reproducen (T46). */
+    radioReproduccion: 1.2,
+    /** Ruido (radianes) que se le suma al rumbo por tick al explorar (T39). */
+    ruidoRumbo: 0.15,
   },
 
   // ─────────────────────────────────────────────────────────────

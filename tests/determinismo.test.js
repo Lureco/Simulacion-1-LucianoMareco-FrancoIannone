@@ -16,7 +16,9 @@ import { crearContexto } from '../src/core/contexto.js';
 import { EntityManager } from '../src/entities/entityManager.js';
 import { ESPECIE } from '../src/entities/entity.js';
 import { SpatialHash } from '../src/systems/spatialHash.js';
-import { pasoDeSimulacion, sembrar } from '../src/systems/simulacion.js';
+import { pasoDeSimulacion, sembrar, repartirEdadesIniciales } from '../src/systems/simulacion.js';
+import { sembrarVegetacion } from '../src/systems/plantGrowth.js';
+import { generarTerreno } from '../src/world/terrain.js';
 import { CONFIG } from '../src/config.js';
 
 /**
@@ -62,11 +64,45 @@ function huella(manager) {
       y: manager.y[id],
       edad: manager.edad[id],
       energia: manager.energia[id],
+      hambre: manager.hambre[id],
+      sed: manager.sed[id],
+      deseoRepro: manager.deseoRepro[id],
+      estado: manager.estado[id],
       dirX: manager.dirX[id],
       dirY: manager.dirY[id],
     });
   }
   return salida;
+}
+
+/**
+ * Arma un mundo completo (terreno + vegetación + entidades) y corre `ticks`
+ * pasos: así se ejercita la IA del herbívoro de verdad (comer, beber,
+ * reproducirse, morir), no solo el deambular.
+ * @param {number} seed
+ * @param {number} ticks
+ */
+function correrMundo(seed, ticks) {
+  const ancho = 64;
+  const alto = 64;
+  const prng = new PRNG(seed);
+  const manager = new EntityManager();
+
+  const ctx = crearContexto({ prng, mundo: { ancho, alto }, config: CONFIG });
+  ctx.entidades = manager;
+  ctx.grid = generarTerreno({ ancho, alto, seed, config: CONFIG.terreno });
+  ctx.hash = new SpatialHash(manager, ancho, alto, CONFIG.percepcion.celdaHash);
+
+  sembrarVegetacion(ctx);
+  sembrar(ctx, 30, ESPECIE.HERBIVORO);
+  sembrar(ctx, 6, ESPECIE.PREDADOR);
+  repartirEdadesIniciales(ctx);
+
+  for (let i = 0; i < ticks; i++) {
+    pasoDeSimulacion(ctx, CONFIG.tiempo.pasoFijo);
+  }
+
+  return { ctx, manager };
 }
 
 describe('determinismo de la simulación', () => {
@@ -104,4 +140,21 @@ describe('determinismo de la simulación', () => {
     sembrar(a.ctx, 30, ESPECIE.HERBIVORO);
     expect(a.manager.totalCreados).toBe(creadosPrimera);
   });
+
+  it('misma seed ⇒ mismo resultado con terreno, vegetación y necesidades (T42)', () => {
+    const a = correrMundo(1337, 12000);
+    const b = correrMundo(1337, 12000);
+    expect(huella(a.manager)).toEqual(huella(b.manager));
+    expect(a.ctx.nacimientosTotales).toBe(b.ctx.nacimientosTotales);
+    expect(a.ctx.muertesTotales).toBe(b.ctx.muertesTotales);
+  }, 30000);
+
+  it('con terreno las necesidades avanzan y la vida sigue (T34-T41)', () => {
+    const { ctx, manager } = correrMundo(1337, 12000);
+    const algunoConHambre = manager.vivos.some((id) => manager.hambre[id] > 0);
+    const algunoConSed = manager.vivos.some((id) => manager.sed[id] > 0);
+    expect(algunoConHambre).toBe(true);
+    expect(algunoConSed).toBe(true);
+    expect(ctx.nacimientosTotales).toBeGreaterThan(0);
+  }, 30000);
 });

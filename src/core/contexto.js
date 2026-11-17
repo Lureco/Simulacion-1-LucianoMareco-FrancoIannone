@@ -15,6 +15,8 @@
  * - `tick`   → número de ticks simulados desde el arranque.
  * - `hash`   → Spatial Hash, para consultas de vecindario.
  * - `entidades` → `EntityManager`.
+ * - `nacimientosTotales` / `muertesTotales` → contadores acumulados (HUD).
+ * - `muertesPorCausa` → `{ hambre, sed, vejez }` (T45).
  */
 
 /**
@@ -34,5 +36,9 @@ export function crearContexto({ prng, mundo, config }) {
     tick: 0,
     hash: null,
     entidades: null,
+    nacimientosTotales: 0,
+    muertesTotales: 0,
+    /** Muertes por causa (T45): `{ hambre, sed, vejez }`. */
+    muertesPorCausa: { hambre: 0, sed: 0, vejez: 0 },
   };
 }

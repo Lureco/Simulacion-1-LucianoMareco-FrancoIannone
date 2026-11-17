@@ -19,6 +19,8 @@
  * mundo a través de `ctx`.
  */
 
+import { mover } from '../systems/movement.js';
+
 /** Tipos de especie. Los valores se usan como índice de `tipo` en la grilla. */
 export const ESPECIE = {
   HERBIVORO: 1,
@@ -59,6 +61,23 @@ export class Especie {
   constructor({ velocidad = 0 } = {}) {
     /** Velocidad base en celdas por segundo. */
     this.velocidad = velocidad;
+  }
+
+  /**
+   * Avanza una entidad un tick: envejece, decide y se mueve.
+   *
+   * La base solo **deambula**. Las especies con IA (el herbívoro, F4) la
+   * sobreescriben para meter necesidades, muerte y reproducción.
+   *
+   * @param {number} id
+   * @param {number} dt
+   * @param {object} ctx
+   */
+  actualizar(id, dt, ctx) {
+    const a = ctx.entidades;
+    a.edad[id] += 1;
+    this.pensar(id, dt, ctx);
+    mover(id, dt, ctx);
   }
 
   /**

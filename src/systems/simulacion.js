@@ -8,12 +8,21 @@
  *
  * ⚠️ REFACTOR SoA (D13): se itera sobre `ids` (números) y se lee/escribe en
  * los arrays tipados del almacén. La especie se resuelve por `tipo`.
+ *
+ * Orden de un tick (determinista):
+ *
+ *   1. Cada entidad viva: `especie.actualizar` (envejecer, necesidades,
+ *      decidir, moverse, gastar energía). Puede anotar muertes y nacimientos.
+ *   2. Aplicar muertes (libera `id`s).
+ *   3. Aplicar nacimientos (crea crías en celdas anotadas).
+ *   4. Reconstruir el Spatial Hash.
+ *   5. Autómata de vegetación.
  */
 
 import { ESPECIE } from '../entities/entity.js';
 import { celdaHabitableAlAzar } from '../world/terrain.js';
 import { pasoVegetacion } from './plantGrowth.js';
-import { mover } from './movement.js';
+import { muertesDe, nacimientosDe } from './eventos.js';
 
 /**
  * Siembra entidades de una especie en celdas habitables al azar.
@@ -34,16 +43,71 @@ export function sembrar(ctx, cantidad, tipo) {
 }
 
 /**
- * Avanza una entidad un paso: envejece, piensa y se mueve.
+ * Reparte edades al azar entre la población actual (hasta el 50% de la vida
+ * máxima) para que la primera generación no envejezca —y muera— toda al mismo
+ * tiempo. Consume el PRNG de la simulación, así que es determinista.
+ * @param {object} ctx
+ */
+export function repartirEdadesIniciales(ctx) {
+  const a = ctx.entidades;
+  const max = ctx.config.entidades.edadMaximaTicks;
+  for (let i = 0; i < a.vivos.length; i++) {
+    a.edad[a.vivos[i]] = Math.floor(ctx.prng.float() * max * 0.5);
+  }
+}
+
+/**
+ * Avanza una entidad un paso delegando en su especie.
  * @param {number} id
  * @param {number} dt
  * @param {object} ctx
  */
 export function actualizarEntidad(id, dt, ctx) {
+  const especie = ctx.entidades.especie(id);
+  if (especie) especie.actualizar(id, dt, ctx);
+}
+
+/**
+ * Aplica las muertes anotadas durante el tick.
+ * @param {object} ctx
+ * @returns {number} Cuántas entidades murieron.
+ */
+export function aplicarMuertes(ctx) {
+  const muertos = muertesDe(ctx);
+  const n = muertos.length;
+  for (let i = 0; i < n; i++) ctx.entidades.eliminar(muertos[i]);
+  muertos.length = 0;
+  if (n > 0) ctx.muertesTotales += n;
+  return n;
+}
+
+/**
+ * Aplica los nacimientos anotados durante el tick (T47).
+ * Respeta `maxEntidades`: si se llegó al tope, los nacimientos se descartan.
+ * @param {object} ctx
+ * @returns {number} Cuántas crías nacieron.
+ */
+export function aplicarNacimientos(ctx) {
+  const nacimientos = nacimientosDe(ctx);
   const a = ctx.entidades;
-  a.edad[id] += 1;
-  /** @type {import('../entities/entity.js').Especie} */ (a.especie(id)).pensar(id, dt, ctx);
-  mover(id, dt, ctx);
+  const grid = ctx.grid;
+  let n = 0;
+
+  for (let i = 0; i < nacimientos.length; i += 2) {
+    if (a.total >= ctx.config.entidades.maxEntidades) break;
+    const tipo = nacimientos[i];
+    const indice = nacimientos[i + 1];
+    const id = a.crear(tipo);
+    if (grid) {
+      a.x[id] = (indice % grid.ancho) + 0.5;
+      a.y[id] = Math.floor(indice / grid.ancho) + 0.5;
+    }
+    n++;
+  }
+
+  nacimientos.length = 0;
+  if (n > 0) ctx.nacimientosTotales += n;
+  return n;
 }
 
 /**
@@ -55,14 +119,24 @@ export function pasoDeSimulacion(ctx, dt) {
   ctx.tick++;
   const a = ctx.entidades;
   const vivos = a.vivos;
+
+  // 1. Entidades. Se itera por índice sobre `vivos`; las altas y bajas se
+  //    difieren al final, así que la lista no cambia durante el recorrido.
   for (let i = 0; i < vivos.length; i++) {
-    actualizarEntidad(vivos[i], dt, ctx);
+    const id = vivos[i];
+    if (!a.vivo[id]) continue;
+    actualizarEntidad(id, dt, ctx);
   }
+
+  // 2-3. Muertes y nacimientos anotados durante el tick.
+  aplicarMuertes(ctx);
+  aplicarNacimientos(ctx);
+
+  // 4. El hash refleja las posiciones (y la población) al cerrar el tick.
   ctx.hash.reconstruir();
 
-  // El autómata de vegetación va después de las entidades: en F4 los
-  // herbívoros van a comer plantas, y el orden (comer → crecer) es
-  // determinista y queda documentado acá.
+  // 5. El autómata de vegetación va después de las entidades: el orden
+  //    (comer → crecer) es determinista y queda documentado acá.
   ctx.plantasNacidas = pasoVegetacion(ctx);
 }
 

@@ -17,7 +17,7 @@ import { crearContexto } from './core/contexto.js';
 import { EntityManager } from './entities/entityManager.js';
 import { ESPECIE } from './entities/entity.js';
 import { SpatialHash } from './systems/spatialHash.js';
-import { pasoDeSimulacion, sembrar } from './systems/simulacion.js';
+import { pasoDeSimulacion, sembrar, repartirEdadesIniciales } from './systems/simulacion.js';
 import { Camera } from './render/camera.js';
 import { EntityRenderer } from './render/entityRenderer.js';
 import { TerrainRenderer } from './render/terrainRenderer.js';
@@ -88,6 +88,8 @@ function generarMundo() {
 function poblar() {
   sembrar(ctx, CONFIG.herbivoro.poblacionInicial, ESPECIE.HERBIVORO);
   sembrar(ctx, CONFIG.depredador.poblacionInicial, ESPECIE.PREDADOR);
+  // Edades repartidas: si no, toda la primera generación muere a la vez.
+  repartirEdadesIniciales(ctx);
 }
 
 // ── Mundo y render ────────────────────────────────────────────────
@@ -163,6 +165,8 @@ window.addEventListener(
         manager.limpiar();
         ctx.prng = new PRNG(ESTADO.seed);
         ctx.tick = 0;
+        ctx.nacimientosTotales = 0;
+        ctx.muertesTotales = 0;
         generarMundo();
         terrenoRenderer.generar(ctx.grid);
         sembrarVegetacion(ctx);
@@ -232,6 +236,8 @@ function bucle(ahora) {
       herbivoros: manager.contar(ESPECIE.HERBIVORO),
       depredadores: manager.contar(ESPECIE.PREDADOR),
       total: manager.total,
+      nacidos: ctx.nacimientosTotales,
+      muertos: ctx.muertesTotales,
       ticks: ctx.tick,
       seed: ESTADO.seed,
       fps,

@@ -215,20 +215,28 @@ simulacion-ecosistemas/
 
 ### F4 · IA del herbívoro (sistema de necesidades)
 
-- [ ] **T34 · P2** — Necesidades normalizadas: `hambre`, `sed`, `deseo_repro`, `energía`, `edad`
-      en `[0, 1]`
-- [ ] **T35 · P2** — **Decisión por prioridad**: hambre crítica > sed > reproducirse > explorar
-- [ ] **T36 · P2** — Percepción con el spatial hash: detectar plantas, agua y otros herbívoros
-      en el radio de visión
-- [ ] **T37 · P2** — Conducta de **comer**: acercarse → morder → la planta baja de estado o desaparece
-- [ ] **T38 · P2** — Conducta de **beber**: ir a la celda de agua adyacente más cercana
-- [ ] **T39 · P2** — Conducta de **explorar**: destino aleatorio con *wander* (ruido en el rumbo)
-- [ ] **T40 · P2** — Penalización por terreno: arena y agua consumen más energía al atravesarlas
-- [ ] **T41 · P1** — Ajustar parámetros para que el herbívoro no muera en los primeros 30 s
+- [x] **T34 · P2** — Necesidades `hambre`, `sed`, `deseoRepro` en `[0, 1]`
+      (`energía` y `edad` con su unidad natural; ver `docs/CONTRATO.md` §4)
+- [x] **T35 · P2** — **Decisión por prioridad**: hambre crítica > sed > reproducirse > explorar
+- [x] **T36 · P2** — Percepción con el spatial hash: detectar plantas, agua y otros herbívoros
+      en el radio de visión (`src/systems/perception.js`)
+- [x] **T37 · P2** — Conducta de **comer**: acercarse → morder → la planta baja de estado o
+      desaparece (`comerPlanta`, API de P1: P2 nunca escribe `planta`/`terreno`)
+- [x] **T38 · P2** — Conducta de **beber**: ir a la celda de agua adyacente más cercana
+      (y campo BFS `aguaDir*` cuando el agua no está a la vista)
+- [x] **T39 · P2** — Conducta de **explorar**: destino aleatorio con *wander* (ruido en el rumbo)
+- [x] **T40 · P2** — Penalización por terreno: arena y agua consumen más energía al atravesarlas
+- [x] **T41 · P1** — Ajustar parámetros para que el herbívoro no muera en los primeros 30 s
       (que el resultado se vea: no deambulan sin objetivo, comen y beben de verdad)
-- [ ] **T42 · Ambos** — Test de determinismo: misma seed + mismos parámetros ⇒ misma simulación
+- [x] **T42 · Ambos** — Test de determinismo: misma seed + mismos parámetros ⇒ misma simulación
+      (con terreno, vegetación y necesidades: `tests/determinismo.test.js`)
 
 > **Hito F4:** herbívoros buscando comida, yendo a beber y deamburando. Ya mueren y nacen.
+>
+> **Adelantado desde F5 (lado herbívoro):** T45 (muerte por causas separadas:
+> hambre/sed/vejez, `causaDeMuerte` + `ctx.muertesPorCausa`), T46 (reproducción con
+> energía, deseo, cooldown y pareja) y T47 (cría en celda libre adyacente). Falta el
+> lado del **depredador** (T43/T44) y la depredación como causa de muerte.
 
 ---
 
@@ -236,10 +244,13 @@ simulacion-ecosistemas/
 
 - [ ] **T43 · P2** — Depredador: detección de herbívoros en radio, **persecución** y caza
 - [ ] **T44 · P2** — Balance del depredador: más rápido pero menos eficiente (trade-off)
-- [ ] **T45 · P2** — **Muerte por causas separadas y observables**: hambre, sed, edad, depredación
-- [ ] **T46 · P2** — **Reproducción**: requiere energía, no estar hambriento/sediento, cooldown,
+- [~] **T45 · P2** — **Muerte por causas separadas y observables**: hambre, sed, edad, depredación
+      *(hambre/sed/vejez hechas en F4: `causaDeMuerte`, `ctx.muertesPorCausa`. Falta depredación)*
+- [~] **T46 · P2** — **Reproducción**: requiere energía, no estar hambriento/sediento, cooldown,
       y presencia de pareja del mismo tipo y edad mínima
-- [ ] **T47 · P2** — Nascimento de la cría en celda libre adyacente válida
+      *(hecha en F4 para herbívoros: `quiereReproducir` + `aplicarNacimientos`)*
+- [~] **T47 · P2** — Nacimiento de la cría en celda libre adyacente válida
+      *(hecho en F4: `celdaLibreAdyacente` + nacimientos diferidos)*
 - [ ] **T48 · P2** — Semilla inicial de herbívoros y depredadores en zonas habitables
 - [ ] **T49 · P1** — Restricción de terreno en el movimiento (no cruzar agua profunda sin costo)
 - [ ] **T50 · Ambos** — Test de integración: la **cadena alimenticia completa** funciona

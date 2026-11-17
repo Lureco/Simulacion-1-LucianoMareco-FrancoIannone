@@ -126,6 +126,74 @@ describe('forma del mundo', () => {
   });
 });
 
+describe('campos de navegación (agua / tierra)', () => {
+  /** Índice de la celda de `tipo` más lejana de la fuente opuesta. */
+  function celdaMasLejana(grid, tipo, dist) {
+    let mejor = -1;
+    let mejorDist = -1;
+    for (let i = 0; i < grid.total; i++) {
+      if (grid.terreno[i] !== tipo) continue;
+      if (dist[i] > mejorDist) {
+        mejorDist = dist[i];
+        mejor = i;
+      }
+    }
+    return { indice: mejor, distancia: mejorDist };
+  }
+
+  it('el agua tiene distancia 0 y el resto apunta a ella', () => {
+    const grid = mapa(1337);
+    for (let i = 0; i < grid.total; i++) {
+      if (grid.terreno[i] === TERRENO.AGUA) {
+        expect(grid.aguaDist[i]).toBe(0);
+        expect(grid.aguaDirX[i]).toBe(0);
+        expect(grid.aguaDirY[i]).toBe(0);
+      } else {
+        expect(grid.aguaDist[i]).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('seguir el campo de agua lleva al agua en exactamente `aguaDist` pasos', () => {
+    const grid = mapa(1337);
+    const { indice, distancia } = celdaMasLejana(grid, TERRENO.TIERRA, grid.aguaDist);
+    let x = indice % grid.ancho;
+    let y = (indice / grid.ancho) | 0;
+    let pasos = 0;
+    while (grid.terreno[y * grid.ancho + x] !== TERRENO.AGUA) {
+      const i = y * grid.ancho + x;
+      x += grid.aguaDirX[i];
+      y += grid.aguaDirY[i];
+      pasos++;
+      if (pasos > grid.total) throw new Error('el campo de agua no converge');
+    }
+    expect(pasos).toBe(distancia);
+  });
+
+  it('seguir el campo de tierra lleva a la tierra en exactamente `tierraDist` pasos', () => {
+    const grid = mapa(1337);
+    const { indice, distancia } = celdaMasLejana(grid, TERRENO.AGUA, grid.tierraDist);
+    let x = indice % grid.ancho;
+    let y = (indice / grid.ancho) | 0;
+    let pasos = 0;
+    while (grid.terreno[y * grid.ancho + x] !== TERRENO.TIERRA) {
+      const i = y * grid.ancho + x;
+      x += grid.tierraDirX[i];
+      y += grid.tierraDirY[i];
+      pasos++;
+      if (pasos > grid.total) throw new Error('el campo de tierra no converge');
+    }
+    expect(pasos).toBe(distancia);
+  });
+
+  it('los campos son deterministas', () => {
+    const a = mapa(1337);
+    const b = mapa(1337);
+    expect(a.aguaDirX).toEqual(b.aguaDirX);
+    expect(a.tierraDirY).toEqual(b.tierraDirY);
+  });
+});
+
 describe('grilla', () => {
   it('las capas son typed arrays del tamaño del mundo', () => {
     const grid = new Grid(16, 8);
@@ -133,6 +201,10 @@ describe('grilla', () => {
     expect(grid.planta).toBeInstanceOf(Uint8Array);
     expect(grid.ocupante).toBeInstanceOf(Int32Array);
     expect(grid.altura).toBeInstanceOf(Float32Array);
+    expect(grid.aguaDist).toBeInstanceOf(Int32Array);
+    expect(grid.aguaDirX).toBeInstanceOf(Int8Array);
+    expect(grid.tierraDist).toBeInstanceOf(Int32Array);
+    expect(grid.tierraDirY).toBeInstanceOf(Int8Array);
     expect(grid.terreno.length).toBe(128);
   });
 

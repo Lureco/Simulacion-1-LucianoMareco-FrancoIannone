@@ -252,6 +252,54 @@ grandes y a más especies (F8) sin que el recolector se ahogue.
 
 ---
 
+## D14 · IA del herbívoro: necesidades, comer/beber y muerte (F4)
+
+**Contexto.** El hito F4 pide que el herbívoro *viva*: que tenga necesidades,
+decida por prioridad, coma, beba, se reproduzca y muera. Y que todo eso se vea
+en pantalla, sin romper el determinismo ni el presupuesto de `new` por tick.
+
+**Decisión (implementada):**
+
+1. **Necesidades normalizadas.** `src/systems/needs.js` actualiza por tick
+   `hambre`, `sed` y `deseoRepro` en `[0, 1]`. `energia` se mantiene en
+   `[0, energiaMaxima]` (100) y `edad` en **ticks** (no se normalizan: son
+   magnitudes con unidad propia, normalizarlas solo agregaría una división).
+2. **Decisión por prioridad** (T35), en `herbivore.js`, con `if` encadenados y
+   *fallthrough*:
+   `hambre crítica > sed crítica > reproducirse > explorar`. No hay puntajes:
+   el orden del código **es** la política.
+3. **Comer** (T37) no toca la capa de plantas directamente: el herbívoro llama
+   `comerPlanta(ctx, indice)` de `src/systems/plantGrowth.js`, que devuelve la
+   energía y baja el estado de la planta (o la borra). Así **P2 nunca escribe
+   `planta` ni `terreno`**: todo pasa por la API de vegetación.
+4. **Beber** (T38) usa una celda de agua adyacente: con `radioBeber` un poco
+   mayor que 1 el animal bebe **desde la orilla**, sin tener que meterse.
+5. **Navegación de largo alcance sin búsquedas grandes.** `terrain.js` calcula
+   **una vez** (el terreno no cambia) dos campos por BFS multi-fuente:
+   `aguaDist/aguaDirX/aguaDirY` (hacia el agua) y
+   `tierraDist/tierraDirX/tierraDirY` (hacia la tierra). Un herbívoro sediento
+   que no ve agua sigue el campo; uno varado en agua o arena vuelve a tierra
+   (donde está la comida) leyendo **2 bytes por tick**.
+6. **Altas y bajas diferidas.** Nacer y morir dentro del bucle de entidades
+   rompería el recorrido (y el determinismo): `src/systems/eventos.js` acumula
+   `ctx._nacimientos` (pares `tipo, indice`) y `ctx._muertos` (ids), y
+   `simulacion.js` los aplica **después** del bucle, en orden fijo.
+7. **Causas de muerte separadas y observables** (T45, adelantado de F5):
+   `causaDeMuerte` clasifica `hambre`, `sed` o `vejez`; `ctx.muertesPorCausa`
+   las cuenta y el HUD las muestra.
+
+**Por qué:** separar "percibir" (`perception.js`), "necesitar" (`needs.js`) y
+"decidir" (`herbivore.js`) deja la lógica testeable en unidades chicas, y el
+determinismo queda garantizado porque ninguna de esas rutas usa `Math.random()`
+ni `Date.now()`: todo sale del PRNG del `ctx`.
+
+**Nota de balance (queda para F7):** con la comida saturando el mapa
+(`probExpansion` llena casi toda la tierra), el crecimiento poblacional es
+exponencial hasta el tope `maxEntidades`; la única muerte frecuente es la vejez.
+La regulación por competencia es una tarea de balance posterior, no de F4.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

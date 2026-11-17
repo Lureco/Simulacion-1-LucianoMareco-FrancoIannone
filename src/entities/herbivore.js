@@ -1,21 +1,357 @@
 /**
- * src/entities/herbivore.js — Herbívoro (P2)
- * ===========================================
- * Come plantas, bebe agua y huye de los depredadores.
+ * src/entities/herbivore.js — Herbívoro (P2) (F4 · T34-T41)
+ * ==========================================================
+ * Come plantas, bebe agua, se reproduce y muere de hambre, sed o vejez.
  *
  * ⚠️ REFACTOR SoA (D13): esto ya **no es una entidad**, es una **especie**.
  * Hay UNA instancia de esta clase para todo el mundo; los datos de cada
- * herbívoro viven en `EntityManager`. Acá solo va el comportamiento.
+ * herbívoro viven en `EntityManager`. Acá va solo el comportamiento.
  *
- * En esta tanda (base de entidades) solo deambula: las necesidades, la
- * busca de comida y la reproducción llegan en F4.
+ * Decisión por prioridad (T35):
+ *
+ *   hambre crítica > sed crítica > reproducirse > explorar
+ *
+ * Cada tick: se actualizan las necesidades, se decide el estado y el rumbo, y
+ * se integra el movimiento. El gasto energético depende del terreno (T40).
+ *
+ * Las búsquedas (plantas, agua, pareja) viven en `systems/perception.js`; las
+ * necesidades y la muerte, en `systems/needs.js`; las altas/bajas diferidas,
+ * en `systems/eventos.js`.
  */
 
-import { Especie } from './entity.js';
+import { Especie, ESTADO_IA } from './entity.js';
 import { CONFIG } from '../config.js';
+import { mover } from '../systems/movement.js';
+import { comerPlanta } from '../systems/plantGrowth.js';
+import {
+  buscarComida,
+  buscarAgua,
+  direccionAlAgua,
+  direccionATierra,
+  objetivoDe,
+  vecinosDe,
+} from '../systems/perception.js';
+import {
+  actualizarNecesidades,
+  causaDeMuerte,
+  CAUSA_MUERTE,
+  quiereReproducir,
+  gastarEnergia,
+} from '../systems/needs.js';
+import { anotarMuerte, anotarNacimiento } from '../systems/eventos.js';
+import { TERRENO } from '../world/cell.js';
+
+/** Vecindad 8, en orden fijo, para buscar dónde nace la cría (T47). */
+const VECINOS_8 = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+];
 
 export class Herbivoro extends Especie {
   constructor() {
     super({ velocidad: CONFIG.herbivoro.velocidad });
+  }
+
+  /**
+   * Un tick de un herbívoro (T34-T41).
+   * @param {number} id
+   * @param {number} dt
+   * @param {object} ctx
+   */
+  actualizar(id, dt, ctx) {
+    const a = ctx.entidades;
+    a.edad[id] += 1;
+
+    actualizarNecesidades(id, dt, ctx);
+
+    // Muerte diferida: se anota la causa y se aplica al final del tick.
+    const causa = causaDeMuerte(id, ctx);
+    if (causa !== CAUSA_MUERTE.NINGUNA) {
+      this.registrarMuerte(ctx, causa);
+      anotarMuerte(ctx, id);
+      return;
+    }
+
+    this.pensar(id, dt, ctx);
+    mover(id, dt, ctx);
+    gastarEnergia(id, dt, ctx);
+  }
+
+  /**
+   * Suma una muerte al contador de su causa (T45).
+   * @param {object} ctx
+   * @param {number} causa Uno de `CAUSA_MUERTE`.
+   */
+  registrarMuerte(ctx, causa) {
+    const porCausa = ctx.muertesPorCausa;
+    if (causa === CAUSA_MUERTE.HAMBRE) porCausa.hambre++;
+    else if (causa === CAUSA_MUERTE.SED) porCausa.sed++;
+    else if (causa === CAUSA_MUERTE.VEJEZ) porCausa.vejez++;
+  }
+
+  /**
+   * Decide por prioridad (T35) y apunta el rumbo.
+   * @param {number} id
+   * @param {number} dt
+   * @param {object} ctx
+   */
+  pensar(id, dt, ctx) {
+    const a = ctx.entidades;
+    const cfg = ctx.config.herbivoro;
+    const x = a.x[id];
+    const y = a.y[id];
+
+    if (a.hambre[id] >= cfg.hambreCritica) {
+      a.estado[id] = ESTADO_IA.COMIENDO;
+      a.velocidad[id] = cfg.velocidad * cfg.bonusVelocidadComer;
+      if (this.buscarComidaYActuar(id, ctx, x, y)) return;
+    }
+
+    if (a.sed[id] >= cfg.sedCritica) {
+      a.estado[id] = ESTADO_IA.BEBIENDO;
+      a.velocidad[id] = cfg.velocidad;
+      if (this.buscarAguaYActuar(id, ctx, x, y)) return;
+    }
+
+    if (quiereReproducir(id, ctx)) {
+      a.estado[id] = ESTADO_IA.BUSCANDO_PAREJA;
+      a.velocidad[id] = cfg.velocidad;
+      if (this.buscarParejaYActuar(id, ctx, x, y)) return;
+    }
+
+    // Nada urgente (o nada a la vista): si quedó varado en agua o arena,
+    // primero vuelve a tierra (donde está la comida); si no, explora (T39).
+    a.estado[id] = ESTADO_IA.VAGO;
+    a.velocidad[id] = cfg.velocidad;
+    if (this.volverATierra(id, ctx, x, y)) return;
+    this.deambular(id, dt, ctx);
+  }
+
+  /**
+   * Si la celda actual no es tierra, apunta hacia la tierra más cercana
+   * (campo precalculado). Evita que un herbívoro quede atrapado en un lago o
+   * en la playa, donde no hay plantas y el terreno cuesta más energía.
+   * @returns {boolean} `true` si cambió el rumbo.
+   */
+  volverATierra(id, ctx, x, y) {
+    const grid = ctx.grid;
+    if (!grid) return false;
+
+    const cx = Math.floor(x);
+    const cy = Math.floor(y);
+    if (!grid.dentro(cx, cy)) return false;
+    if (grid.terrenoEn(cx, cy) === TERRENO.TIERRA) return false;
+
+    const rumbo = direccionATierra(ctx, x, y, objetivoDe(ctx));
+    if (!rumbo.encontrado) return false;
+
+    this.apuntar(id, rumbo.x - x, rumbo.y - y, ctx);
+    return true;
+  }
+
+  /**
+   * Va hacia la comida más cercana; si ya está encima, muerde (T37).
+   * @returns {boolean} `true` si encontró algo y actuó.
+   */
+  buscarComidaYActuar(id, ctx, x, y) {
+    const cfg = ctx.config.herbivoro;
+    const objetivo = buscarComida(ctx, x, y, cfg.radioVision, objetivoDe(ctx));
+    if (!objetivo.encontrado) return false;
+
+    const dx = objetivo.x - x;
+    const dy = objetivo.y - y;
+    if (dx * dx + dy * dy <= cfg.radioComer * cfg.radioComer) {
+      this.comer(id, ctx, objetivo.indice);
+      this.detener(id, ctx);
+      return true;
+    }
+
+    this.apuntar(id, dx, dy, ctx);
+    return true;
+  }
+
+  /**
+   * Muerde la planta de una celda y suma la energía (T37).
+   * @param {number} id
+   * @param {object} ctx
+   * @param {number} indice
+   */
+  comer(id, ctx, indice) {
+    const ganancia = comerPlanta(ctx, indice);
+    if (ganancia <= 0) return;
+
+    const a = ctx.entidades;
+    const maxima = ctx.config.entidades.energiaMaxima;
+    a.energia[id] = Math.min(maxima, a.energia[id] + ganancia);
+    a.hambre[id] = 0;
+  }
+
+  /**
+   * Va hacia el agua más cercana; si ya está al lado, bebe (T38). Si no ve
+   * agua en el radio de visión, sigue el campo de dirección hacia el agua.
+   * @returns {boolean} `true` si encontró agua y actuó.
+   */
+  buscarAguaYActuar(id, ctx, x, y) {
+    const cfg = ctx.config.herbivoro;
+    const objetivo = buscarAgua(ctx, x, y, cfg.radioVision, objetivoDe(ctx));
+
+    if (objetivo.encontrado) {
+      const dx = objetivo.x - x;
+      const dy = objetivo.y - y;
+      if (dx * dx + dy * dy <= cfg.radioBeber * cfg.radioBeber) {
+        ctx.entidades.sed[id] = 0;
+        this.detener(id, ctx);
+        return true;
+      }
+      this.apuntar(id, dx, dy, ctx);
+      return true;
+    }
+
+    // Sin agua a la vista: caminar hacia el agua con el campo precalculado.
+    const lejos = direccionAlAgua(ctx, x, y, objetivoDe(ctx));
+    if (lejos.encontrado) {
+      this.apuntar(id, lejos.x - x, lejos.y - y, ctx);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Busca una pareja dispuesta con el Spatial Hash (T36) y se reproduce (T46).
+   * @returns {boolean} `true` si encontró pareja (y actuó).
+   */
+  buscarParejaYActuar(id, ctx, x, y) {
+    if (!ctx.hash) return false;
+
+    const a = ctx.entidades;
+    const cfg = ctx.config.herbivoro;
+    const vecinos = ctx.hash.consultar(x, y, cfg.radioVision, vecinosDe(ctx), id);
+
+    let mejorId = -1;
+    let mejorD2 = Infinity;
+    for (let k = 0; k < vecinos.length; k++) {
+      const otro = vecinos[k];
+      if (a.tipo[otro] !== a.tipo[id]) continue;
+      if (!quiereReproducir(otro, ctx)) continue;
+      const dx = a.x[otro] - x;
+      const dy = a.y[otro] - y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < mejorD2) {
+        mejorD2 = d2;
+        mejorId = otro;
+      }
+    }
+
+    if (mejorId < 0) return false;
+
+    if (mejorD2 <= cfg.radioReproduccion * cfg.radioReproduccion) {
+      this.reproducir(id, mejorId, ctx);
+      this.detener(id, ctx);
+      return true;
+    }
+
+    this.apuntar(id, a.x[mejorId] - x, a.y[mejorId] - y, ctx);
+    return true;
+  }
+
+  /**
+   * Reproduce a dos herbívoros: cobra energía y cooldown, y anota la cría en
+   * una celda de tierra adyacente (T46/T47). La cría se crea al final del tick.
+   * @param {number} id
+   * @param {number} pareja
+   * @param {object} ctx
+   */
+  reproducir(id, pareja, ctx) {
+    const a = ctx.entidades;
+    const cfg = ctx.config.herbivoro;
+
+    a.cooldown[id] = cfg.cooldownReproduccion;
+    a.cooldown[pareja] = cfg.cooldownReproduccion;
+    a.deseoRepro[id] = 0;
+    a.deseoRepro[pareja] = 0;
+    a.energia[id] = Math.max(0, a.energia[id] - cfg.energiaPorCria);
+    a.energia[pareja] = Math.max(0, a.energia[pareja] - cfg.energiaPorCria);
+
+    const indice = this.celdaLibreAdyacente(ctx, a.celdaX(id), a.celdaY(id));
+    if (indice >= 0) anotarNacimiento(ctx, a.tipo[id], indice);
+  }
+
+  /**
+   * Primera celda de tierra en la vecindad 8 de la madre (T47).
+   * @returns {number} Índice plano, o -1 si no hay.
+   */
+  celdaLibreAdyacente(ctx, cx, cy) {
+    const grid = ctx.grid;
+    if (!grid) return -1;
+    for (let k = 0; k < VECINOS_8.length; k++) {
+      const nx = cx + VECINOS_8[k][0];
+      const ny = cy + VECINOS_8[k][1];
+      if (!grid.dentro(nx, ny)) continue;
+      if (grid.terrenoEn(nx, ny) !== TERRENO.TIERRA) continue;
+      return ny * grid.ancho + nx;
+    }
+    return -1;
+  }
+
+  /**
+   * Explorar (T39): rumbo al azar que cambia cada tanto, con un pequeño ruido
+   * por tick para que el camino no sea una recta perfecta.
+   * @param {number} id
+   * @param {number} _dt
+   * @param {object} ctx
+   */
+  deambular(id, _dt, ctx) {
+    const a = ctx.entidades;
+    const cfg = ctx.config.herbivoro;
+
+    a.ticksParaGiro[id] -= 1;
+    if (a.ticksParaGiro[id] <= 0) {
+      a.ticksParaGiro[id] = ctx.prng.intInclusive(40, 110);
+      const angulo = ctx.prng.angle();
+      a.dirX[id] = Math.cos(angulo);
+      a.dirY[id] = Math.sin(angulo);
+      return;
+    }
+
+    if (cfg.ruidoRumbo > 0) {
+      const angulo =
+        Math.atan2(a.dirY[id], a.dirX[id]) + ctx.prng.range(-cfg.ruidoRumbo, cfg.ruidoRumbo);
+      a.dirX[id] = Math.cos(angulo);
+      a.dirY[id] = Math.sin(angulo);
+    }
+  }
+
+  /**
+   * Apunta el rumbo normalizado hacia un desplazamiento.
+   * @param {number} id
+   * @param {number} dx
+   * @param {number} dy
+   * @param {object} ctx
+   */
+  apuntar(id, dx, dy, ctx) {
+    const a = ctx.entidades;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d > 1e-6) {
+      a.dirX[id] = dx / d;
+      a.dirY[id] = dy / d;
+    }
+  }
+
+  /**
+   * Frena la entidad (cuando está comiendo/bebiendo/reproduciéndose).
+   * @param {number} id
+   * @param {object} ctx
+   */
+  detener(id, ctx) {
+    const a = ctx.entidades;
+    a.dirX[id] = 0;
+    a.dirY[id] = 0;
   }
 }

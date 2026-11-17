@@ -77,9 +77,15 @@ export class EntityManager {
     /** @type {Float32Array} */ this.dirY = new Float32Array(0);
     /** @type {Float32Array} */ this.energia = new Float32Array(0);
     /** @type {Float32Array} */ this.velocidad = new Float32Array(0);
+    /** @type {Float32Array} Necesidad de comer, 0..1 (T34). */ this.hambre = new Float32Array(0);
+    /** @type {Float32Array} Necesidad de beber, 0..1 (T34). */ this.sed = new Float32Array(0);
+    /** @type {Float32Array} Deseo de reproducirse, 0..1 (T34). */ this.deseoRepro =
+      new Float32Array(0);
     /** @type {Int32Array} */ this.edad = new Int32Array(0);
     /** @type {Int32Array} */ this.tipo = new Int32Array(0);
     /** @type {Int32Array} */ this.ticksParaGiro = new Int32Array(0);
+    /** @type {Int32Array} Ticks que faltan para poder reproducirse de nuevo. */
+    this.cooldown = new Int32Array(0);
     /** @type {Uint8Array} */ this.estado = new Uint8Array(0);
     /** @type {Uint8Array} */ this.vivo = new Uint8Array(0);
 
@@ -99,9 +105,13 @@ export class EntityManager {
     this.dirY = crecerF32(this.dirY, capacidad);
     this.energia = crecerF32(this.energia, capacidad);
     this.velocidad = crecerF32(this.velocidad, capacidad);
+    this.hambre = crecerF32(this.hambre, capacidad);
+    this.sed = crecerF32(this.sed, capacidad);
+    this.deseoRepro = crecerF32(this.deseoRepro, capacidad);
     this.edad = crecerI32(this.edad, capacidad);
     this.tipo = crecerI32(this.tipo, capacidad);
     this.ticksParaGiro = crecerI32(this.ticksParaGiro, capacidad);
+    this.cooldown = crecerI32(this.cooldown, capacidad);
     this.estado = crecerU8(this.estado, capacidad);
     this.vivo = crecerU8(this.vivo, capacidad);
     this.capacidad = capacidad;
@@ -134,6 +144,10 @@ export class EntityManager {
     this.energia[id] = CONFIG.entidades.energiaInicial;
     this.edad[id] = 0;
     this.velocidad[id] = especie.velocidad;
+    this.hambre[id] = 0;
+    this.sed[id] = 0;
+    this.deseoRepro[id] = 0;
+    this.cooldown[id] = 0;
     this.estado[id] = ESTADO_IA.VAGO;
     this.ticksParaGiro[id] = 0;
     this.vivo[id] = 1;
