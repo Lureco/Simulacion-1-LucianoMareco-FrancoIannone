@@ -271,6 +271,8 @@ window.addEventListener(
         ctx.tick = 0;
         ctx.nacimientosTotales = 0;
         ctx.muertesTotales = 0;
+        for (const causa of Object.keys(ctx.muertesPorCausa)) ctx.muertesPorCausa[causa] = 0;
+        grafico.reiniciar();
         necesidadesRenderer.seleccionar(null);
         generarMundo();
         terrenoRenderer.generar(ctx.grid);

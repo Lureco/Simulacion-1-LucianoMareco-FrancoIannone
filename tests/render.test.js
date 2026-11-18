@@ -12,6 +12,7 @@ import { EntityManager } from '../src/entities/entityManager.js';
 import { PLANTA } from '../src/world/cell.js';
 import { clavesBase, faseCaminar, frameAnimal, framePlanta } from '../src/render/atlasDatos.js';
 import { EntityRenderer } from '../src/render/entityRenderer.js';
+import { NecesidadesRenderer } from '../src/render/necesidadesRenderer.js';
 import { PlantRenderer } from '../src/render/plantRenderer.js';
 import { COLOR_ESTADO } from '../src/render/paleta.js';
 
@@ -235,5 +236,33 @@ describe('T80 · EntityRenderer con ParticleContainer', () => {
     manager.y[id] = 2000;
     r.render(manager, cam, 0);
     expect(r.activas).toBe(0);
+  });
+});
+
+describe('T61 · barras de necesidades siguen a la cámara', () => {
+  it('recalcula la posición al panear y al hacer zoom aunque el animal esté quieto', () => {
+    // Renderer mínimo: solo se usa generateTexture() al construir la barra.
+    const app = { renderer: { generateTexture: () => Texture.EMPTY } };
+    const manager = new EntityManager();
+    const id = manager.crear(ESPECIE.HERBIVORO);
+    manager.x[id] = 4;
+    manager.y[id] = 4;
+    manager.energia[id] = CONFIG.entidades.energiaMaxima / 2;
+
+    const r = new NecesidadesRenderer(app, { tileSize: 8, manager });
+    r.seleccionar(id);
+    const barra = r.barras[0].relleno;
+
+    r.render(camara({ x: 84, y: 84, zoom: 1, ancho: 128, alto: 128 }));
+    const xInicial = barra.x;
+    expect(xInicial).toBeGreaterThan(0); // la barra está efectivamente dibujada
+
+    // Mismo animal, misma necesidad: solo cambia la cámara (pan de 600 px).
+    r.render(camara({ x: 684, y: 84, zoom: 1, ancho: 128, alto: 128 }));
+    expect(barra.x).toBeCloseTo(xInicial - 600, 5);
+
+    // Y ahora zoom: la posición de pantalla vuelve a cambiar.
+    r.render(camara({ x: 684, y: 84, zoom: 2, ancho: 128, alto: 128 }));
+    expect(barra.x).not.toBeCloseTo(xInicial - 600, 5);
   });
 });

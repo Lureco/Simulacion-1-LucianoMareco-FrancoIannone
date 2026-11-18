@@ -40,13 +40,14 @@ describe('mover', () => {
     expect(m.dirX[id]).toBeGreaterThan(0);
   });
 
-  it('rebota contra el borde derecho', () => {
+  it('rebota contra el borde derecho sin saltarse la última celda', () => {
     const { ctx, m, id } = contexto();
     m.velocidad[id] = 10;
-    m.x[id] = 30.5;
+    m.x[id] = 31.5; // centro de la última celda (ancho = 32)
     m.dirX[id] = 1;
     mover(id, 0.1, ctx);
-    expect(m.x[id]).toBeCloseTo(30.5, 6);
+    expect(m.x[id]).toBeCloseTo(31.5, 6);
+    expect(Math.floor(m.x[id])).toBe(31);
     expect(m.dirX[id]).toBeLessThan(0);
   });
 
@@ -59,9 +60,10 @@ describe('mover', () => {
 
     const b = contexto();
     b.m.velocidad[b.id] = 10;
-    b.m.y[b.id] = 30.5;
+    b.m.y[b.id] = 31.5;
     b.m.dirY[b.id] = 1;
     mover(b.id, 0.1, b.ctx);
+    expect(Math.floor(b.m.y[b.id])).toBe(31);
     expect(b.m.dirY[b.id]).toBeLessThan(0);
   });
 
@@ -71,9 +73,9 @@ describe('mover', () => {
     for (let i = 0; i < 2000; i++) {
       mover(id, 1 / 60, ctx);
       expect(m.x[id]).toBeGreaterThanOrEqual(0);
-      expect(m.x[id]).toBeLessThanOrEqual(31);
+      expect(m.x[id]).toBeLessThan(32);
       expect(m.y[id]).toBeGreaterThanOrEqual(0);
-      expect(m.y[id]).toBeLessThanOrEqual(31);
+      expect(m.y[id]).toBeLessThan(32);
     }
   });
 });

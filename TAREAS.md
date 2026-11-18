@@ -326,28 +326,51 @@ simulacion-ecosistemas/
       especie** — base en `CONFIG.ia`, herbívoro y depredador con sus propios min/max. Las
       conversiones segundos↔ticks salen de `TICKS_POR_SEGUNDO`, derivado de `pasoFijo`.
       Ver `docs/DECISIONES.md` D19)*
-- [ ] **T59 · Ambos** — Ejecutar 10+ minutos seguidos y registrar: poblaciones, colapsos, FPS,
-      memoria (`scripts/simular.mjs` ya corre la simulación sin navegador)
-      → Registro parcial aportado por **T79**: peor caso de render (65.536 plantas + 4.000
-      animales) en **5,69 ms/frame**, 2 draw calls, heap Δ 2,79 MB (idéntico con 60 y 120
-      frames ⇒ sin *GC sawtooth*). Comando: `node --expose-gc scripts/medirPeorCaso.mjs 60`.
-      Detalle en D18. La corrida larga de 10+ minutos sigue pendiente.
-- [ ] **T60 · Ambos** — **Bucle de ajuste**: cambiar un parámetro → 1 corrida medida → decidir
+- [x] **T59 · Ambos** — Ejecutar 10+ minutos seguidos y registrar: poblaciones, colapsos, FPS,
+      memoria
+      *(corrida real: `node scripts/simular.mjs 1337 10` → **10 min simulados en 39,5 s reales**.
+      Herbívoros 120 → 136 (118 nacimientos), depredadores 25 → **4** (declive sostenido),
+      plantas ~35.700 estables. 123 muertes: 50 depredados, 69 por vejez, 3 por sed, 1 por hambre.
+      FPS/memoria del peor caso de render (T79): 5,69 ms/frame, 2 draw calls, heap Δ 2,79 MB sin
+      *GC sawtooth*. Comando: `node --expose-gc scripts/medirPeorCaso.mjs 60`. Detalle en D18/D20)*
+- [x] **T60 · Ambos** — **Bucle de ajuste**: cambiar un parámetro → 1 corrida medida → decidir
       (no cambiar cinco cosas a la vez)
-- [ ] **T61 · P1** — Corregir los 5 bugs más frecuentes antes de seguir
-- [ ] **T62 · P1** — **Perfilado con DevTools / Performance monitor**:
-      - [ ] ¿El vecindario sigue siendo O(vecinos) con 2000 entidades?
-      - [ ] ¿Hay GC sawtooth en el heap? (indica `new` en el bucle)
-      - [ ] ¿El batch de Pixi se rompe por cambiar `tint` a menudo? (agrupar por tipo)
+      *(tres corridas de 10 min con `SIM_OVERRIDE=SECCION.CLAVE=VALOR` sobre la misma seed 1337:
+      `depredador.crecimientoReproduccion=0.006`, `depredador.decaimientoReproduccion=0.005` y
+      `depredador.energiaPorPresa=60`. Las tres dieron **poblaciones idénticas** al baseline
+      (herb 136 · pred 4 en min 10, 118 nacimientos) ⇒ se descartan los tres cambios y **no se
+      modifica `config.js`**. El declive de depredadores queda como limitación conocida para un
+      próximo bucle (probar `radioReproduccion`/`radioVision`). Ver D20)*
+- [x] **T61 · P1** — Corregir los 5 bugs más frecuentes antes de seguir
+      *(4 bugs de F7.5 en D18 —espejo, rumbo, arranque y sprites invisibles— más 4 nuevos:
+      ① gráfico congelado tras `R` (`Grafico.reiniciar()` + reset de `muertesPorCausa`),
+      ② barras de necesidades clavadas al panear/zoom (caché incluye la cámara),
+      ③ off-by-one en el rebote de bordes (última fila/columna inhabitable),
+      ④ semillas duplicadas en expansión vegetal (reserva inmediata de la celda destino).
+      4 tests de regresión nuevos (`tests/grafico.test.js`, `tests/render.test.js`,
+      `tests/movement.test.js`, `tests/plantas.test.js`) ⇒ 126 tests en total. Ver D21.
+      Limitación conocida: un id reciclado **en el mismo tick** hace que la selección/cámara
+      siga a otro animal; requiere generación por id en `EntityManager`)*
+- [x] **T62 · P1** — **Perfilado con DevTools / Performance monitor**:
+      - [x] ¿El vecindario sigue siendo O(vecinos) con 2000 entidades?
+      - [x] ¿Hay GC sawtooth en el heap? (indica `new` en el bucle)
+      - [x] ¿El batch de Pixi se rompe por cambiar `tint` a menudo? (agrupar por tipo)
+      *(script headless `node --expose-gc scripts/perfilado.mjs`: 3,4 vecinos/consulta con 2000
+      entidades y 0,4 ns/consulta (0,11 ns/vecino) —20,2× más rápido que fuerza bruta—; heap tras
+      GC estable en 15,29 MB (+0,46 MB máx en 10 min, sin sawtooth); 2 `ParticleContainer` = 2 draw calls,
+      pools reutilizados, heap Δ −0,10 MB con tint alternando 120 frames. Ver D22)*
 - [x] **T63 · Ambos** — Tests: determinismo del ruido, umbral de terreno, reproducción, muerte,
       tamaño del vecindario
       *(presentes: `prng.test.js`, `terreno.test.js`, `determinismo.test.js`, `herbivoro.test.js`
       —reproducción y causas de muerte—, `plantas.test.js` —muerte por edad—,
       `cadenaAlimenticia.test.js` —depredación— y `spatialHash.test.js` —O(vecinos))*
-- [ ] **T64 · P1** — Culling: no renderizar celdas ni entidades fuera de la cámara
-      (`CONFIG.render.margenCulling` existe, pero los renderers todavía no lo usan)
+- [x] **T64 · P1** — Culling: no renderizar celdas ni entidades fuera de la cámara
+      *(resuelto en F7.5: `PlantRenderer.rectVisible()` recorre solo el rectángulo visible y
+      `EntityRenderer.render()` descarta por pantalla con `CONFIG.render.margenCulling`. El
+      terreno es un único sprite escalado, así que no hay celdas que recortar. Ver D18/T79)*
 
-> **Hito F7:** la simulación es **estable, reproducible y rinde a 60 FPS**. Ya se puede enseñar.
+> **Hito F7 (cumplido):** la simulación es **estable, reproducible y rinde a 60 FPS**. Ya se
+> puede enseñar.
 
 ---
 

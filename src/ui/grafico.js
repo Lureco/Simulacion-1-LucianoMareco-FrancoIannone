@@ -23,7 +23,7 @@
  * `CONFIG.ui` (regla del proyecto: nada hardcodeado fuera de `config.js`).
  */
 
-import { CONFIG } from '../config.js';
+import { CONFIG, TICKS_POR_SEGUNDO } from '../config.js';
 
 /** Muestras que caben en el historial (1 por segundo → 5 minutos). */
 const MAX_MUESTRAS = CONFIG.ui.graficoMaxMuestras;
@@ -82,6 +82,19 @@ export class Grafico {
   }
 
   /**
+   * Descarta el historial y limpia el canvas. Hay que llamarlo al regenerar el
+   * mundo (tecla R): `ctx.tick` vuelve a 0 y las muestras del seed anterior
+   * dejan de registrar durante ~100 s si no se limpian.
+   */
+  reiniciar() {
+    this.muestras = [];
+    this.indiceMuestras = 0;
+    this.cantidadMuestras = 0;
+    this.ultimoTick = -1;
+    this.ctx.clearRect(0, 0, this.ancho, this.alto);
+  }
+
+  /**
    * Registra una muestra. Solo guarda **una por segundo**: entre medio se
    * descarta, porque el gráfico no llega a mostrar esa resolución.
    * @param {number} tick Tick de simulación.
@@ -89,7 +102,15 @@ export class Grafico {
    */
   registrar(tick, datos) {
     const ultimo = this.cantidadMuestras > 0 ? this.muestras[this.ultimoIndice()] : null;
-    if (ultimo !== null && tick - ultimo.tick < CONFIG.ui.graficoIntervaloTicks) return;
+    // Un tick menor al último significa nueva simulación: se acepta aunque el
+    // llamador no haya llamado a `reiniciar()` (defensa en profundidad).
+    if (
+      ultimo !== null &&
+      tick >= ultimo.tick &&
+      tick - ultimo.tick < CONFIG.ui.graficoIntervaloTicks
+    ) {
+      return;
+    }
 
     const muestra = {
       tick,
@@ -205,8 +226,8 @@ export class Grafico {
     const primero = this.muestras[(this.indiceMuestras - total + MAX_MUESTRAS) % MAX_MUESTRAS];
     const ultimo = this.muestras[this.ultimoIndice()];
     ctx.fillStyle = '#6b7280';
-    ctx.fillText(`${(primero.tick / 60).toFixed(0)}s`, areaX, alto - 12);
-    const textoFin = `${(ultimo.tick / 60).toFixed(0)}s`;
+    ctx.fillText(`${(primero.tick / TICKS_POR_SEGUNDO).toFixed(0)}s`, areaX, alto - 12);
+    const textoFin = `${(ultimo.tick / TICKS_POR_SEGUNDO).toFixed(0)}s`;
     ctx.fillText(textoFin, areaX + areaAncho - ctx.measureText(textoFin).width, alto - 12);
   }
 

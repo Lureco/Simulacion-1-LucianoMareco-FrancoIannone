@@ -89,3 +89,28 @@ describe('muerte de plantas por edad (T30)', () => {
     expect(ctx.grid.planta[i]).toBe(PLANTA.JOVEN);
   });
 });
+
+describe('expansión vegetal sin semillas duplicadas (T61)', () => {
+  it('dos adultas que apuntan a la misma vecina cuentan dos semillas reales', () => {
+    // PRNG stub: siempre intenta expandirse y siempre arranca por el vecino 0.
+    // En una grilla 3×3, las adultas de (0,1) y (2,1) apuntan primero a (1,1).
+    // Sin reserva inmediata, la segunda escribe la MISMA celda y el contador
+    // reporta 2 nacimientos aunque en el mapa solo aparezca 1 semilla.
+    const prng = { float: () => 0, int: () => 0 };
+    const config = {
+      ...CONFIG,
+      plantas: { ...CONFIG.plantas, probExpansion: 1, ticksVidaAdulta: 100 },
+    };
+    const ctx = crearContexto({ prng, mundo: { ancho: 3, alto: 3 }, config });
+    ctx.grid = new Grid(3, 3); // toda tierra por defecto
+    ctx.grid.planta[ctx.grid.indice(0, 1)] = PLANTA.ADULTA;
+    ctx.grid.planta[ctx.grid.indice(2, 1)] = PLANTA.ADULTA;
+
+    const antes = Array.from(ctx.grid.planta).filter((p) => p === PLANTA.SEMILLA).length;
+    const nacimientos = pasoVegetacion(ctx);
+    const despues = Array.from(ctx.grid.planta).filter((p) => p === PLANTA.SEMILLA).length;
+
+    expect(nacimientos).toBe(2);
+    expect(despues - antes).toBe(nacimientos);
+  });
+});

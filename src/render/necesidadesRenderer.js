@@ -169,11 +169,18 @@ export class NecesidadesRenderer {
     const x = this.manager.x[seleccion.id];
     const y = this.manager.y[seleccion.id];
 
-    // Solo redibuja si cambió algo (posición o valores). Los valores se
-    // normalizan **antes** de compararlos: la energía es absoluta (0..100)
-    // y sin normalizar no se vería el cambio.
+    // Solo redibuja si cambió algo (posición, valores **o cámara**). La
+    // posición dibujada es de pantalla: si el animal está quieto en pausa y se
+    // hace pan/zoom, hay que recolocar las barras igualmente.
     const valores = NECESIDADES.map((n) => this.valorNormalizado(seleccion, n.clave));
-    const clave = `${x.toFixed(3)},${y.toFixed(3)},${valores.map((v) => v.toFixed(2)).join(',')}`;
+    const clave = [
+      x.toFixed(3),
+      y.toFixed(3),
+      camara.x.toFixed(3),
+      camara.y.toFixed(3),
+      camara.zoom.toFixed(4),
+      ...valores.map((v) => v.toFixed(2)),
+    ].join(',');
     if (clave === this.ultimaClave) return;
     this.ultimaClave = clave;
 

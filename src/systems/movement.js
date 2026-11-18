@@ -22,6 +22,9 @@
 
 import { TERRENO } from '../world/cell.js';
 
+/** Guarda numérica para que `floor(x)` nunca devuelva `ancho`/`alto` al rebotar. */
+const MARGEN_BORDE = 1e-4;
+
 /**
  * Multiplicador de velocidad según el terreno de la celda destino.
  * @param {number} terreno Uno de `TERRENO`.
@@ -62,21 +65,28 @@ export function mover(id, dt, ctx) {
   a.x[id] += pasoX * factor;
   a.y[id] += pasoY * factor;
 
-  // Rebote contra los bordes. El dépassement siempre es menor a una celda
-  // (velocidad * dt << 1), así que la reflexión es exacta.
+  // Rebote contra los BORDES DEL MUNDO (0 y `ancho`/`alto`), no contra el
+  // borde izquierdo de la última celda (`ancho - 1`). Si se rebota en
+  // `ancho - 1`, una entidad sembrada en el centro de la última celda
+  // (`ancho - 0.5`) es reflejada en el primer `mover()` y la última franja
+  // del mapa queda inhabitable. El margen evita que `floor(x)` devuelva
+  // `ancho` si el rebote cae exactamente en el borde.
+  const limiteX = ancho - MARGEN_BORDE;
+  const limiteY = alto - MARGEN_BORDE;
+
   if (a.x[id] < 0) {
-    a.x[id] = -a.x[id];
+    a.x[id] = Math.min(-a.x[id], limiteX);
     a.dirX[id] = Math.abs(a.dirX[id]);
-  } else if (a.x[id] > ancho - 1) {
-    a.x[id] = 2 * (ancho - 1) - a.x[id];
+  } else if (a.x[id] > limiteX) {
+    a.x[id] = Math.min(2 * ancho - a.x[id], limiteX);
     a.dirX[id] = -Math.abs(a.dirX[id]);
   }
 
   if (a.y[id] < 0) {
-    a.y[id] = -a.y[id];
+    a.y[id] = Math.min(-a.y[id], limiteY);
     a.dirY[id] = Math.abs(a.dirY[id]);
-  } else if (a.y[id] > alto - 1) {
-    a.y[id] = 2 * (alto - 1) - a.y[id];
+  } else if (a.y[id] > limiteY) {
+    a.y[id] = Math.min(2 * alto - a.y[id], limiteY);
     a.dirY[id] = -Math.abs(a.dirY[id]);
   }
 }

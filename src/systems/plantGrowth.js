@@ -101,7 +101,7 @@ export function pasoVegetacion(ctx) {
   const terreno = grid.terreno;
   const planta = grid.planta;
   const edades = capaEdad(ctx);
-  const vecinos = cfg.radioExpansion >= 8 ? VECINOS_8 : VECINOS_4;
+  const vecinos = cfg.radioExpansion >= cfg.umbralVecindadDiagonal ? VECINOS_8 : VECINOS_4;
 
   if (ctx._bufferPlantas === undefined) {
     ctx._bufferPlantas = new Int32Array(total);
@@ -149,17 +149,14 @@ export function pasoVegetacion(ctx) {
       if (prng.float() < cfg.probExpansion) {
         const destino = buscarVecinaLibre(i, ancho, alto, terreno, planta, vecinos, prng);
         if (destino >= 0 && nacimientos < buffer.length) {
+          // Reserva INMEDIATA: sin esto dos adultas pueden elegir la misma
+          // vecina, `nacimientos` cuenta 2 y el mapa termina con 1 semilla.
+          planta[destino] = PLANTA.SEMILLA;
+          edades[destino] = 0;
           buffer[nacimientos++] = destino;
         }
       }
     }
-  }
-
-  // Aplica los nacimientos acumulados.
-  for (let k = 0; k < nacimientos; k++) {
-    const j = buffer[k];
-    planta[j] = PLANTA.SEMILLA;
-    edades[j] = 0;
   }
 
   return nacimientos;

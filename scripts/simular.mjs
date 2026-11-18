@@ -12,6 +12,23 @@ const seed = Number(process.argv[2] ?? CONFIG.mundo.seedPorDefecto);
 const minutos = Number(process.argv[3] ?? 10);
 const ticks = Math.round(minutos * 60 * TICKS_POR_SEGUNDO);
 
+/**
+ * T60: override de UN solo parámetro por corrida (`SECCION.CLAVE=VALOR`).
+ * Ejemplo: SIM_OVERRIDE=depredador.energiaPorPresa=45 node scripts/simular.mjs 1337 10
+ * Se aplica antes de generar el mundo, así que toda la corrida usa el mismo valor.
+ */
+const override = process.env.SIM_OVERRIDE;
+if (override) {
+  const [ruta, texto] = override.split('=');
+  const [seccion, clave] = ruta.split('.');
+  const valor = Number(texto);
+  if (!(seccion in CONFIG) || !(clave in CONFIG[seccion]) || Number.isNaN(valor)) {
+    throw new Error(`SIM_OVERRIDE inválido: ${override} (se usa SECCION.CLAVE=VALOR)`);
+  }
+  console.log(`override T60: ${ruta} ${CONFIG[seccion][clave]} → ${valor}`);
+  CONFIG[seccion][clave] = valor;
+}
+
 const prng = new PRNG(seed);
 const manager = new EntityManager();
 const ctx = crearContexto({

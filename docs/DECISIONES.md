@@ -214,8 +214,10 @@ batch de Pixi y cuesta lo mismo con 256 celdas que con 4096.
 alto = más claro) más un jitter mínimo determinista (derivado solo de `x, y`).
 Da relieve sin generar una sola textura extra.
 
-**Culling (T64):** pendiente. Con un solo sprite no aplica el culling por
-celda; si el mundo crece mucho se evaluará partir el mapa en *chunks*.
+**Culling (T64):** resuelto en F7.5. Con un solo sprite no aplica el culling por celda en el
+terreno; el culling real está en `PlantRenderer.rectVisible()` (solo el rectángulo visible de la
+grilla) y en `EntityRenderer.render()` (descarte por pantalla), ambos con
+`CONFIG.render.margenCulling`. No hizo falta partir el mapa en *chunks* (ver T79/D18).
 
 ---
 
@@ -554,8 +556,117 @@ numéricos (`0.0001`) y los códigos de tecla: no son parámetros de simulación
 config sin ningún beneficio de balance. `CONFIG.camara.limiteMundo` sigue sin cablear (T58 no
 cambia comportamiento).
 
-**Verificación:** `npm run lint`, `npm test` (122 tests), `npm run build` y Prettier sobre los 13
-archivos tocados pasan. Los valores originales ya no aparecen fuera de `config.js`.
+**Verificación:** `npm run lint`, `npm test` (122 tests en ese momento; 126 tras los tests de
+regresión de T61), `npm run build` y Prettier sobre los 13 archivos tocados pasan. Los valores
+originales ya no aparecen fuera de `config.js`.
+
+---
+
+## D20 · Bucle de ajuste de balance (T60)
+
+**Contexto.** La corrida larga de T59 mostró herbívoros estables (120 → 136) pero un declive
+sostenido de depredadores (25 → 4 en 10 min), con 50 presas depredadas. T60 pide cambiar **un**
+parámetro por corrida, medir y decidir, en vez de tocar cinco cosas a la vez.
+
+**Mecanismo.** `scripts/simular.mjs` acepta `SIM_OVERRIDE=SECCION.CLAVE=VALOR` y lo aplica a
+`CONFIG` antes de generar el mundo, así toda la corrida usa el mismo valor. La semilla (1337) y
+el resto de parámetros quedan fijos; el override se registra en la salida.
+
+| Corrida | Parámetro (baseline → override) | Población min 10 | Nacimientos | Decisión |
+|---|---|---|---|---|
+| 1 | `depredador.crecimientoReproduccion` 0.003 → 0.006 | herb 136 · pred 4 | 118 | Descartado |
+| 2 | `depredador.decaimientoReproduccion` 0.02 → 0.005 | herb 136 · pred 4 | 118 | Descartado |
+| 3 | `depredador.energiaPorPresa` 35 → 60 | herb 136 · pred 4 | 118 | Descartado |
+
+**Decisión.** No se adoptó ningún cambio: las tres corridas son **idénticas al baseline** hasta
+el último minuto (solo varía la energía media en la corrida 3, sin efecto en la población). El
+deseo reproductivo no parece ser el cuello: crece a 0.003/s y decae a 0.02/s, pero duplicar el
+crecimiento o cuadruplicar el tiempo de decaimiento no cambia ningún nacimiento. Tampoco ayuda
+dar más energía por presa.
+
+**Queda para el próximo bucle.** No se probaron `radioReproduccion` ni `radioVision`: cada uno
+debe ser su propia corrida (regla de un parámetro por experimento). El declive de depredadores
+queda documentado como **limitación conocida de v1**, no como bug: la simulación sigue siendo
+reproducible y los herbívoros no colapsan.
+
+**Verificación:** logs `t60-run1.log`, `t60-run2.log` y `t60-run3.log` en
+`C:\Users\Admin\AppData\Local\Temp\opencode\`.
+
+---
+
+## D21 · Corrección de bugs frecuentes (T61)
+
+**Contexto.** T61 pedía los 5 bugs más frecuentes antes de seguir. Ya había 4 corregidos y
+documentados en D18 (espejo del sprite, rumbo frenético, arranque lento y sprites invisibles por
+buffer estático). Se relevó el código con un agente de exploración y se corrigieron **4 más**,
+priorizando fallos observables y con prueba determinista:
+
+1. **Gráfico congelado tras `R`.** El handler reiniciaba `ctx.tick` a 0 pero no el historial del
+   gráfico: `registrar(1, …)` se descartaba porque `1 − 5941 < 60` y el canvas seguía con las
+   curvas viejas hasta que la nueva simulación alcanzaba el tick anterior (~100 s). Arreglo:
+   `Grafico.reiniciar()` (limpia muestras, índice y canvas) llamado desde el handler de `R`, más
+   una defensa en `registrar()` para aceptar ticks menores al último. El mismo handler reinicia
+   ahora también `ctx.muertesPorCausa` (otro contador que quedaba del seed anterior).
+2. **Barras de necesidades clavadas al panear.** La clave de caché de `NecesidadesRenderer`
+   incluía posición de mundo y valores, pero no la cámara; con la simulación en pausa y el animal
+   quieto, `render()` hacía *early return* y las barras quedaban en el píxel viejo, separadas del
+   sprite. Arreglo: la clave incluye `camara.x/y/zoom`.
+3. **Off-by-one en el rebote de bordes.** `movement.js` reflejaba en `ancho − 1` / `alto − 1`
+   (borde izquierdo de la última celda), pero el centro de la última celda es `ancho − 0.5`:
+   cualquier entidad sembrada ahí era reflejada en el primer `mover()` y la franja exterior del
+   mapa quedaba inhabitable. Arreglo: rebote en `0`/`ancho` con un margen de `1e-4` para que
+   `Math.floor()` no devuelva `ancho`. Tests de borde actualizados.
+4. **Semillas duplicadas en expansión vegetal.** El buffer de nacimientos se aplicaba al final
+   del tick sin reservar la celda: dos adultas podían elegir la misma vecina, `nacimientos`
+   contaba 2 y el mapa terminaba con 1 semilla. Arreglo: reserva inmediata
+   (`planta[destino] = SEMILLA`) al elegir la vecina, para que la siguiente adulta la vea ocupada.
+
+**Tests de regresión.** `tests/grafico.test.js` (reinicio + tick menor), `tests/render.test.js`
+(caché con cámara), `tests/movement.test.js` (última celda) y `tests/plantas.test.js` (dos
+adultas → dos semillas). Total: **126 tests**.
+
+**Limitación conocida (no corregida).** `EntityManager.crear()` recicla ids con `libres.pop()` y
+`aplicarMuertes()` corre antes que `aplicarNacimientos()` en el mismo tick. Si el animal
+seleccionado (o seguido con `F`) muere y en ese tick nace otro, el id se reasigna, `vivo[id]`
+vuelve a ser 1 y la selección/cámara saltan silenciosamente a un animal distinto. El arreglo
+correcto es una generación por id (o un `version` en el manager) comparada al seleccionar. Se
+descarta parchear solo `NecesidadesRenderer` porque `Camera.seguir()` tiene el mismo problema.
+
+**Por qué estos cuatro.** Son fallos visibles (gráfico, barras, selección) o que invalidan
+mediciones (conteo de semillas y franja inhabitable), y ninguno estaba cubierto por tests.
+
+---
+
+## D22 · Perfilado de performance (T62)
+
+**Contexto.** T62 pedía tres respuestas medidas, no impresiones: complejidad del vecindario con
+2000 entidades, GC sawtooth y rotura del batch por `tint`. Se agregó `scripts/perfilado.mjs`
+(`node --expose-gc scripts/perfilado.mjs`), headless y repetible.
+
+| Pregunta | Medición | Respuesta |
+|---|---|---|
+| ¿O(vecinos)? | 500/1000/2000 entidades con densidad constante → 3,4 vecinos/consulta; a 2000: **0,4 ns/consulta** (0,11 ns/vecino) frente a 7,3 ns con barrido O(n) (**20,2×**) | Sí: el `SpatialHash` escala con vecinos, no con población |
+| ¿GC sawtooth? | Heap tras GC: 14,83 → 15,20/15,27/15,28/15,29 MB en min 2/4/6/8/10; subida máx **+0,46 MB**, meseta desde el min 4 | No: los arrays/buffers se crean una vez y se reutilizan |
+| ¿Rompe el batch el `tint`? | 120 frames alternando modo depuración, 4096 plantas / 652 animales: 2 `ParticleContainer`, pools reutilizados, heap Δ **−0,10 MB** tras GC | No: el tint es `dynamicProperties.color`, no crea texturas ni objetos |
+
+**Nota sobre la medición 1.** Los tiempos absolutos con 500 entidades son ruidosos en Node (JIT
+calentándose); la comparación válida es la misma consulta contra fuerza bruta con la misma
+densidad. En las tres escalas el hash gana y la ventaja crece con `n` (5,6× → 7,1× → 20,2×).
+
+**Nota sobre la medición 3.** `PlantRenderer` no tiene `setDepuracion()`: el tint dinámico es el
+de los animales (estado de IA). El script alterna solo ese; las plantas mantienen UV/color
+estáticos y se remarcan en `reconstruir()`. La verificación de "pools reutilizados" comprueba que
+cada partícula del container pertenece al pool pre-reservado, no que sea la índice 0 (por el
+culling, la primera visible no suele ser la primera del pool).
+
+**Descartado:** perfiles interactivos del DevTools (no son repetibles ni versionables) y medir FPS
+en un navegador headless como prueba de rendimiento (T79 ya cubre el peor caso de render con
+5,69 ms/frame y 2 draw calls).
+
+**Verificación:** `npm run lint`, `npm test` (126) y `npm run build` pasan; Prettier sobre los
+archivos tocados pasa. El `npm run format:check` global avisa sobre `index.html` y
+`tests/cadenaAlimenticia.test.js`: son dos archivos preexistentes, ajenos a F7, que no se
+modificaron (sus finales de línea y líneas largas vienen del commit base).
 
 ---
 
