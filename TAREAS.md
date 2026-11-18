@@ -6,6 +6,11 @@
 **Doc base:** `Gdd-Tdd.txt`
 **Stack:** JavaScript + PixiJS
 
+> **Estado verificado en código (2026-11-18):** los checkboxes se actualizaron contra lo que
+> realmente hay en `main`, no solo contra el plan. F0–F5 completas (v1); F6 casi completa (T51
+> resuelta con posiciones `float`); F7 y F8 pendientes. Humedad y pisadas de herbívoros quedaron
+> descartadas por decisión (D16).
+
 ---
 
 ## 1. Alcance (según GDD)
@@ -200,16 +205,24 @@ simulacion-ecosistemas/
 
 ### F3 · Plantas y autómata celular
 
-- [ ] **T27 · P1** — Estados de planta: `SEMILLA → JOVEN → ADULTA → MUERTA`, guardados en el
-      `Uint8Array` de la grilla
-- [ ] **T28 · P1** — Crecimiento por tick, condicionado al tipo de terreno y humedad
-- [ ] **T29 · P1** — **Expansión (autómata celular)**: reglas locales de vecindad para extenderse
-- [ ] **T30 · P1** — Muerte de plantas: edad, falta de agua, pisadas de herbívoros
-- [ ] **T31 · P1** — Semillado inicial de vegetación sobre el terreno generado
-- [ ] **T32 · P2** — Render de plantas con tamaño/color según estado (que el crecimiento se vea)
-- [ ] **T33 · P2** — Botón de pausa y velocidad de simulación (`1× / 2× / 4×`)
+- [x] **T27 · P1** — Estados de planta: `SEMILLA → JOVEN → ADULTA → MUERTA`, guardados en el
+      `Uint8Array` de la grilla (`world/cell.js`, `world/grid.js`)
+- [x] **T28 · P1** — Crecimiento por tick, condicionado al tipo de terreno
+      *(la humedad quedó **descartada por decisión**, D16: no es una capa de la grilla y no se va a
+      usar; el crecimiento depende solo del terreno y de la edad del estado)*
+- [x] **T29 · P1** — **Expansión (autómata celular)**: reglas locales de vecindad para extenderse
+      (vecindad 4/8 con buffer de nacimientos en `systems/plantGrowth.js`)
+- [x] **T30 · P1** — Muerte de plantas: **por edad**
+      *(una adulta vive `ticksVidaAdulta` ticks desde que llega a adulta — 7200 por defecto,
+      2 minutos simulados — y pasa a `MUERTA`; la capa de edad pasó a `Int32Array`. Ya mueren
+      fuera de tierra y al ser comidas vía `comerPlanta`. Sin humedad ni pisadas: D16)*
+- [x] **T31 · P1** — Semillado inicial de vegetación sobre el terreno generado (`sembrarVegetacion`)
+- [x] **T32 · P2** — Render de plantas con tamaño/color según estado (que el crecimiento se vea)
+      (`render/plantRenderer.js`)
+- [x] **T33 · P2** — Botón de pausa y velocidad de simulación (`1× / 2× / 4×`) (`ui/controles.js`)
 
-> **Hito F3:** la vegetación **crece y coloniza** el mapa sola, visiblemente.
+> **Hito F3:** la vegetación **crece y coloniza** el mapa sola, visiblemente, y las plantas
+> adultas mueren por edad.
 
 ---
 
@@ -257,6 +270,12 @@ simulacion-ecosistemas/
 - [x] **T48 · P2** — Semilla inicial de herbívoros y depredadores en zonas habitables
       (`sembrar` + `poblar`: celdas de tierra al azar con el PRNG)
 - [ ] **T49 · P1** — Restricción de terreno en el movimiento (no cruzar agua profunda sin costo)
+      ⚠️ **Parcial (verificado 2026-11-18):** en `main` el agua **cuesta 4× energía**
+      (`needs.js` → `costeAgua`) y la IA **evita meterse** en ella (`terrain.js` genera los campos
+      BFS `aguaDist/aguaDir*`; `perception.js` → `direccionAjustadaAlAgua` mantiene
+      `distanciaOrilla` y permite beber desde la orilla con `radioBeber = 1.5`). Pero
+      **`movement.js` no consulta la grilla**: se perdió el `factorVelocidad` (agua ÷ 4) que sí
+      estaba en la rama `master`. Falta decidir si el agua profunda solo frena o si bloquea.
 - [x] **T50 · Ambos** — Test de integración: la **cadena alimenticia completa** funciona
       (planta → herbívoro → depredador) y se nota en pantalla
       (`tests/cadenaAlimenticia.test.js` + `scripts/simular.mjs`, que ya cuenta las muertes
@@ -268,20 +287,26 @@ simulacion-ecosistemas/
 
 ### F6 · Movimiento suave, interfaz y visualización
 
-- [ ] **T51 · P1** — **Movimiento interpolado**: la entidad no salta de celda, transiciona
-      (lerp de la posición visual hacia el destino)
+- [x] **T51 · P1** — **Movimiento interpolado**: la entidad no salta de celda, transiciona
+      *(resuelto de otra forma: la posición es un `float` en celdas (`Float32Array`, ver D7) que se
+      integra con timestep fijo de 1/60 s (D8), y el renderer dibuja esa posición exacta. No hay
+      saltos de celda que interpolar, así que no se usa `lerp` — quedó como util sin uso)*
 - [ ] **T52 · P1** — Velocidad por especie y orientación del sprite según el rumbo
+      *(hecha la velocidad: 1.2 herbívoro / 1.7 depredador en `config.js`; falta orientar el sprite,
+      hoy es un círculo sin rotación)*
 - [x] **T53 · P1** — Cámara si el mundo es mayor que la ventana, con seguimiento de una entidad
       *(adelantada por P2 en `src/render/camera.js`: pan, zoom, seguimiento y límites.
       La API se acuerda en la reunión de sincronización — ver `docs/DECISIONES.md` D3)*
-- [ ] **T54 · P2** — **HUD**: plantas / herbívoros / depredadores / total / tiempo / seed
-      *(hecho a medias: herbívoros, carnívoros, total, tiempo, seed y FPS. Falta el contador
-      de plantas, que depende de F3)*
-- [ ] **T55 · P2** — **Gráfico de evolución de poblaciones** en el tiempo (canvas 2D aparte o
-      `Graphics` redibujado una vez por segundo, **nunca** por frame)
-- [ ] **T56 · P2** — Leyenda de colores + vista de depuración de necesidades
-      (barras de hambre/sed sobre una entidad seleccionada)
+- [x] **T54 · P2** — **HUD**: plantas / herbívoros / depredadores / total / tiempo / seed
+      *(completo: plantas, herbívoros, carnívoros, total, nacidos, muertos, tiempo, seed, FPS,
+      velocidad y estado — `ui/hud.js`)*
+- [x] **T55 · P2** — **Gráfico de evolución de poblaciones** en el tiempo (canvas 2D aparte o
+      `Graphics` redibujado una vez por segundo, **nunca** por frame) (`ui/grafico.js`)
+- [x] **T56 · P2** — Leyenda de colores + vista de depuración de necesidades
+      (barras de hambre/sed sobre una entidad seleccionada) (`ui/leyenda.js`,
+      `render/necesidadesRenderer.js`, tecla `D` y clic sobre un bicho)
 - [ ] **T57 · Ambos** — Paleta y contraste: las entidades deben distinguirse del terreno
+      *(paleta centralizada en `render/paleta.js`; falta la revisión visual)*
 
 > **Hito F6:** la simulación se **observa** con claridad, no solo se ejecuta.
 
@@ -290,8 +315,9 @@ simulacion-ecosistemas/
 ### F7 · Balance, performance y estabilización
 
 - [ ] **T58 · Ambos** — Mover todos los números mágicos a `config.js`
+      *(casi todo ya está; quedan constantes sueltas en la IA, p. ej. los 40–110 ticks entre giros)*
 - [ ] **T59 · Ambos** — Ejecutar 10+ minutos seguidos y registrar: poblaciones, colapsos, FPS,
-      memoria
+      memoria (`scripts/simular.mjs` ya corre la simulación sin navegador)
 - [ ] **T60 · Ambos** — **Bucle de ajuste**: cambiar un parámetro → 1 corrida medida → decidir
       (no cambiar cinco cosas a la vez)
 - [ ] **T61 · P1** — Corregir los 5 bugs más frecuentes antes de seguir
@@ -299,9 +325,13 @@ simulacion-ecosistemas/
       - [ ] ¿El vecindario sigue siendo O(vecinos) con 2000 entidades?
       - [ ] ¿Hay GC sawtooth en el heap? (indica `new` en el bucle)
       - [ ] ¿El batch de Pixi se rompe por cambiar `tint` a menudo? (agrupar por tipo)
-- [ ] **T63 · Ambos** — Tests: determinismo del ruido, umbral de terreno, reproducción, muerte,
+- [x] **T63 · Ambos** — Tests: determinismo del ruido, umbral de terreno, reproducción, muerte,
       tamaño del vecindario
+      *(presentes: `prng.test.js`, `terreno.test.js`, `determinismo.test.js`, `herbivoro.test.js`
+      —reproducción y causas de muerte—, `plantas.test.js` —muerte por edad—,
+      `cadenaAlimenticia.test.js` —depredación— y `spatialHash.test.js` —O(vecinos))*
 - [ ] **T64 · P1** — Culling: no renderizar celdas ni entidades fuera de la cámara
+      (`CONFIG.render.margenCulling` existe, pero los renderers todavía no lo usan)
 
 > **Hito F7:** la simulación es **estable, reproducible y rinde a 60 FPS**. Ya se puede enseñar.
 
@@ -314,9 +344,11 @@ simulacion-ecosistemas/
 - [ ] **T67 · P2** — **Mutaciones y herencia**: variación en velocidad, tamaño, percepción,
       consumo, tiempo de reproducción
 - [ ] **T68 · P1** — Mostrar y copiar la seed para poder reproducir un escenario interesante
+      *(mostrar ya está en el HUD y con tecla `S`; falta copiar al portapapeles)*
 - [ ] **T69 · P1** — Build de producción (`npm run build`) y verificar que funciona servido,
-      no solo en dev
+      no solo en dev *(hay `dist/` generado; falta probar `npm run preview`)*
 - [ ] **T70 · Ambos** — `README.md`: qué es, cómo correr, controles, decisiones técnicas, capturas
+      *(todo menos las capturas)*
 - [ ] **T71 · Ambos** — Informe/GDD final actualizado con lo realmente implementado
 - [ ] **T72 · Ambos** — Grabar demo en video mostrando: expansión vegetal, crecimiento de
       poblaciones, un colapso y una recuperación
@@ -379,8 +411,9 @@ Una tarea está terminada cuando:
 - [ ] `npm install && npm run dev` funciona en una máquina limpia
 - [ ] `npm run build` genera un `dist/` funcional
 - [ ] Misma seed ⇒ mismo resultado (demostrado en pantalla)
-- [ ] Los tres niveles tróficos son visibles y observables
-- [ ] HUD + gráfico de poblaciones funcionando
+      *(los tests `determinismo.test.js` y `terreno.test.js` ya lo verifican; falta mostrarlo en la demo)*
+- [x] Los tres niveles tróficos son visibles y observables
+- [x] HUD + gráfico de poblaciones funcionando
 - [ ] 60 FPS con una población grande (medido, no supuesto)
 - [ ] `README.md` completo con instrucciones y capturas
 - [ ] Video demo de la simulación corriendo

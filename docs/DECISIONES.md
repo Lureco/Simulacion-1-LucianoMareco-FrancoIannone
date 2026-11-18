@@ -349,6 +349,35 @@ depredación; y en pantalla se ven los estados `persiguiendo` / `huyendo`.
 
 ---
 
+## D16 · Alcance de las plantas: sin humedad, sin pisadas, muerte por edad (F3)
+
+**Contexto.** T28 pedía crecimiento condicionado por "tipo de terreno y humedad" y T30 pedía
+muerte por "edad, falta de agua y pisadas de herbívoros". Al revisar el código con la
+simulación andando (2026-11-18), la grilla no tiene capa de humedad y el único contacto
+herbívoro → planta es `comerPlanta()`.
+
+**Decisión (alcance cerrado):**
+
+1. **Sin humedad.** El crecimiento sigue dependiendo solo del tipo de celda (`TIERRA`) y del
+   contador de ticks del estado. No se agrega una capa de humedad; la clave
+   `offsetSemillaHumedad` de `config.terreno` hoy no se usa y se puede sacar en una limpieza.
+2. **Sin pisadas.** La interacción herbívoro → planta es **comer**: `comerPlanta()` baja el
+   estado o borra la planta y devuelve energía. Pisar no produce un comportamiento observable
+   ni encaja con las reglas del autómata, así que se descarta.
+3. **Muerte por edad (implementada, T30).** `pasoVegetacion()` cuenta los ticks de la adulta en
+   la capa de edad; al llegar a `CONFIG.plantas.ticksVidaAdulta` (7200 ticks = 2 min por defecto)
+   pasa a `MUERTA` y al tick siguiente a `NADA`. La cuenta arranca al llegar a adulta, no desde
+   la semilla. No consume azar nuevo (determinismo) ni crea objetos en el bucle.
+4. **Ancho de la capa de edad (corregido).** Era un `Uint8Array` (tope 255 ticks): suficiente
+   para los 20/60 ticks por estado, pero no para una vida de minutos, donde el contador
+   desbordaba a 0 (verificado: un `Uint8Array` vuelve a 0 tras 256 incrementos). Ahora es
+   `Int32Array` y `tests/plantas.test.js` cubre el caso de más de 255 ticks.
+
+**Por qué:** cerrar el alcance de F3 evita agregar sistemas que no se van a usar y deja una sola
+tarea concreta para terminar v1, con la corrección del contador incluida.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

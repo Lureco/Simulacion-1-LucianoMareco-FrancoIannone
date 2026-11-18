@@ -15,6 +15,9 @@
  * - Una `JOVEN` crece a `ADULTA` tras `ticksJovenAAdulta` ticks.
  * - Una `ADULTA` intenta **expandirse** a una celda de tierra vecina vacía
  *   con probabilidad `probExpansion` por tick (nace una SEMILLA).
+ * - Una `ADULTA` que cumple `ticksVidaAdulta` ticks **muere por edad** (T30):
+ *   pasa a `MUERTA` y al tick siguiente la celda queda como `NADA`. La cuenta
+ *   arranca en 0 al llegar a adulta, no desde que nació la semilla.
  * - Fuera de tierra, la planta no se sostiene: pasa a `MUERTA` y al tick
  *   siguiente la celda queda como `NADA`.
  *
@@ -41,14 +44,17 @@ const VECINOS_8 = [...VECINOS_4, [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
 /**
  * Devuelve (y crea la primera vez) la capa de edad de las plantas.
- * Es un `Uint8Array` paralelo a la grilla: cuántos ticks lleva la celda en
+ * Es un `Int32Array` paralelo a la grilla: cuántos ticks lleva la celda en
  * su estado actual. Se reinicia a 0 en cada cambio de estado.
+ *
+ * No es `Uint8Array`: con vidas de varios minutos el contador de un byte
+ * desbordaría a 0 en 256 ticks y la planta nunca envejecería.
  * @param {object} ctx
- * @returns {Uint8Array}
+ * @returns {Int32Array}
  */
 function capaEdad(ctx) {
   if (ctx._edadPlantas === undefined || ctx._edadPlantas.length !== ctx.grid.total) {
-    ctx._edadPlantas = new Uint8Array(ctx.grid.total);
+    ctx._edadPlantas = new Int32Array(ctx.grid.total);
   }
   return ctx._edadPlantas;
 }
@@ -132,6 +138,13 @@ export function pasoVegetacion(ctx) {
         edades[i] = 0;
       }
     } else {
+      // ADULTA: envejece desde que llegó a adulta (T30).
+      if (++edades[i] >= cfg.ticksVidaAdulta) {
+        planta[i] = PLANTA.MUERTA;
+        edades[i] = 0;
+        continue;
+      }
+
       // ADULTA: intenta colonizar una vecina.
       if (prng.float() < cfg.probExpansion) {
         const destino = buscarVecinaLibre(i, ancho, alto, terreno, planta, vecinos, prng);

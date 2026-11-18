@@ -94,6 +94,8 @@ export const CONFIG = {
     /** Ticks de simulación entre estados de crecimiento. */
     ticksSemillaAJoven: 20,
     ticksJovenAAdulta: 60,
+    /** Ticks que vive una planta ADULTA antes de morir por edad (T30). Se empieza a contar al llegar a adulta. */
+    ticksVidaAdulta: 500, // 2 minutos de simulación
     /** Probabilidad por tick de que una planta adulta se reproduzca en una celda vacía vecina. */
     probExpansion: 0.08,
     /** Vecindad usada por el autómata: 4 (ortogonal) u 8 (incluye diagonales). */
