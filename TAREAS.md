@@ -368,9 +368,21 @@ simulacion-ecosistemas/
       *(resuelto en F7.5: `PlantRenderer.rectVisible()` recorre solo el rectángulo visible y
       `EntityRenderer.render()` descarta por pantalla con `CONFIG.render.margenCulling`. El
       terreno es un único sprite escalado, así que no hay celdas que recortar. Ver D18/T79)*
+- [x] **T83 · Ambos** — **Medir cuántas entidades caben en pantalla sin bajar de 60 FPS**, por
+      tipo (plantas, herbívoros, depredadores) y todo junto
+      *(script headless `node scripts/medirCapacidadPantalla.mjs 60 3`: escalera de cantidades en
+      zoom 1 y zoom 0,2, mediana de 3 repeticiones de 60 frames, presupuesto 16,67 ms/frame.
+      **Vista normal (zoom 1 — 14.651 celdas visibles):** plantas 14.651 → 0,70 ms; herbívoros
+      4.000 → 0,59 ms; depredadores 4.000 → 0,61 ms; **todo junto 14.651 + 4.000 = 18.651 en
+      pantalla → 1,27 ms**. **Zoom mínimo (0,2 — mundo completo):** plantas 65.536 → 3,62 ms;
+      herbívoros 4.000 → 0,91 ms; depredadores 4.000 → 0,86 ms; **todo junto 65.536 + 4.000 =
+      69.536 en pantalla → 4,16 ms**. Todos los escenarios pasan: el peor caso usa el 25 % del
+      presupuesto. El techo lo fijan `grid.total` (65.536) y `CONFIG.entidades.maxEntidades`
+      (4.000), **no los FPS**. Ver D23)*
 
 > **Hito F7 (cumplido):** la simulación es **estable, reproducible y rinde a 60 FPS**. Ya se
-> puede enseñar.
+> puede enseñar. El techo medido (T83) es de 69.536 entidades simultáneas en pantalla en el peor
+> caso de zoom, con 4,16 ms/frame frente a los 16,67 ms disponibles.
 
 ---
 

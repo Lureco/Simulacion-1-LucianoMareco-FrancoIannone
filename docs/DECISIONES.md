@@ -670,6 +670,53 @@ modificaron (sus finales de línea y líneas largas vienen del commit base).
 
 ---
 
+## D23 · Capacidad de entidades en pantalla a 60 FPS (T83)
+
+**Contexto.** Pedido extra sobre F7: medir cuántas entidades pueden estar en pantalla sin bajar
+de 60 FPS, probando cada tipo por separado y todo junto. Se agregó
+`scripts/medirCapacidadPantalla.mjs` (`node scripts/medirCapacidadPantalla.mjs 60 3`), headless y
+repetible, con el mismo enfoque que T79/T62.
+
+**Método.** Para cada escenario se prepara una grilla con N plantas adultas y N animales
+**dentro del rectángulo visible** (sin margen de culling, con un paso primo para repartirlos),
+se calientan 15 frames y se cronometran 60 frames × 3 repeticiones, reportando la mediana. Se
+fuerza la reconstrucción de UV en cada frame con un tick **global monotónico** (`tick*10` contra
+`cadaTicks = 10`): al reutilizar el renderer entre escenarios, reiniciar el tick habría hecho que
+`PlantRenderer.reconstruir()` saltara el trabajo por su caché y diera cifras 2× más baratas. El
+presupuesto es 1000/60 = **16,67 ms/frame**.
+
+| Escenario | Vista normal (zoom 1, 14.651 celdas) | Zoom mínimo (0,2, mundo completo) |
+|---|---|---|
+| Solo plantas (tope) | 14.651 → **0,70 ms** | 65.536 → **3,62 ms** |
+| Solo herbívoros (4.000) | **0,59 ms** | **0,91 ms** |
+| Solo depredadores (4.000) | **0,61 ms** | **0,86 ms** |
+| Todo junto | 14.651 + 4.000 = **18.651 → 1,27 ms** | 65.536 + 4.000 = **69.536 → 4,16 ms** |
+
+**Conclusión.** Todos los escenarios entran en presupuesto. El peor caso (todo el mundo visible
+con todas las plantas y los 4.000 animales) consume **4,16 ms, el 25 % de los 16,67 ms**;
+equivaldría a ~240 FPS si el render CPU fuera lo único que cuenta. **El límite lo ponen los
+topes configurados** —`grid.total` (65.536 celdas) y `CONFIG.entidades.maxEntidades` (4.000)—,
+no el framerate. Entre herbívoros y depredadores no hay diferencia apreciable: el renderer hace
+el mismo trabajo por partícula y solo cambia el frame del cycle de caminar (D18).
+
+**Por qué median y no una sola corrida.** T79 reportó 5,69 ms para el mismo escenario límite;
+acá da 4,16 ms. La variación está dentro del ruido del JIT y de la carga de la máquina, y se
+reduce tomando la mediana de tres repeticiones. En ambos casos sobra más del 65 % del
+presupuesto, así que la conclusión no cambia.
+
+**Descartado:** subir `CONFIG.entidades.maxEntidades` o agrandar la grilla para "buscar" el techo
+real de FPS. Los topes actuales son decisiones de diseño de D2/D18 (memoria y capacidad
+reservada al arrancar); el objetivo de T83 era verificar que se alcanzan sin caer de FPS, no
+redefinir el tamaño del mundo.
+
+**Alcance de la medición.** Igual que T79/T62, esto mide el trabajo de **render en CPU**
+(reconstrucción de UV, proyección y actualización de atributos del `ParticleContainer`). El lado
+GPU son 2 draw calls fijos (D18) y 4 vértices por partícula, así que no introduce un costo
+variable oculto. La simulación se mide por separado en T59 (10 min en 39,5 s) y T62 (hash
+O(vecinos), heap sin sawtooth); un FPS de navegador real requiere el `npm run dev` del usuario.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |
