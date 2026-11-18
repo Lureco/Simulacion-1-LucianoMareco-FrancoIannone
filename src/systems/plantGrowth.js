@@ -60,19 +60,51 @@ function capaEdad(ctx) {
 }
 
 /**
- * Semilla la vegetación inicial sobre las celdas de tierra (T31).
+ * Siembra la vegetación inicial sobre las celdas de tierra (T31).
+ *
+ * Con `cantidad` siembra **exactamente** ese número de semillas en celdas de
+ * tierra elegidas al azar (F8/T84: el menú de generación permite fijarlo). Sin
+ * el parámetro mantiene el comportamiento original: una probabilidad
+ * `densidadSemilla` por celda. En los dos casos todo el azar sale de `ctx.prng`,
+ * así que la misma seed da el mismo mapa.
+ *
  * @param {object} ctx Contexto con `{ prng, grid, config }`.
+ * @param {number} [cantidad] Semillas exactas deseadas (se limita a las celdas de tierra).
  */
-export function sembrarVegetacion(ctx) {
+export function sembrarVegetacion(ctx, cantidad) {
   const { grid, prng } = ctx;
   if (!grid) return;
 
-  const { densidadSemilla } = ctx.config.plantas;
-  for (let i = 0; i < grid.total; i++) {
-    grid.planta[i] = PLANTA.NADA;
-    if (grid.terreno[i] !== TERRENO.TIERRA) continue;
-    if (prng.float() < densidadSemilla) {
-      grid.planta[i] = PLANTA.SEMILLA;
+  grid.planta.fill(PLANTA.NADA);
+
+  if (cantidad === undefined || cantidad === null) {
+    const { densidadSemilla } = ctx.config.plantas;
+    for (let i = 0; i < grid.total; i++) {
+      if (grid.terreno[i] !== TERRENO.TIERRA) continue;
+      if (prng.float() < densidadSemilla) grid.planta[i] = PLANTA.SEMILLA;
+    }
+  } else {
+    // Array de celdas de tierra, cacheado y rellenado en cada generación.
+    // Se reutiliza en vez de crear uno nuevo por mapa (misma regla que el
+    // resto del sistema: sin `new` en el bucle caliente).
+    if (ctx._tierras === undefined || ctx._tierras.length !== grid.total) {
+      ctx._tierras = new Int32Array(grid.total);
+    }
+    const tierras = ctx._tierras;
+    let n = 0;
+    for (let i = 0; i < grid.total; i++) {
+      if (grid.terreno[i] === TERRENO.TIERRA) tierras[n++] = i;
+    }
+
+    const aSembrar = Math.min(Math.max(0, Math.floor(cantidad)), n);
+    // Fisher-Yates parcial: solo se barajan las primeras `aSembrar` posiciones.
+    // Cada celda elegida se siembra una sola vez (sin duplicados).
+    for (let k = 0; k < aSembrar; k++) {
+      const j = k + prng.int(0, n - k);
+      const temporal = tierras[k];
+      tierras[k] = tierras[j];
+      tierras[j] = temporal;
+      grid.planta[tierras[k]] = PLANTA.SEMILLA;
     }
   }
 

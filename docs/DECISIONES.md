@@ -717,6 +717,47 @@ O(vecinos), heap sin sawtooth); un FPS de navegador real requiere el `npm run de
 
 ---
 
+## D24 · Panel de generación de mapas (F8 · T84)
+
+**Contexto.** Pedido extra: poder generar mapas poniendo una seed y las poblaciones iniciales, en
+un panel con tres posiciones (oculto, parte de abajo y pantalla completa) y dos campos separados
+para herbívoros y depredadores. Se agregó `src/ui/generadorMapa.js`.
+
+**Decisión.**
+
+1. **Tres posiciones, un botón que cicla.** `oculto → abajo → pantalla → oculto`. La cabecera del
+   panel tiene además acceso directo a las tres, para no tener que recorrer el ciclo. El botón
+   flotante queda debajo de la barra de pausa (arriba a la derecha) para no tapar HUD, gráfico ni
+   leyenda. En `abajo` el panel es un cajón del 38 % de la altura y se sigue viendo la
+   simulación; en `pantalla` cubre toda la ventana.
+2. **El panel no sabe generar.** Valida rangos y llama a `alGenerar({ seed, plantas, herbivoros,
+   depredadores })`. `main.js` tiene una sola función `regenerarMundo()` que reinicia PRNG, tick,
+   contadores, gráfico y selección, regenera terreno, vegetación y poblaciones. Antes la tecla R
+   tenía ese código duplicado; ahora R usa la misma función con una seed nueva y **conserva las
+   cantidades elegidas**, así no se pierde la configuración al explorar seeds.
+3. **Plantas por cantidad exacta.** `sembrarVegetacion(ctx, cantidad)` elige ese número de celdas
+   de tierra con un Fisher-Yates parcial sobre un array cacheado en `ctx`, sin repetir celdas.
+   Sin el parámetro sigue funcionando por `densidadSemilla`: los scripts (`simular.mjs`,
+   `perfilado.mjs`) y los tests viejos no cambian. `CONFIG.plantas.poblacionInicial = 2247` es el
+   valor medido que producía la densidad original con la seed por defecto, así el mapa inicial
+   mantiene la misma cantidad de plantas.
+4. **Seed flexible.** Número decimal entero → `>>> 0` (32 bits sin signo). Cualquier otra cadena →
+   `hashString(texto)`, que ya existía para este fin. Vacía → seed por defecto. Resultado: frases
+   como `isla feliz` son reproducibles.
+5. **Atajos de teclado con guardia.** El `keydown` global ignora eventos cuyo `target` sea
+   `input`/`textarea`/`select` o editable. Sin esto, escribir una `r` en la seed regeneraría el
+   mundo y un espacio pausaría la simulación. Enter dentro de un campo dispara la generación.
+
+**Descartado:** un `<select>` con presets (no permite seeds arbitrarias) y un panel siempre
+visible (tapa el canvas). También se descartó agregar los pixeles del cajón a `CONFIG`: D19 ya
+acordó que el maquetado CSS de la UI no es un parámetro de balance.
+
+**Verificación:** `npm run lint`, `npm test` (138) y `npm run build` pasan; Prettier sobre los
+archivos tocados pasa. 8 tests del panel (posiciones, validación, seeds y callback) y 4 de
+siembra exacta (cantidad, tope de tierra, determinismo y compatibilidad por densidad).
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

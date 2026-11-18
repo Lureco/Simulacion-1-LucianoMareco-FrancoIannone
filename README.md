@@ -52,6 +52,12 @@ Otros comandos:
 | **R** | Regenerar el mundo y la población con una seed nueva |
 | **S** | Mostrar la seed actual en consola |
 | **T** | Mostrar el conteo de terreno (agua/arena/tierra) en consola |
+| **⚙ Mapa** | Abrir el panel para generar un mapa con seed, plantas y NPCs iniciales (tres posiciones: oculto, abajo, pantalla completa) |
+
+Tras abrir el panel, cargá los valores y apretá **Generar mapa** (o **Enter** en un campo).
+La seed acepta un número o cualquier texto; las cantidades de NPCs se limitan a
+`CONFIG.entidades.maxEntidades` en total. **R** genera una seed nueva manteniendo las
+cantidades elegidas en el panel.
 
 ---
 

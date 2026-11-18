@@ -15,8 +15,8 @@ import { CONFIG } from '../src/config.js';
 import { PRNG } from '../src/core/prng.js';
 import { crearContexto } from '../src/core/contexto.js';
 import { Grid } from '../src/world/grid.js';
-import { PLANTA } from '../src/world/cell.js';
-import { pasoVegetacion } from '../src/systems/plantGrowth.js';
+import { PLANTA, TERRENO } from '../src/world/cell.js';
+import { pasoVegetacion, sembrarVegetacion, contarPlantas } from '../src/systems/plantGrowth.js';
 
 /**
  * @param {object} [configPlantas] Parámetros a overridear de `CONFIG.plantas`.
@@ -112,5 +112,41 @@ describe('expansión vegetal sin semillas duplicadas (T61)', () => {
 
     expect(nacimientos).toBe(2);
     expect(despues - antes).toBe(nacimientos);
+  });
+});
+
+describe('siembra con cantidad exacta (F8 · T84)', () => {
+  it('siembra exactamente la cantidad pedida en celdas de tierra', () => {
+    const ctx = contextoConPlantas(); // 8×8, toda tierra
+    sembrarVegetacion(ctx, 10);
+
+    expect(contarPlantas(ctx)).toBe(10);
+    expect(Array.from(ctx.grid.planta).filter((p) => p === PLANTA.SEMILLA)).toHaveLength(10);
+  });
+
+  it('respeta el tope de celdas habitables y nunca repite celda', () => {
+    const ctx = contextoConPlantas();
+    ctx.grid.terreno[0] = TERRENO.AGUA;
+
+    sembrarVegetacion(ctx, 1000);
+
+    expect(contarPlantas(ctx)).toBe(63);
+    expect(ctx.grid.planta[0]).toBe(PLANTA.NADA);
+  });
+
+  it('la misma seed y cantidad dan exactamente el mismo mapa', () => {
+    const a = contextoConPlantas();
+    const b = contextoConPlantas();
+    sembrarVegetacion(a, 17);
+    sembrarVegetacion(b, 17);
+
+    expect(Array.from(a.grid.planta)).toEqual(Array.from(b.grid.planta));
+  });
+
+  it('sin cantidad se mantiene el comportamiento por densidad', () => {
+    const ctx = contextoConPlantas({ densidadSemilla: 1 });
+    sembrarVegetacion(ctx);
+
+    expect(contarPlantas(ctx)).toBe(64);
   });
 });

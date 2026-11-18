@@ -180,6 +180,12 @@ export const CONFIG = {
     umbralVecindadDiagonal: 8,
     /** Densidad inicial de semilla al generar el mundo (0..1 sobre celdas de tierra). */
     densidadSemilla: 0.06,
+    /**
+     * Semillas exactas al generar un mapa desde el menú o con R (T84). Corresponde
+     * al resultado de `densidadSemilla` sobre la isla de la seed por defecto,
+     * medido en 2247 celdas, para que el mapa inicial no cambie de aspecto.
+     */
+    poblacionInicial: 2247,
     /** Energía que aporta una planta adulta al ser comida. */
     energiaPorPlanta: 15,
     /** Fracción de `energiaPorPlanta` que aporta una planta joven (T37). */
@@ -431,4 +437,14 @@ export const ESTADO = {
   escalaSimulacion: CONFIG.tiempo.escalaSimulacion,
   /** Modo depuración (T56): el color de las entidades es su estado de IA. */
   depuracion: false,
+  /**
+   * Población inicial elegida para (re)generar el mapa (T84). La actualiza el
+   * menú y la usa también la tecla R, para cambiar solo la seed y conservar
+   * las cantidades elegidas.
+   */
+  inicial: {
+    plantas: CONFIG.plantas.poblacionInicial,
+    herbivoros: CONFIG.herbivoro.poblacionInicial,
+    depredadores: CONFIG.depredador.poblacionInicial,
+  },
 };

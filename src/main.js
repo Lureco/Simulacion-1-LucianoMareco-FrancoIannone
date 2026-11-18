@@ -35,6 +35,7 @@ import { Hud } from './ui/hud.js';
 import { Controles } from './ui/controles.js';
 import { Leyenda } from './ui/leyenda.js';
 import { Grafico } from './ui/grafico.js';
+import { GeneradorMapa } from './ui/generadorMapa.js';
 
 const app = new Application();
 
@@ -92,10 +93,36 @@ function generarMundo() {
 
 /** Siembra la población inicial en celdas habitables del terreno. */
 function poblar() {
-  sembrar(ctx, CONFIG.herbivoro.poblacionInicial, ESPECIE.HERBIVORO);
-  sembrar(ctx, CONFIG.depredador.poblacionInicial, ESPECIE.PREDADOR);
+  sembrar(ctx, ESTADO.inicial.herbivoros, ESPECIE.HERBIVORO);
+  sembrar(ctx, ESTADO.inicial.depredadores, ESPECIE.PREDADOR);
   // Edades repartidas: si no, toda la primera generación muere a la vez.
   repartirEdadesIniciales(ctx);
+}
+
+/**
+ * Regenera el mundo completo con los parámetros elegidos (T84). Es el único
+ * camino de (re)generación: lo usan el menú y la tecla R. Compartir la función
+ * evita que una ruta reinicie el gráfico y la otra no (regresión T61).
+ * @param {{seed: number, plantas: number, herbivoros: number, depredadores: number}} parametros
+ */
+function regenerarMundo({ seed, plantas, herbivoros, depredadores }) {
+  ESTADO.seed = seed >>> 0;
+  ESTADO.inicial = { plantas, herbivoros, depredadores };
+
+  manager.limpiar();
+  ctx.prng = new PRNG(ESTADO.seed);
+  ctx.tick = 0;
+  ctx.nacimientosTotales = 0;
+  ctx.muertesTotales = 0;
+  for (const causa of Object.keys(ctx.muertesPorCausa)) ctx.muertesPorCausa[causa] = 0;
+  grafico.reiniciar();
+  necesidadesRenderer.seleccionar(null);
+
+  generarMundo();
+  terrenoRenderer.generar(ctx.grid);
+  sembrarVegetacion(ctx, plantas);
+  plantRenderer.invalidar();
+  poblar();
 }
 
 // ── Mundo y render ────────────────────────────────────────────────
@@ -111,7 +138,7 @@ app.stage.addChild(terrenoRenderer.contenedor);
 
 generarMundo();
 terrenoRenderer.generar(ctx.grid);
-sembrarVegetacion(ctx);
+sembrarVegetacion(ctx, ESTADO.inicial.plantas);
 poblar();
 
 const renderer = new EntityRenderer(app, { atlas, tileSize: tile });
@@ -155,6 +182,17 @@ const grafico = new Grafico(contenedor);
 
 // T56: leyenda de colores y modo depuración.
 const leyenda = new Leyenda(contenedor);
+
+// F8/T84: panel para generar mapas con seed y poblaciones iniciales elegidas.
+const generadorMapa = new GeneradorMapa(contenedor, {
+  alGenerar: regenerarMundo,
+  seed: ESTADO.seed,
+  plantas: ESTADO.inicial.plantas,
+  herbivoros: ESTADO.inicial.herbivoros,
+  depredadores: ESTADO.inicial.depredadores,
+  maxPlantas: ctx.grid.total,
+  maxNpcs: CONFIG.entidades.maxEntidades,
+});
 
 // ── Selección de entidad (T56) ───────────────────────────────────
 // Un clic sobre un animal muestra sus necesidades. Se distingue del
@@ -225,6 +263,19 @@ const opcionesTeclado = { signal: controlTeclado.signal };
 window.addEventListener(
   'keydown',
   (e) => {
+    // F8/T84: mientras se escribe en el panel, las teclas son texto, no
+    // atajos (si no, una "r" en la seed regeneraría el mundo y un espacio
+    // pausaría la simulación).
+    const etiqueta = e.target?.tagName?.toLowerCase();
+    if (
+      etiqueta === 'input' ||
+      etiqueta === 'textarea' ||
+      etiqueta === 'select' ||
+      e.target?.isContentEditable
+    ) {
+      return;
+    }
+
     switch (e.key.toLowerCase()) {
       case 'd':
         // T56: cambia el color de las entidades de "por especie" a
@@ -263,22 +314,13 @@ window.addEventListener(
         camara.y = (CONFIG.mundo.alto * tile) / 2;
         break;
       case 'r': {
-        // Regenerar con una seed nueva: es una simulación nueva, el tiempo vuelve a 0.
-        ESTADO.seed = ctx.prng.int(1, 2 ** 31);
-        console.log(`[main] nueva seed: ${ESTADO.seed}`);
-        manager.limpiar();
-        ctx.prng = new PRNG(ESTADO.seed);
-        ctx.tick = 0;
-        ctx.nacimientosTotales = 0;
-        ctx.muertesTotales = 0;
-        for (const causa of Object.keys(ctx.muertesPorCausa)) ctx.muertesPorCausa[causa] = 0;
-        grafico.reiniciar();
-        necesidadesRenderer.seleccionar(null);
-        generarMundo();
-        terrenoRenderer.generar(ctx.grid);
-        sembrarVegetacion(ctx);
-        plantRenderer.invalidar();
-        poblar();
+        // Nueva seed con las mismas cantidades iniciales elegidas en el menú.
+        const seed = ctx.prng.int(1, 2 ** 31);
+        regenerarMundo({ seed, ...ESTADO.inicial });
+        console.log(
+          `[main] nueva seed: ${ESTADO.seed} · plantas ${ESTADO.inicial.plantas} · ` +
+            `herbívoros ${ESTADO.inicial.herbivoros} · depredadores ${ESTADO.inicial.depredadores}`,
+        );
         break;
       }
       case 's':
@@ -404,7 +446,7 @@ console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
 console.log(
   '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · ' +
     'espacio = pausa · 1/2/4 = velocidad · D = depuración · clic = ver necesidades · ' +
-    'R = nueva seed · S = ver seed · T = terreno',
+    'R = nueva seed · S = ver seed · T = terreno · ⚙ Mapa = generar con seed/poblaciones',
 );
 
 // Pixi crea el buffer de GPU en el PRIMER render con el tamaño de
@@ -415,4 +457,4 @@ renderer.reservarBufferGPU(app);
 
 requestAnimationFrame(bucle);
 
-export { app, manager, ctx, camara };
+export { app, manager, ctx, camara, generadorMapa };

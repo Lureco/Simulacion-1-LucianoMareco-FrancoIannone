@@ -484,6 +484,13 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
       poblaciones, un colapso y una recuperación
 - [ ] **T73 · Ambos** — Code review cruzado final: cada uno lee y comenta el código del otro
 - [ ] **T74 · Ambos** — Entrega con commits limpios y sin `console.log` de debug
+- [x] **T84 · Ambos** — **Menú para generar mapas** con seed, plantas y NPCs iniciales elegidos
+      *(pedido extra: panel con tres posiciones —oculto, cajón abajo y pantalla completa— y campos
+      para seed, plantas, herbívoros y depredadores. `src/ui/generadorMapa.js` valida los rangos,
+      acepta seeds numéricas o texto —hasheadas con `hashString`— y llama a un único
+      `regenerarMundo()` en `main.js`, que también usa la tecla R. La vegetación se siembra con
+      cantidad exacta vía `sembrarVegetacion(ctx, cantidad)`, sin cambiar el modo por densidad
+      que usan los scripts. 8 tests nuevos del panel + 4 de siembra exacta ⇒ 138 tests. Ver D24)*
 
 > Opcionales si sobra tiempo: ciclo día/noche, clima, biomas, más especies.
 
