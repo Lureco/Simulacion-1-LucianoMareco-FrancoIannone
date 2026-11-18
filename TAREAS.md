@@ -7,13 +7,12 @@
 **Stack:** JavaScript + PixiJS
 
 > **Estado verificado en código (2026-11-18):** los checkboxes se actualizaron contra lo que
-> realmente hay en `main`, no solo contra el plan. F0–F5 completas (v1); F6 casi completa (T51
-> resuelta con posiciones `float`); F7 y F8 pendientes. Humedad y pisadas de herbívoros quedaron
-> descartadas por decisión (D16).
+> realmente hay en `main`, no solo contra el plan. F0–F6 completas (v1); F7 y F8 pendientes.
+> Humedad y pisadas de herbívoros quedaron descartadas por decisión (D16).
 >
 > **Agregado 2026-11-18:** fase **F7.5** (sprites de plantas y animales con atlas e
-> instancing). Son tareas **nuevas y pendientes**: no cambian la simulación, solo la
-> representación visual, y se dimensionan para el peor caso de población (ver T79).
+> instancing), **completada** (T75–T82): no cambia la simulación, solo la representación visual,
+> y se dimensionó para el peor caso de población (ver T79).
 
 ---
 
@@ -297,9 +296,10 @@ simulacion-ecosistemas/
       *(resuelto de otra forma: la posición es un `float` en celdas (`Float32Array`, ver D7) que se
       integra con timestep fijo de 1/60 s (D8), y el renderer dibuja esa posición exacta. No hay
       saltos de celda que interpolar, así que no se usa `lerp` — quedó como util sin uso)*
-- [ ] **T52 · P1** — Velocidad por especie y orientación del sprite según el rumbo
-      *(hecha la velocidad: 1.2 herbívoro / 1.7 depredador en `config.js`; falta orientar el sprite,
-      hoy es un círculo sin rotación)*
+- [x] **T52 · P1** — Velocidad por especie y orientación del sprite según el rumbo
+      *(completa: velocidad 1.2 herbívoro / 1.7 depredador en `config.js` y orientación resuelta en
+      T78 con sprites laterales, `scaleX` según `dirX` y `rotation = 0`; se acepta no distinguir la
+      dirección vertical — ver `docs/DECISIONES.md` D18)*
 - [x] **T53 · P1** — Cámara si el mundo es mayor que la ventana, con seguimiento de una entidad
       *(adelantada por P2 en `src/render/camera.js`: pan, zoom, seguimiento y límites.
       La API se acuerda en la reunión de sincronización — ver `docs/DECISIONES.md` D3)*
@@ -311,17 +311,21 @@ simulacion-ecosistemas/
 - [x] **T56 · P2** — Leyenda de colores + vista de depuración de necesidades
       (barras de hambre/sed sobre una entidad seleccionada) (`ui/leyenda.js`,
       `render/necesidadesRenderer.js`, tecla `D` y clic sobre un bicho)
-- [ ] **T57 · Ambos** — Paleta y contraste: las entidades deben distinguirse del terreno
-      *(paleta centralizada en `render/paleta.js`; falta la revisión visual)*
+- [x] **T57 · Ambos** — Paleta y contraste: las entidades deben distinguirse del terreno
+      *(paleta centralizada en `render/paleta.js` y revisión visual cerrada por el usuario con los
+      sprites definitivos de F7.5)*
 
-> **Hito F6:** la simulación se **observa** con claridad, no solo se ejecuta.
+> **Hito F6 (cumplido):** la simulación se **observa** con claridad, no solo se ejecuta.
 
 ---
 
 ### F7 · Balance, performance y estabilización
 
-- [ ] **T58 · Ambos** — Mover todos los números mágicos a `config.js`
-      *(casi todo ya está; quedan constantes sueltas en la IA, p. ej. los 40–110 ticks entre giros)*
+- [x] **T58 · Ambos** — Mover todos los números mágicos a `config.js`
+      *(alcance completo A+B+C: IA, simulación/mundo y cámara/UI/bucle. Ticks de giro **por
+      especie** — base en `CONFIG.ia`, herbívoro y depredador con sus propios min/max. Las
+      conversiones segundos↔ticks salen de `TICKS_POR_SEGUNDO`, derivado de `pasoFijo`.
+      Ver `docs/DECISIONES.md` D19)*
 - [ ] **T59 · Ambos** — Ejecutar 10+ minutos seguidos y registrar: poblaciones, colapsos, FPS,
       memoria (`scripts/simular.mjs` ya corre la simulación sin navegador)
       → Registro parcial aportado por **T79**: peor caso de render (65.536 plantas + 4.000

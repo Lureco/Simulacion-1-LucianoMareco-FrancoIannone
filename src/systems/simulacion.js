@@ -52,7 +52,9 @@ export function repartirEdadesIniciales(ctx) {
   const a = ctx.entidades;
   const max = ctx.config.entidades.edadMaximaTicks;
   for (let i = 0; i < a.vivos.length; i++) {
-    a.edad[a.vivos[i]] = Math.floor(ctx.prng.float() * max * 0.5);
+    a.edad[a.vivos[i]] = Math.floor(
+      ctx.prng.float() * max * ctx.config.entidades.fraccionEdadInicial,
+    );
   }
 }
 

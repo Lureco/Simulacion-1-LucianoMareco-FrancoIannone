@@ -15,6 +15,7 @@
  */
 
 import { clamp } from '../core/utils.js';
+import { CONFIG, TICKS_POR_SEGUNDO } from '../config.js';
 
 export class Camera {
   /**
@@ -34,8 +35,8 @@ export class Camera {
     this.y = mundoAltoPx / 2;
     /** Factor de zoom. */
     this.zoom = 1;
-    this.zoomMin = 0.2;
-    this.zoomMax = 4;
+    this.zoomMin = CONFIG.camara.zoomMin;
+    this.zoomMax = CONFIG.camara.zoomMax;
 
     /** Id de la entidad que se está siguiendo, si hay. @type {number|null} */
     this.objetivo = null;
@@ -121,9 +122,9 @@ export class Camera {
    * @param {number|null} id
    * @param {number} tileSize
    * @param {number} dt
-   * @param {number} [suavizado=0.12]
+   * @param {number} [suavizado=CONFIG.camara.suavizado]
    */
-  seguir(almacen, id, tileSize, dt, suavizado = 0.12) {
+  seguir(almacen, id, tileSize, dt, suavizado = CONFIG.camara.suavizado) {
     if (id === null || id === undefined || !almacen.vivo[id]) {
       this.soltar();
       return;
@@ -131,7 +132,7 @@ export class Camera {
     this.objetivo = id;
     const objetivoX = almacen.x[id] * tileSize;
     const objetivoY = almacen.y[id] * tileSize;
-    const k = 1 - Math.pow(1 - suavizado, dt * 60);
+    const k = 1 - Math.pow(1 - suavizado, dt * TICKS_POR_SEGUNDO);
     this.x += (objetivoX - this.x) * k;
     this.y += (objetivoY - this.y) * k;
     this.limitar();
@@ -198,7 +199,7 @@ export class Camera {
     const alGirar = (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
-      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const factor = e.deltaY < 0 ? CONFIG.camara.factorZoom : 1 / CONFIG.camara.factorZoom;
       this.zoomEn(factor, e.clientX - rect.left, e.clientY - rect.top);
       this.soltar();
     };

@@ -23,7 +23,7 @@
  */
 
 import { Especie, ESPECIE, ESTADO_IA } from './entity.js';
-import { CONFIG } from '../config.js';
+import { CONFIG, TICKS_POR_SEGUNDO } from '../config.js';
 import { mover } from '../systems/movement.js';
 import {
   buscarPresa,
@@ -142,7 +142,12 @@ export class Depredador extends Especie {
 
     // ¿Sigue viva la presa que perseguía? (y no la mató otro depredador antes)
     const actual = a.presa[id];
-    if (actual >= 0 && a.vivo[actual] === 1 && a.moribundo[actual] === 0 && a.tipo[actual] === ESPECIE.HERBIVORO) {
+    if (
+      actual >= 0 &&
+      a.vivo[actual] === 1 &&
+      a.moribundo[actual] === 0 &&
+      a.tipo[actual] === ESPECIE.HERBIVORO
+    ) {
       const dx = a.x[actual] - x;
       const dy = a.y[actual] - y;
       if (dx * dx + dy * dy <= cfg.radioAtaque * cfg.radioAtaque) {
@@ -152,7 +157,7 @@ export class Depredador extends Especie {
       }
 
       a.ticksPersecucion[id] += 1;
-      if (a.ticksPersecucion[id] > cfg.segundosPersecucion * 60) {
+      if (a.ticksPersecucion[id] > cfg.segundosPersecucion * TICKS_POR_SEGUNDO) {
         // Se cansó de perseguirla: la abandona (anti-twitch, T43).
         a.presa[id] = -1;
         a.ticksPersecucion[id] = 0;
@@ -354,7 +359,7 @@ export class Depredador extends Especie {
 
     a.ticksParaGiro[id] -= 1;
     if (a.ticksParaGiro[id] <= 0) {
-      a.ticksParaGiro[id] = ctx.prng.intInclusive(40, 110);
+      a.ticksParaGiro[id] = ctx.prng.intInclusive(cfg.ticksGiroMin, cfg.ticksGiroMax);
       const angulo = ctx.prng.angle();
       a.dirX[id] = Math.cos(angulo);
       a.dirY[id] = Math.sin(angulo);

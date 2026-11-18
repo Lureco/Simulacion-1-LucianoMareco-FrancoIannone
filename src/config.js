@@ -109,6 +109,20 @@ export const CONFIG = {
     maxPasosPorFrame: 5,
     /** Multiplicador de velocidad del usuario: 1, 2 o 4. */
     escalaSimulacion: 1,
+    /** Delta máximo de tiempo real por frame (evita saltos al volver de otra pestaña). */
+    deltaMaximo: 0.25,
+    /** Suavizado del indicador de FPS del HUD. */
+    suavizadoFps: 0.05,
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // IA BASE [P2]
+  // ─────────────────────────────────────────────────────────────
+  ia: {
+    /** Ticks mínimos entre giros al deambular (clase `Especie`, sin especie asignada). */
+    ticksGiroMin: 40,
+    /** Ticks máximos entre giros al deambular (clase `Especie`, sin especie asignada). */
+    ticksGiroMax: 110,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -139,6 +153,8 @@ export const CONFIG = {
     colorAgua: 0x2a4d8f,
     colorArena: 0xd8c596,
     colorTierra: 0x4b7a3a,
+    /** Intentos máximos para encontrar una celda habitable al generar el mundo. */
+    maxIntentosHabitable: 64,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -160,6 +176,8 @@ export const CONFIG = {
     probExpansion: 0.08,
     /** Vecindad usada por el autómata: 4 (ortogonal) u 8 (incluye diagonales). */
     radioExpansion: 1,
+    /** Umbral de `radioExpansion` a partir del cual se incluyen las diagonales. */
+    umbralVecindadDiagonal: 8,
     /** Densidad inicial de semilla al generar el mundo (0..1 sobre celdas de tierra). */
     densidadSemilla: 0.06,
     /** Energía que aporta una planta adulta al ser comida. */
@@ -196,6 +214,8 @@ export const CONFIG = {
     costeAgua: 4,
     /** Multiplicador de coste energético al atravesar arena. */
     costeArena: 1.6,
+    /** Fracción de la vida máxima con la que se reparten edades iniciales (T42). */
+    fraccionEdadInicial: 0.5,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -258,6 +278,12 @@ export const CONFIG = {
      * el rumbo cambie de golpe (bug reportado después de F7.5).
      */
     ruidoRumbo: 0.02,
+    /** Ticks mínimos entre giros al deambular (T58). */
+    ticksGiroMin: 40,
+    /** Ticks máximos entre giros al deambular (T58). */
+    ticksGiroMax: 110,
+    /** Ticks que el herbívoro sigue huyendo tras perder de vista al depredador. */
+    ticksHuida: 20,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -312,6 +338,10 @@ export const CONFIG = {
     segundosPersecucion: 30,
     /** Ruido (radianes) por tick al explorar. Acumulativo: se mantiene bajo (ver herbívoro). */
     ruidoRumbo: 0.02,
+    /** Ticks mínimos entre giros al deambular (T58). */
+    ticksGiroMin: 40,
+    /** Ticks máximos entre giros al deambular (T58). */
+    ticksGiroMax: 110,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -334,6 +364,10 @@ export const CONFIG = {
      * busca menos seguido que la comida.
      */
     ticksEntreBusquedaAgua: 20,
+    /** Distancia objetivo al agua cuando la sed es crítica: la orilla (T38). */
+    distanciaBebida: 1,
+    /** Fracción de `distanciaOrilla` usada como objetivo con sed media (T38). */
+    factorDistanciaSedMedia: 0.5,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -363,6 +397,10 @@ export const CONFIG = {
     radioSeleccion: 1.5,
     /** Movimiento del puntero (px) que separa un clic de un arrastre de cámara. */
     umbralArrastrePx: 3,
+    /** Cada cuántos ms se refresca el texto del HUD. */
+    hudIntervaloMs: 200,
+    /** Segmentos de las barras de necesidades de la leyenda. */
+    barraSegmentos: 8,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -371,10 +409,20 @@ export const CONFIG = {
   camara: {
     /** Suavizado del seguimiento (0 = instantáneo, 1 = muy lento). */
     suavizado: 0.12,
+    /** Zoom mínimo y máximo (rueda del mouse). */
+    zoomMin: 0.2,
+    zoomMax: 4,
+    /** Factor por el que se multiplica/divide el zoom en cada paso de rueda. */
+    factorZoom: 1.12,
+    /** Segundos de transición al enfocar una entidad con la tecla F (main.js). */
+    dtEnfocar: 0.5,
     /** Límite de la cámara dentro de los bordes del mundo. */
     limiteMundo: true,
   },
 };
+
+/** Ticks de simulación por segundo, derivado de `pasoFijo` (no hardcodear 60). */
+export const TICKS_POR_SEGUNDO = Math.round(1 / CONFIG.tiempo.pasoFijo);
 
 /** Helper: semilla actual. En runtime lo puede sobreescribir el usuario (tecla R). */
 export const ESTADO = {

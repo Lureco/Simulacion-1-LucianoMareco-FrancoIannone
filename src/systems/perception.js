@@ -17,6 +17,7 @@
 
 import { PLANTA, TERRENO } from '../world/cell.js';
 import { ESPECIE } from '../entities/entity.js';
+import { CONFIG } from '../config.js';
 
 /** Vecindad 8, en orden fijo (determinista), para el ajuste de distancia al agua. */
 const VECINOS_8 = [
@@ -217,8 +218,13 @@ export function buscarDepredador(ctx, ox, oy, radio, salida) {
  * @returns {number} Distancia objetivo en celdas.
  */
 export function distanciaObjetivoAlAgua(sed, cfg) {
-  if (sed >= cfg.sedCritica) return 1;
-  if (sed >= cfg.sedBusqueda) return Math.max(1, Math.floor(cfg.distanciaOrilla / 2));
+  if (sed >= cfg.sedCritica) return CONFIG.percepcion.distanciaBebida;
+  if (sed >= cfg.sedBusqueda) {
+    return Math.max(
+      CONFIG.percepcion.distanciaBebida,
+      Math.floor(cfg.distanciaOrilla * CONFIG.percepcion.factorDistanciaSedMedia),
+    );
+  }
   return cfg.distanciaOrilla;
 }
 

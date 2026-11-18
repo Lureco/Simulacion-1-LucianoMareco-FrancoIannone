@@ -15,7 +15,7 @@
  */
 
 import { Application } from 'pixi.js';
-import { CONFIG, ESTADO } from './config.js';
+import { CONFIG, ESTADO, TICKS_POR_SEGUNDO } from './config.js';
 import { PRNG } from './core/prng.js';
 import { crearContexto } from './core/contexto.js';
 import { EntityManager } from './entities/entityManager.js';
@@ -252,7 +252,7 @@ window.addEventListener(
         // Seguir a un triceratops al azar.
         const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
         if (herbivoros.length > 0) {
-          camara.seguir(manager, ctx.prng.pick(herbivoros), tile, 0.5);
+          camara.seguir(manager, ctx.prng.pick(herbivoros), tile, CONFIG.camara.dtEnfocar);
           console.log('[main] siguiendo a un triceratops (F para soltar)');
         }
         break;
@@ -307,14 +307,14 @@ function simular(dt) {
 
 let anterior = performance.now();
 let acumulador = 0;
-let fps = 60;
+let fps = TICKS_POR_SEGUNDO;
 
 function bucle(ahora) {
   // `delta` es el tiempo real del frame. NUNCA se usa para mover entidades:
   // solo alimenta el acumulador, que produce pasos fijos de 1/60 s.
-  const delta = Math.min((ahora - anterior) / 1000, 0.25);
+  const delta = Math.min((ahora - anterior) / 1000, CONFIG.tiempo.deltaMaximo);
   anterior = ahora;
-  fps += (1 / Math.max(delta, 0.0001) - fps) * 0.05;
+  fps += (1 / Math.max(delta, 0.0001) - fps) * CONFIG.tiempo.suavizadoFps;
 
   if (!ESTADO.pausa) {
     acumulador += delta * ESTADO.escalaSimulacion;

@@ -7,6 +7,8 @@
  * nada (se actualiza 5 veces por segundo, no en cada frame).
  */
 
+import { CONFIG, TICKS_POR_SEGUNDO } from '../config.js';
+
 export class Hud {
   /**
    * @param {HTMLElement} contenedor
@@ -47,17 +49,17 @@ export class Hud {
   }
 
   /**
-   * Actualiza los valores. Solo escribe en el DOM cada 200 ms.
+   * Actualiza los valores. Solo escribe en el DOM cada `CONFIG.ui.hudIntervaloMs` ms.
    * @param {object} datos
    * @param {number} ahora Marca de tiempo en ms.
    */
   actualizar(datos, ahora) {
     Object.assign(this.datos, datos);
-    if (ahora - this.ultimaActualizacion < 200) return;
+    if (ahora - this.ultimaActualizacion < CONFIG.ui.hudIntervaloMs) return;
     this.ultimaActualizacion = ahora;
 
     const d = this.datos;
-    const segundos = (d.ticks / 60).toFixed(1);
+    const segundos = (d.ticks / TICKS_POR_SEGUNDO).toFixed(1);
     this.elemento.textContent = [
       `plantas     ${String(d.plantas).padStart(4)}`,
       `triceratops ${String(d.herbivoros).padStart(4)}`,

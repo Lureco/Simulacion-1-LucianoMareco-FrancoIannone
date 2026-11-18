@@ -101,7 +101,13 @@ export class Herbivoro extends Especie {
 
     // Huir tiene prioridad absoluta (T43): un herbívoro que muere no come.
     // Se detecta al depredador con el radio de visión de la especie cazadora.
-    const depredador = buscarDepredador(ctx, x, y, ctx.config.depredador.radioVision, vecinosDe(ctx));
+    const depredador = buscarDepredador(
+      ctx,
+      x,
+      y,
+      ctx.config.depredador.radioVision,
+      vecinosDe(ctx),
+    );
     if (depredador >= 0) {
       a.estado[id] = ESTADO_IA.HUYENDO;
       a.velocidad[id] = cfg.velocidad;
@@ -326,7 +332,7 @@ export class Herbivoro extends Especie {
 
     a.ticksParaGiro[id] -= 1;
     if (a.ticksParaGiro[id] <= 0) {
-      a.ticksParaGiro[id] = ctx.prng.intInclusive(40, 110);
+      a.ticksParaGiro[id] = ctx.prng.intInclusive(cfg.ticksGiroMin, cfg.ticksGiroMax);
       const angulo = ctx.prng.angle();
       a.dirX[id] = Math.cos(angulo);
       a.dirY[id] = Math.sin(angulo);
@@ -353,7 +359,7 @@ export class Herbivoro extends Especie {
     const dy = a.y[id] - a.y[depredador];
     this.apuntar(id, dx, dy, ctx);
     // Sostiene la huida unos ticks aunque el depredador salga del radio.
-    a.ticksParaGiro[id] = 20;
+    a.ticksParaGiro[id] = ctx.config.herbivoro.ticksHuida;
   }
 
   /**

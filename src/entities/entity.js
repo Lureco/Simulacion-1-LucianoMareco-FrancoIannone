@@ -94,7 +94,10 @@ export class Especie {
     const a = ctx.entidades;
     a.ticksParaGiro[id] -= 1;
     if (a.ticksParaGiro[id] <= 0) {
-      a.ticksParaGiro[id] = ctx.prng.intInclusive(40, 110);
+      a.ticksParaGiro[id] = ctx.prng.intInclusive(
+        ctx.config.ia.ticksGiroMin,
+        ctx.config.ia.ticksGiroMax,
+      );
       const angulo = ctx.prng.angle();
       a.dirX[id] = Math.cos(angulo);
       a.dirY[id] = Math.sin(angulo);

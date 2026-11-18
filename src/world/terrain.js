@@ -167,7 +167,7 @@ export function generarTerreno({ ancho, alto, seed, config }) {
  */
 export function celdaHabitableAlAzar(ctx) {
   const { ancho, alto } = ctx.mundo;
-  const maxIntentos = 64;
+  const maxIntentos = ctx.config.terreno.maxIntentosHabitable;
 
   if (ctx.grid) {
     for (let intento = 0; intento < maxIntentos; intento++) {

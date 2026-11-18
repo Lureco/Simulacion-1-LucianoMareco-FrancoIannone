@@ -6,11 +6,11 @@ import { SpatialHash } from '../src/systems/spatialHash.js';
 import { pasoDeSimulacion, sembrar, repartirEdadesIniciales } from '../src/systems/simulacion.js';
 import { generarTerreno } from '../src/world/terrain.js';
 import { sembrarVegetacion, contarPlantas } from '../src/systems/plantGrowth.js';
-import { CONFIG } from '../src/config.js';
+import { CONFIG, TICKS_POR_SEGUNDO } from '../src/config.js';
 
 const seed = Number(process.argv[2] ?? CONFIG.mundo.seedPorDefecto);
 const minutos = Number(process.argv[3] ?? 10);
-const ticks = Math.round(minutos * 60 * 60);
+const ticks = Math.round(minutos * 60 * TICKS_POR_SEGUNDO);
 
 const prng = new PRNG(seed);
 const manager = new EntityManager();

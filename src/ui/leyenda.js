@@ -29,6 +29,7 @@ import {
   aCss,
 } from '../render/paleta.js';
 import { ESPECIE, ESTADO_IA, NOMBRE_ESTADO } from '../entities/entity.js';
+import { CONFIG } from '../config.js';
 
 export class Leyenda {
   /**
@@ -105,13 +106,14 @@ export class Leyenda {
     }
 
     // Barra de progreso para un valor de necesidad.
+    const segmentos = CONFIG.ui.barraSegmentos;
     const barra = (valor) => {
-      const llenos = Math.round(valor * 8);
+      const llenos = Math.round(valor * segmentos);
       return (
         '<span style="color:#6bdc7a">' +
         '█'.repeat(llenos) +
         '</span><span style="color:#374151">' +
-        '░'.repeat(8 - llenos) +
+        '░'.repeat(segmentos - llenos) +
         '</span>'
       );
     };

@@ -526,6 +526,37 @@ visual en pantalla la realiza el usuario con `npm run dev`.
    inicio. Instrumentando el pipe se pasó de `staticData=4` en animales a `staticData=64000`, y
    Chrome headless pasó de 5-9 `GL_INVALID_OPERATION` por corrida a **0**.
 
+## D19 · Números mágicos a `config.js` (T58)
+
+**Contexto.** T58 pedía que no quede ningún número de balance suelto fuera de `config.js`. El
+inventario se relevó antes de tocar código y se acordó el **alcance completo** en tres bloques:
+A (IA), B (simulación/mundo) y C (cámara/UI/bucle).
+
+**Decisión:**
+
+1. **Ticks de giro por especie.** La clase base (`Especie.pensar`) usa
+   `CONFIG.ia.ticksGiroMin/Max`; herbívoro y depredador tienen **sus propios** `ticksGiroMin/Max`
+   en su sección, con los mismos valores iniciales (40–110). Así se puede ajustar el deambular de
+   cada especie sin afectar a la otra. La huida del herbívoro usa `CONFIG.herbivoro.ticksHuida`
+   (20).
+2. **Segundos → ticks, derivado.** Se exporta `TICKS_POR_SEGUNDO = Math.round(1 / pasoFijo)` y se
+   usa en persecución (`segundosPersecucion * TICKS_POR_SEGUNDO`), HUD, gráfico, suavizado de la
+   cámara y FPS inicial. No se escribió `60` en ningún consumidor: si cambia `pasoFijo`, todo
+   convierte junto.
+3. **Resto del inventario.** `fraccionEdadInicial`, `maxIntentosHabitable`,
+   `umbralVecindadDiagonal`, `distanciaBebida`, `factorDistanciaSedMedia`, `zoomMin/zoomMax`,
+   `factorZoom`, `dtEnfocar`, `hudIntervaloMs`, `barraSegmentos`, `deltaMaximo` y `suavizadoFps`
+   pasan a su sección correspondiente. `CONFIG.camara.suavizado` **se usa ahora** en
+   `Camera.seguir()` (antes estaba en config pero el método repetía el valor como default).
+
+**Descartado:** mover a config los números de maquetado CSS del HUD/leyenda, los *epsilons*
+numéricos (`0.0001`) y los códigos de tecla: no son parámetros de simulación y ensuciarían la
+config sin ningún beneficio de balance. `CONFIG.camara.limiteMundo` sigue sin cablear (T58 no
+cambia comportamiento).
+
+**Verificación:** `npm run lint`, `npm test` (122 tests), `npm run build` y Prettier sobre los 13
+archivos tocados pasan. Los valores originales ya no aparecen fuera de `config.js`.
+
 ---
 
 ## Registro de acuerdos pendientes
