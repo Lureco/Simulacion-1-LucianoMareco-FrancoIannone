@@ -39,10 +39,21 @@ export function nacimientosDe(ctx) {
 
 /**
  * Anota la muerte de una entidad (se aplica al final del tick).
+ *
+ * Es **idempotente**: si la entidad ya estaba anotada (por ejemplo, la mató
+ * un depredador después de que ella misma se anotó por hambre), no se
+ * duplica. La bandera `moribundo` del almacén evita contar dos veces la
+ * misma muerte y que dos depredadores cacen la misma presa en un tick.
+ *
  * @param {object} ctx
  * @param {number} id
  */
 export function anotarMuerte(ctx, id) {
+  const a = ctx.entidades;
+  if (a && a.moribundo) {
+    if (a.moribundo[id] === 1) return;
+    a.moribundo[id] = 1;
+  }
   muertesDe(ctx).push(id);
 }
 

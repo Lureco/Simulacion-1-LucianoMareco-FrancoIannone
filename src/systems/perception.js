@@ -16,6 +16,19 @@
  */
 
 import { PLANTA, TERRENO } from '../world/cell.js';
+import { ESPECIE } from '../entities/entity.js';
+
+/** Vecindad 8, en orden fijo (determinista), para el ajuste de distancia al agua. */
+const VECINOS_8 = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+];
 
 /** ¿La celda tiene una planta comestible sobre tierra? */
 function esComida(grid, indice) {
@@ -124,6 +137,166 @@ export function buscarComida(ctx, ox, oy, radio, salida) {
  */
 export function buscarAgua(ctx, ox, oy, radio, salida) {
   return celdaMasCercana(ctx.grid, ox, oy, radio, esAgua, salida);
+}
+
+/**
+ * Busca la entidad **viva** más cercana de un tipo, con el Spatial Hash
+ * (O(vecinos), T36). Se saltean las entidades ya marcadas para morir.
+ *
+ * El desempate es determinista: a igual distancia gana el `id` más bajo.
+ *
+ * @param {object} ctx
+ * @param {number} ox
+ * @param {number} oy
+ * @param {number} radio Radio de visión en celdas.
+ * @param {number} tipo Uno de `ESPECIE`.
+ * @param {number[]} salida Array reutilizable de vecinos.
+ * @returns {number} El `id` más cercano, o -1 si no hay ninguno.
+ */
+function entidadMasCercanaDeTipo(ctx, ox, oy, radio, tipo, salida) {
+  if (!ctx.hash) return -1;
+
+  const vecinos = ctx.hash.consultar(ox, oy, radio, salida);
+  const a = ctx.entidades;
+  let mejorId = -1;
+  let mejorD2 = Infinity;
+
+  for (let i = 0; i < vecinos.length; i++) {
+    const id = vecinos[i];
+    if (a.tipo[id] !== tipo) continue;
+    if (a.vivo[id] !== 1) continue;
+    if (a.moribundo && a.moribundo[id] === 1) continue;
+
+    const dx = a.x[id] - ox;
+    const dy = a.y[id] - oy;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < mejorD2 || (d2 === mejorD2 && id < mejorId)) {
+      mejorD2 = d2;
+      mejorId = id;
+    }
+  }
+
+  return mejorId;
+}
+
+/**
+ * Busca el herbívoro vivo más cercano dentro del radio (presa, T43).
+ * @param {object} ctx
+ * @param {number} ox
+ * @param {number} oy
+ * @param {number} radio
+ * @param {number[]} salida Array reutilizable de vecinos.
+ * @returns {number} `id` de la presa, o -1.
+ */
+export function buscarPresa(ctx, ox, oy, radio, salida) {
+  return entidadMasCercanaDeTipo(ctx, ox, oy, radio, ESPECIE.HERBIVORO, salida);
+}
+
+/**
+ * Busca el carnívoro vivo más cercano dentro del radio (para huir, T43).
+ * @param {object} ctx
+ * @param {number} ox
+ * @param {number} oy
+ * @param {number} radio
+ * @param {number[]} salida Array reutilizable de vecinos.
+ * @returns {number} `id` del depredador, o -1.
+ */
+export function buscarDepredador(ctx, ox, oy, radio, salida) {
+  return entidadMasCercanaDeTipo(ctx, ox, oy, radio, ESPECIE.PREDADOR, salida);
+}
+
+/**
+ * Distancia objetivo al agua según cuán sediento está el animal (T38):
+ *
+ * - Sed crítica → va a la orilla (1 celda) a beber.
+ * - Sed media → se acerca a la orilla, pero no la toca.
+ * - Tranquilo → mantiene la distancia de deambulación (`distanciaOrilla`).
+ *
+ * @param {number} sed Sed normalizada (0..1).
+ * @param {object} cfg Configuración de la especie (`CONFIG.herbivoro`/`depredador`).
+ * @returns {number} Distancia objetivo en celdas.
+ */
+export function distanciaObjetivoAlAgua(sed, cfg) {
+  if (sed >= cfg.sedCritica) return 1;
+  if (sed >= cfg.sedBusqueda) return Math.max(1, Math.floor(cfg.distanciaOrilla / 2));
+  return cfg.distanciaOrilla;
+}
+
+/**
+ * Dirección para **ajustar** la distancia al agua leyendo el campo BFS
+ * `aguaDist` de la grilla (T38). Acerca al animal si está más lejos de lo
+ * que quiere, o lo aleja si está más cerca.
+ *
+ * Es la función que implementa la "distancia de deambulación": el animal
+ * mantiene una franja alrededor del agua en vez de amontonarse en la orilla.
+ *
+ * Escribe en `salida` un **paso** desde `(ox, oy)` hacia la celda vecina
+ * elegida (mismo formato que `direccionAlAgua`).
+ *
+ * @param {object} ctx
+ * @param {number} ox
+ * @param {number} oy
+ * @param {number} distanciaObjetivo Distancia deseada al agua, en celdas.
+ * @param {{encontrado: boolean, x: number, y: number, indice: number}} salida
+ * @returns {typeof salida}
+ */
+export function direccionAjustadaAlAgua(ctx, ox, oy, distanciaObjetivo, salida) {
+  salida.encontrado = false;
+  salida.indice = -1;
+
+  const grid = ctx.grid;
+  if (!grid || !grid.aguaDist) return salida;
+
+  const x = Math.floor(ox);
+  const y = Math.floor(oy);
+  if (!grid.dentro(x, y)) return salida;
+
+  const aguaDist = grid.aguaDist;
+  const ancho = grid.ancho;
+  const actual = aguaDist[y * ancho + x];
+  if (actual < 0) return salida; // no hay agua alcanzable
+  if (actual === distanciaObjetivo) return salida; // ya está en la zona
+
+  let mejorX = -1;
+  let mejorY = -1;
+  let mejorDistancia = actual;
+
+  if (actual > distanciaObjetivo) {
+    // Está más lejos de lo que quiere: busca la vecina más cerca del agua,
+    // sin entrar en la zona prohibida (nunca baja del objetivo).
+    for (let n = 0; n < VECINOS_8.length; n++) {
+      const nx = x + VECINOS_8[n][0];
+      const ny = y + VECINOS_8[n][1];
+      if (!grid.dentro(nx, ny)) continue;
+      const d = aguaDist[ny * ancho + nx];
+      if (d < 0 || d < distanciaObjetivo) continue;
+      if (d < mejorDistancia) {
+        mejorDistancia = d;
+        mejorX = nx;
+        mejorY = ny;
+      }
+    }
+  } else {
+    // Está más cerca de lo que quiere: busca la vecina más lejos del agua.
+    for (let n = 0; n < VECINOS_8.length; n++) {
+      const nx = x + VECINOS_8[n][0];
+      const ny = y + VECINOS_8[n][1];
+      if (!grid.dentro(nx, ny)) continue;
+      const d = aguaDist[ny * ancho + nx];
+      if (d > mejorDistancia) {
+        mejorDistancia = d;
+        mejorX = nx;
+        mejorY = ny;
+      }
+    }
+  }
+
+  if (mejorX < 0) return salida; // no se puede mejorar
+
+  salida.encontrado = true;
+  salida.x = ox + (mejorX - x);
+  salida.y = oy + (mejorY - y);
+  return salida;
 }
 
 /**

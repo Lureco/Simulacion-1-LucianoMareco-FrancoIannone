@@ -235,26 +235,32 @@ simulacion-ecosistemas/
 >
 > **Adelantado desde F5 (lado herbívoro):** T45 (muerte por causas separadas:
 > hambre/sed/vejez, `causaDeMuerte` + `ctx.muertesPorCausa`), T46 (reproducción con
-> energía, deseo, cooldown y pareja) y T47 (cría en celda libre adyacente). Falta el
-> lado del **depredador** (T43/T44) y la depredación como causa de muerte.
+> energía, deseo, cooldown y pareja) y T47 (cría en celda libre adyacente). El lado del
+> **depredador** (T43/T44) y la depredación como causa de muerte se completaron en F5.
 
 ---
 
 ### F5 · Depredador, reproducción y muerte
 
-- [ ] **T43 · P2** — Depredador: detección de herbívoros en radio, **persecución** y caza
-- [ ] **T44 · P2** — Balance del depredador: más rápido pero menos eficiente (trade-off)
-- [~] **T45 · P2** — **Muerte por causas separadas y observables**: hambre, sed, edad, depredación
-      *(hambre/sed/vejez hechas en F4: `causaDeMuerte`, `ctx.muertesPorCausa`. Falta depredación)*
-- [~] **T46 · P2** — **Reproducción**: requiere energía, no estar hambriento/sediento, cooldown,
+- [x] **T43 · P2** — Depredador: detección de herbívoros en radio, **persecución** y caza
+      (`predator.js` + `buscarPresa`/`buscarDepredador` en `perception.js`)
+- [x] **T44 · P2** — Balance del depredador: más rápido pero menos eficiente (trade-off)
+      (velocidad 1.7 > 1.2, pero cada presa cuesta energía y el consumo es mayor)
+- [x] **T45 · P2** — **Muerte por causas separadas y observables**: hambre, sed, edad, depredación
+      *(hechas en F4 y completadas en F5: `causaDeMuerte` + `CAUSA_MUERTE.DEPREDADO`, contadas
+      por separado en `ctx.muertesPorCausa`)*
+- [x] **T46 · P2** — **Reproducción**: requiere energía, no estar hambriento/sediento, cooldown,
       y presencia de pareja del mismo tipo y edad mínima
-      *(hecha en F4 para herbívoros: `quiereReproducir` + `aplicarNacimientos`)*
-- [~] **T47 · P2** — Nacimiento de la cría en celda libre adyacente válida
-      *(hecho en F4: `celdaLibreAdyacente` + nacimientos diferidos)*
-- [ ] **T48 · P2** — Semilla inicial de herbívoros y depredadores en zonas habitables
+      *(herbívoros en F4 y depredadores en F5: `quiereReproducir` + `aplicarNacimientos`)*
+- [x] **T47 · P2** — Nacimiento de la cría en celda libre adyacente válida
+      *(herbívoros en F4 y depredadores en F5: `celdaLibreAdyacente` + nacimientos diferidos)*
+- [x] **T48 · P2** — Semilla inicial de herbívoros y depredadores en zonas habitables
+      (`sembrar` + `poblar`: celdas de tierra al azar con el PRNG)
 - [ ] **T49 · P1** — Restricción de terreno en el movimiento (no cruzar agua profunda sin costo)
-- [ ] **T50 · Ambos** — Test de integración: la **cadena alimenticia completa** funciona
+- [x] **T50 · Ambos** — Test de integración: la **cadena alimenticia completa** funciona
       (planta → herbívoro → depredador) y se nota en pantalla
+      (`tests/cadenaAlimenticia.test.js` + `scripts/simular.mjs`, que ya cuenta las muertes
+      `d` por depredación)
 
 > **Hito F5:** ecosistema con tres niveles tróficos. **v1 completada.**
 

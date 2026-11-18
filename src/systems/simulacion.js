@@ -122,9 +122,13 @@ export function pasoDeSimulacion(ctx, dt) {
 
   // 1. Entidades. Se itera por índice sobre `vivos`; las altas y bajas se
   //    difieren al final, así que la lista no cambia durante el recorrido.
+  //    Si un depredador ya anotó a la presa (`moribundo`), se la saltea: ya
+  //    está contada como `depredado` y no debe moverse, comer ni registrar
+  //    otra causa de muerte en el mismo tick (T43/T45).
   for (let i = 0; i < vivos.length; i++) {
     const id = vivos[i];
     if (!a.vivo[id]) continue;
+    if (a.moribundo && a.moribundo[id] === 1) continue;
     actualizarEntidad(id, dt, ctx);
   }
 

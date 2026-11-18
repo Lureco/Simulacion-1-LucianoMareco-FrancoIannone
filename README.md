@@ -7,9 +7,10 @@ herbívoros y depredadores interactúan sobre un terreno generado por ruido.
 - **Profesor:** Facundo Saiegh
 - **Stack:** JavaScript ES2022 · [PixiJS v8](https://pixijs.com) · Vite · Vitest · ESLint + Prettier
 
-> **Estado actual:** F4 hecha. Los herbívoros tienen necesidades: buscan
-> comida, van a beber, se reproducen y mueren (de hambre, sed o vejez). El
-> mundo procedural y las plantas ya están. Ver [Estado](#estado-del-proyecto).
+> **Estado actual:** F5 hecha. La cadena alimenticia completa funciona: los
+> herbívoros comen, beben, se reproducen y **huyen**; los carnívoros los
+> **cazan**. El mundo procedural y las plantas ya están. Ver
+> [Estado](#estado-del-proyecto).
 
 ---
 
@@ -65,19 +66,21 @@ Hitos según `TAREAS.md`:
 | **F2** Datos y entidades base | ✅ Hecho | Entidad base, herbívoro, carnívoro, manager SoA, spatial hash, timestep fijo, render |
 | **F3** Plantas y autómata | ✅ Hecho | Crecimiento por autómata sobre la grilla, estados, render y `comerPlanta` (T27-T32) |
 | **F4** IA del herbívoro | ✅ Hecho | Necesidades, prioridad, comer/beber, penalización de terreno, reproducción y muerte (T34-T42 + T45-T47 lado herbívoro) |
-| **F5** Depredador y cadena | ⏳ Pendiente | De P2 (T43-T50) |
+| **F5** Depredador y cadena | ✅ Hecho | Caza y persecución, depredación como causa de muerte, reproducción del carnívoro y test de la cadena (T43-T50) |
 
 ### Qué se ve hoy
 
 Un **mundo 256×256** con agua, arena y tierra generados por ruido con
 semilla: islas y continentes con costas naturales, reproducibles celda a
 celda. Las plantas cubren la tierra y crecen por un autómata celular. Sobre
-ese mapa, **120 herbívoros** con necesidades (hambre, sed y deseo de
-reproducirse) y **25 carnívoros** que todavía solo deambulan. Los herbívoros
-**comen** cuando tienen hambre, **van a beber** a la costa cuando tienen sed
-(y si no ven agua, caminan hacia ella siguiendo un campo precalculado),
-**se reproducen** cuando juntan energía y encuentran pareja, y **mueren** de
-hambre, sed o vejez — cada causa contada por separado en el HUD.
+ese mapa, **120 herbívoros** y **25 carnívoros**. Los herbívoros **comen**
+cuando tienen hambre, **van a beber** a la costa cuando tienen sed (y si no
+ven agua, caminan hacia ella siguiendo un campo precalculado), **se
+reproducen** cuando juntan energía y encuentran pareja, **huyen** si un
+carnívoro se acerca, y **mueren** de hambre, sed, vejez o **depredación** —
+cada causa contada por separado. Los carnívoros **persiguen y cazan** a los
+herbívoros (más rápidos, pero cada presa les cuesta energía), beben,
+deambulan manteniendo la distancia al agua y también se reproducen.
 
 ### Lo que ya está garantizado (y se puede romper de una forma detectable)
 
@@ -113,7 +116,7 @@ src/
 ├─ entities/
 │  ├─ entity.js         # Especie base (comportamiento) + enums ESPECIE/ESTADO_IA
 │  ├─ herbivore.js      # especie herbívoro: IA de necesidades (F4)
-│  ├─ predator.js       # especie carnívoro (comportamiento)
+│  ├─ predator.js       # especie carnívoro: caza, persecución, beber (F5)
 │  ├─ especies.js       # registro tipo → especie
 │  └─ entityManager.js  # almacén SoA: arrays tipados + alta/baja por id
 ├─ systems/

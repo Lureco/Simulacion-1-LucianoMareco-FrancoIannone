@@ -86,8 +86,18 @@ export class EntityManager {
     /** @type {Int32Array} */ this.ticksParaGiro = new Int32Array(0);
     /** @type {Int32Array} Ticks que faltan para poder reproducirse de nuevo. */
     this.cooldown = new Int32Array(0);
+    /** @type {Int32Array} Id de la presa que persigue un depredador; -1 = ninguna (T43). */
+    this.presa = new Int32Array(0);
+    /** @type {Int32Array} Ticks que lleva persiguiendo la presa actual (T43). */
+    this.ticksPersecucion = new Int32Array(0);
+    /** @type {Int32Array} Ticks que faltan para volver a buscar presa (T43). */
+    this.ticksBusqueda = new Int32Array(0);
+    /** @type {Int32Array} Ticks que faltan para volver a seguir el campo al agua (T38). */
+    this.ticksBusquedaAgua = new Int32Array(0);
     /** @type {Uint8Array} */ this.estado = new Uint8Array(0);
     /** @type {Uint8Array} */ this.vivo = new Uint8Array(0);
+    /** @type {Uint8Array} 1 = ya anotada para morir este tick (evita duplicados). */
+    this.moribundo = new Uint8Array(0);
 
     this.reservar(capacidadInicial);
   }
@@ -112,8 +122,13 @@ export class EntityManager {
     this.tipo = crecerI32(this.tipo, capacidad);
     this.ticksParaGiro = crecerI32(this.ticksParaGiro, capacidad);
     this.cooldown = crecerI32(this.cooldown, capacidad);
+    this.presa = crecerI32(this.presa, capacidad);
+    this.ticksPersecucion = crecerI32(this.ticksPersecucion, capacidad);
+    this.ticksBusqueda = crecerI32(this.ticksBusqueda, capacidad);
+    this.ticksBusquedaAgua = crecerI32(this.ticksBusquedaAgua, capacidad);
     this.estado = crecerU8(this.estado, capacidad);
     this.vivo = crecerU8(this.vivo, capacidad);
+    this.moribundo = crecerU8(this.moribundo, capacidad);
     this.capacidad = capacidad;
   }
 
@@ -148,9 +163,14 @@ export class EntityManager {
     this.sed[id] = 0;
     this.deseoRepro[id] = 0;
     this.cooldown[id] = 0;
+    this.presa[id] = -1;
+    this.ticksPersecucion[id] = 0;
+    this.ticksBusqueda[id] = 0;
+    this.ticksBusquedaAgua[id] = 0;
     this.estado[id] = ESTADO_IA.VAGO;
     this.ticksParaGiro[id] = 0;
     this.vivo[id] = 1;
+    this.moribundo[id] = 0;
     this._especie[id] = especie;
 
     this.vivos.push(id);
@@ -175,6 +195,8 @@ export class EntityManager {
     if (!this.vivo[id]) return;
 
     this.vivo[id] = 0;
+    this.moribundo[id] = 0;
+    this.presa[id] = -1;
     this._especie[id] = undefined;
 
     const i = this.vivos.indexOf(id);

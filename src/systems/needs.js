@@ -22,13 +22,19 @@ import { TERRENO } from '../world/cell.js';
 
 /**
  * Avanza las necesidades un tick: sube hambre/sed/deseo, baja el cooldown.
+ *
+ * El deseo de reproducirse solo sube si la entidad está **bien alimentada**
+ * (sin hambre ni sed críticas); con hambre o sed encima, baja. Reproducirse
+ * en mal momento no tiene sentido y así lo evita la IA (T46).
+ *
  * @param {number} id
  * @param {number} dt Segundos del timestep fijo.
  * @param {object} ctx
+ * @param {object} [cfg] Bloque de config de la especie (`CONFIG.herbivoro` o
+ *   `CONFIG.depredador`). Por defecto, el del herbívoro.
  */
-export function actualizarNecesidades(id, dt, ctx) {
+export function actualizarNecesidades(id, dt, ctx, cfg = ctx.config.herbivoro) {
   const a = ctx.entidades;
-  const cfg = ctx.config.herbivoro;
 
   a.hambre[id] = Math.min(1, a.hambre[id] + cfg.consumoHambre * dt);
   a.sed[id] = Math.min(1, a.sed[id] + cfg.consumoSed * dt);
@@ -37,7 +43,11 @@ export function actualizarNecesidades(id, dt, ctx) {
 
   // Las ganas de reproducirse recién suben al alcanzar la madurez.
   if (a.edad[id] >= cfg.edadMinimaReproduccion) {
-    a.deseoRepro[id] = Math.min(1, a.deseoRepro[id] + cfg.consumoDeseoRepro * dt);
+    if (a.hambre[id] < cfg.hambreCritica && a.sed[id] < cfg.sedCritica) {
+      a.deseoRepro[id] = Math.min(1, a.deseoRepro[id] + cfg.crecimientoReproduccion * dt);
+    } else {
+      a.deseoRepro[id] = Math.max(0, a.deseoRepro[id] - cfg.decaimientoReproduccion * dt);
+    }
   }
 }
 
@@ -50,10 +60,25 @@ export const CAUSA_MUERTE = {
   HAMBRE: 1,
   SED: 2,
   VEJEZ: 3,
+  DEPREDADO: 4,
 };
 
 /** Nombre legible de una causa de muerte (HUD / logs). */
-export const NOMBRE_CAUSA_MUERTE = ['—', 'hambre', 'sed', 'vejez'];
+export const NOMBRE_CAUSA_MUERTE = ['—', 'hambre', 'sed', 'vejez', 'depredado'];
+
+/**
+ * Suma una muerte al contador de su causa (T45). Los contadores viven en
+ * `ctx.muertesPorCausa`.
+ * @param {object} ctx
+ * @param {number} causa Uno de `CAUSA_MUERTE`.
+ */
+export function registrarMuerte(ctx, causa) {
+  const porCausa = ctx.muertesPorCausa;
+  if (causa === CAUSA_MUERTE.HAMBRE) porCausa.hambre++;
+  else if (causa === CAUSA_MUERTE.SED) porCausa.sed++;
+  else if (causa === CAUSA_MUERTE.VEJEZ) porCausa.vejez++;
+  else if (causa === CAUSA_MUERTE.DEPREDADO) porCausa.depredado++;
+}
 
 /**
  * ¿Por qué muere esta entidad? (T45) Causas observables y separadas:
@@ -86,11 +111,12 @@ export function debeMorir(id, ctx) {
  * suficiente, energía suficiente y haber madurado.
  * @param {number} id
  * @param {object} ctx
+ * @param {object} [cfg] Bloque de config de la especie. Por defecto, el del
+ *   herbívoro.
  * @returns {boolean}
  */
-export function quiereReproducir(id, ctx) {
+export function quiereReproducir(id, ctx, cfg = ctx.config.herbivoro) {
   const a = ctx.entidades;
-  const cfg = ctx.config.herbivoro;
   return (
     a.cooldown[id] <= 0 &&
     a.deseoRepro[id] >= cfg.umbralReproduccion &&

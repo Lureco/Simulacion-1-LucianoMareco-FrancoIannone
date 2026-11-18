@@ -59,7 +59,7 @@ for (let t = 1; t <= ticks; t++) {
         ` · plantas ${String(contarPlantas(ctx)).padStart(6)}` +
         ` · nac ${String(ctx.nacimientosTotales).padStart(5)}` +
         ` · mue ${String(ctx.muertesTotales).padStart(5)}` +
-        ` (h${ctx.muertesPorCausa.hambre} s${ctx.muertesPorCausa.sed} v${ctx.muertesPorCausa.vejez})` +
+        ` (h${ctx.muertesPorCausa.hambre} s${ctx.muertesPorCausa.sed} v${ctx.muertesPorCausa.vejez} d${ctx.muertesPorCausa.depredado})` +
         ` · E[${(sumaE / n).toFixed(1)} min ${minE.toFixed(1)}]` +
         ` · enAgua ${((100 * enAgua) / n).toFixed(0)}%` +
         ` · comiendo ${((100 * comiendo) / n).toFixed(0)}%`,

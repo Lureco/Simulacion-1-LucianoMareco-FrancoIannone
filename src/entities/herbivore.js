@@ -26,8 +26,11 @@ import { comerPlanta } from '../systems/plantGrowth.js';
 import {
   buscarComida,
   buscarAgua,
+  buscarDepredador,
   direccionAlAgua,
   direccionATierra,
+  direccionAjustadaAlAgua,
+  distanciaObjetivoAlAgua,
   objetivoDe,
   vecinosDe,
 } from '../systems/perception.js';
@@ -37,6 +40,7 @@ import {
   CAUSA_MUERTE,
   quiereReproducir,
   gastarEnergia,
+  registrarMuerte,
 } from '../systems/needs.js';
 import { anotarMuerte, anotarNacimiento } from '../systems/eventos.js';
 import { TERRENO } from '../world/cell.js';
@@ -73,7 +77,7 @@ export class Herbivoro extends Especie {
     // Muerte diferida: se anota la causa y se aplica al final del tick.
     const causa = causaDeMuerte(id, ctx);
     if (causa !== CAUSA_MUERTE.NINGUNA) {
-      this.registrarMuerte(ctx, causa);
+      registrarMuerte(ctx, causa);
       anotarMuerte(ctx, id);
       return;
     }
@@ -81,18 +85,6 @@ export class Herbivoro extends Especie {
     this.pensar(id, dt, ctx);
     mover(id, dt, ctx);
     gastarEnergia(id, dt, ctx);
-  }
-
-  /**
-   * Suma una muerte al contador de su causa (T45).
-   * @param {object} ctx
-   * @param {number} causa Uno de `CAUSA_MUERTE`.
-   */
-  registrarMuerte(ctx, causa) {
-    const porCausa = ctx.muertesPorCausa;
-    if (causa === CAUSA_MUERTE.HAMBRE) porCausa.hambre++;
-    else if (causa === CAUSA_MUERTE.SED) porCausa.sed++;
-    else if (causa === CAUSA_MUERTE.VEJEZ) porCausa.vejez++;
   }
 
   /**
@@ -106,6 +98,16 @@ export class Herbivoro extends Especie {
     const cfg = ctx.config.herbivoro;
     const x = a.x[id];
     const y = a.y[id];
+
+    // Huir tiene prioridad absoluta (T43): un herbívoro que muere no come.
+    // Se detecta al depredador con el radio de visión de la especie cazadora.
+    const depredador = buscarDepredador(ctx, x, y, ctx.config.depredador.radioVision, vecinosDe(ctx));
+    if (depredador >= 0) {
+      a.estado[id] = ESTADO_IA.HUYENDO;
+      a.velocidad[id] = cfg.velocidad;
+      this.huir(id, depredador, ctx);
+      return;
+    }
 
     if (a.hambre[id] >= cfg.hambreCritica) {
       a.estado[id] = ESTADO_IA.COMIENDO;
@@ -311,6 +313,17 @@ export class Herbivoro extends Especie {
     const a = ctx.entidades;
     const cfg = ctx.config.herbivoro;
 
+    // T38: mantiene una franja alrededor del agua. Si está más lejos (o más
+    // cerca) de lo que quiere según su sed, corrige el rumbo antes de
+    // deambular al azar. Sin campo de agua (tests/mundo sin terreno) no hace
+    // nada y sigue el wander de siempre.
+    const objetivoAgua = distanciaObjetivoAlAgua(a.sed[id], cfg);
+    const rumboAgua = direccionAjustadaAlAgua(ctx, a.x[id], a.y[id], objetivoAgua, objetivoDe(ctx));
+    if (rumboAgua.encontrado) {
+      this.apuntar(id, rumboAgua.x - a.x[id], rumboAgua.y - a.y[id], ctx);
+      return;
+    }
+
     a.ticksParaGiro[id] -= 1;
     if (a.ticksParaGiro[id] <= 0) {
       a.ticksParaGiro[id] = ctx.prng.intInclusive(40, 110);
@@ -326,6 +339,21 @@ export class Herbivoro extends Especie {
       a.dirX[id] = Math.cos(angulo);
       a.dirY[id] = Math.sin(angulo);
     }
+  }
+
+  /**
+   * Huye de un depredador cercano (T43): apunta en dirección contraria.
+   * @param {number} id
+   * @param {number} depredador id del depredador a evitar.
+   * @param {object} ctx
+   */
+  huir(id, depredador, ctx) {
+    const a = ctx.entidades;
+    const dx = a.x[id] - a.x[depredador];
+    const dy = a.y[id] - a.y[depredador];
+    this.apuntar(id, dx, dy, ctx);
+    // Sostiene la huida unos ticks aunque el depredador salga del radio.
+    a.ticksParaGiro[id] = 20;
   }
 
   /**

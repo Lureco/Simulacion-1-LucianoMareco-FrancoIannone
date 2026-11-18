@@ -16,7 +16,7 @@
  * - `hash`   → Spatial Hash, para consultas de vecindario.
  * - `entidades` → `EntityManager`.
  * - `nacimientosTotales` / `muertesTotales` → contadores acumulados (HUD).
- * - `muertesPorCausa` → `{ hambre, sed, vejez }` (T45).
+ * - `muertesPorCausa` → `{ hambre, sed, vejez, depredado }` (T45).
  */
 
 /**
@@ -38,7 +38,7 @@ export function crearContexto({ prng, mundo, config }) {
     entidades: null,
     nacimientosTotales: 0,
     muertesTotales: 0,
-    /** Muertes por causa (T45): `{ hambre, sed, vejez }`. */
-    muertesPorCausa: { hambre: 0, sed: 0, vejez: 0 },
+    /** Muertes por causa (T45): `{ hambre, sed, vejez, depredado }`. */
+    muertesPorCausa: { hambre: 0, sed: 0, vejez: 0, depredado: 0 },
   };
 }

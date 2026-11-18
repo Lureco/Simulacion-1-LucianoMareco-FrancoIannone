@@ -149,14 +149,24 @@ export const CONFIG = {
     hambreCritica: 0.7,
     /** Umbral de sed a partir del cual se prioriza beber. */
     sedCritica: 0.7,
+    /**
+     * Umbral de sed a partir del cual el animal **sesga su deambulación**
+     * hacia el agua (T38), sin abandonar lo que estaba haciendo: así llega
+     * a la orilla antes de que la sed sea crítica.
+     */
+    sedBusqueda: 0.3,
+    /**
+     * Distancia (en celdas) a la que se mantiene del agua al deambular (T38).
+     * Evita que la población se amontone en la playa: se reparte en una
+     * franja alrededor del agua, lo bastante cerca para beber rápido.
+     */
+    distanciaOrilla: 10,
     /** Umbral de deseo de reproducción. */
     umbralReproduccion: 0.6,
     /** Velocidad a la que sube el hambre por segundo (T34). */
     consumoHambre: 0.01,
     /** Velocidad a la que sube la sed por segundo (T34). */
     consumoSed: 0.004,
-    /** Velocidad a la que sube el deseo de reproducirse por segundo, tras madurar (T34). */
-    consumoDeseoRepro: 0.004,
     /** Energía mínima para reproducirse. */
     energiaReproduccion: 55,
     /** Ticks entre reproducción y el siguiente intento. */
@@ -171,8 +181,14 @@ export const CONFIG = {
     radioComer: 0.7,
     /** Distancia (celdas) a la que se considera que está bebiendo (T38). */
     radioBeber: 1.5,
+    /** Fracción de sed que se satisface de una vez al beber (T38). */
+    saciedadAlBeber: 1,
     /** Distancia (celdas) a la que dos herbívoros dispuestos se reproducen (T46). */
     radioReproduccion: 1.2,
+    /** Velocidad a la que sube el deseo de reproducirse si está bien alimentado (T46). */
+    crecimientoReproduccion: 0.004,
+    /** Velocidad a la que baja el deseo de reproducirse si tiene hambre o sed (T46). */
+    decaimientoReproduccion: 0.02,
     /** Ruido (radianes) que se le suma al rumbo por tick al explorar (T39). */
     ruidoRumbo: 0.15,
   },
@@ -182,17 +198,53 @@ export const CONFIG = {
   // ─────────────────────────────────────────────────────────────
   depredador: {
     poblacionInicial: 25,
-    /** Más rápido que el herbívoro, pero menos eficiente. */
+    /** Más rápido que el herbívoro, pero menos eficiente (T44). */
     velocidad: 1.7,
     radioVision: 9,
     hambreCritica: 0.6,
+    /** Umbral de sed a partir del cual se prioriza beber. */
+    sedCritica: 0.7,
+    /** Umbral de sed a partir del cual sesga su rumbo hacia el agua (T38). */
+    sedBusqueda: 0.3,
+    /** Distancia al agua que mantiene al deambular, en celdas (T38). */
+    distanciaOrilla: 10,
+    /** Umbral de deseo de reproducción. */
+    umbralReproduccion: 0.6,
+    /** Velocidad a la que sube el hambre por segundo. */
     consumoHambre: 0.008,
+    /** Velocidad a la que sube la sed por segundo. */
+    consumoSed: 0.013,
+    /** Energía que aporta una presa al ser cazada (T43). */
     energiaPorPresa: 35,
+    /** Fracción de hambre que se satisface al comer una presa (T43). */
+    saciedadPorPresa: 0.8,
+    /** Fracción de sed que se satisface de una vez al beber (T38). */
+    saciedadAlBeber: 1,
+    /** Distancia (celdas) a la que el depredador alcanza y mata a la presa (T43). */
+    radioAtaque: 0.6,
+    /** Distancia (celdas) a la que se considera que está bebiendo (T38). */
+    radioBeber: 1.5,
     energiaReproduccion: 70,
     cooldownReproduccion: 60 * 15,
     edadMinimaReproduccion: 60 * 25,
-    /** Segundos de persecución máxima antes de abandonar (anti-twitch). */
-    segundosPersecucion: 12,
+    /** Distancia (celdas) a la que dos depredadores dispuestos se reproducen (T46). */
+    radioReproduccion: 1.5,
+    /** Energía que le cuesta cada cría a cada progenitor. */
+    energiaPorCria: 35,
+    /** Velocidad a la que sube el deseo de reproducirse si está bien alimentado (T46). */
+    crecimientoReproduccion: 0.003,
+    /** Velocidad a la que baja el deseo de reproducirse si tiene hambre o sed (T46). */
+    decaimientoReproduccion: 0.02,
+    /**
+     * Segundos de persecución máxima antes de abandonar la presa
+     * (anti-twitch, T43). Tiene que ser **mayor** que el tiempo que tarda
+     * el depredador en alcanzarla: con radio de visión 9 y una ventaja de
+     * velocidad de 0.5 celdas/s hacen falta ~18 s. Con 12 s abandonaba
+     * siempre antes de cazar y la población de carnívoros se extinguía.
+     */
+    segundosPersecucion: 30,
+    /** Ruido (radianes) que se le suma al rumbo por tick al explorar. */
+    ruidoRumbo: 0.15,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -203,6 +255,18 @@ export const CONFIG = {
     celdaHash: 8,
     /** Celdas a la redonda que se consultan por hash para un radio dado. */
     margenConsulta: 1,
+    /**
+     * Cada cuántos ticks un depredador vuelve a buscar presa cuando no
+     * tiene ninguna a la vista. Buscar en el hash en cada tick es caro y
+     * la memoria del objetivo alcanza para varios ticks.
+     */
+    ticksEntreBusqueda: 6,
+    /**
+     * Cada cuántos ticks una entidad sin agua a la vista vuelve a seguir
+     * el campo BFS hacia el agua (T38). El agua no se mueve, así que se
+     * busca menos seguido que la comida.
+     */
+    ticksEntreBusquedaAgua: 20,
   },
 
   // ─────────────────────────────────────────────────────────────
