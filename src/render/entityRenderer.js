@@ -15,13 +15,10 @@
  */
 
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { ESPECIE } from '../entities/entity.js';
+import { COLOR_ESPECIE, COLOR_ESTADO } from './paleta.js';
 
-/** Color de cada especie. */
-export const COLOR_ESPECIE = {
-  [ESPECIE.HERBIVORO]: 0x6bdc7a,
-  [ESPECIE.PREDADOR]: 0xff5d5d,
-};
+/** Color de cada especie (reexportado desde la paleta por compatibilidad). */
+export { COLOR_ESPECIE };
 
 export class EntityRenderer {
   /**
@@ -46,6 +43,35 @@ export class EntityRenderer {
     this.libres = [];
     /** Versión del manager para la que se reconstruyó la lista. */
     this.version = -1;
+
+    /**
+     * Modo depuración (T56): en vez de teñir por especie, se tiñe por el
+     * estado de la IA, para ver qué está haciendo cada animal.
+     * @type {boolean}
+     */
+    this.depuracion = false;
+  }
+
+  /**
+   * Activa o desactiva el modo depuración.
+   * @param {boolean} valor
+   */
+  setDepuracion(valor) {
+    this.depuracion = valor;
+    this.version = -1; // fuerza el recoloreado
+  }
+
+  /**
+   * Color de una entidad según el modo actual.
+   * @param {number} id
+   * @param {import('../entities/entityManager.js').EntityManager} manager
+   * @returns {number}
+   */
+  colorDe(id, manager) {
+    if (this.depuracion) {
+      return COLOR_ESTADO[manager.estado[id]] ?? 0xffffff;
+    }
+    return COLOR_ESPECIE[manager.tipo[id]] ?? 0xffffff;
   }
 
   /**
@@ -103,7 +129,7 @@ export class EntityRenderer {
         this.spritePorId[id] = sprite;
       }
       sprite.visible = true;
-      sprite.tint = COLOR_ESPECIE[manager.tipo[id]] ?? 0xffffff;
+      sprite.tint = this.colorDe(id, manager);
       nuevaLista.push(id);
     }
 
@@ -149,6 +175,13 @@ export class EntityRenderer {
       sprite.x = (xs[id] * tile - cx) * zoom + medioX;
       sprite.y = (ys[id] * tile - cy) * zoom + medioY;
       sprite.scale.set(zoom);
+
+      // En modo depuración el color depende del estado de IA, que cambia
+      // cada tick: hay que recolorear. Fuera de ese modo, el color por
+      // especie ya se puso en `sincronizar()` y no se toca.
+      if (this.depuracion) {
+        sprite.tint = this.colorDe(id, manager);
+      }
     }
   }
 }

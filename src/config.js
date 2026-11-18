@@ -206,6 +206,35 @@ export const CONFIG = {
   },
 
   // ─────────────────────────────────────────────────────────────
+  // INTERFAZ [P1] — HUD, controles, gráfico, leyenda y barras
+  // ─────────────────────────────────────────────────────────────
+  // Regla del proyecto: los componentes de UI no hardcodean sus
+  // constantes; las leen de acá (T55/T56).
+  ui: {
+    /** Historial del gráfico: muestras guardadas (1 por segundo → 5 min). */
+    graficoMaxMuestras: 300,
+    /** Cada cuántos ticks se guarda una muestra y se redibuja el gráfico (1 s). */
+    graficoIntervaloTicks: 60,
+    /** Tamaño del canvas del gráfico, en píxeles. */
+    graficoAncho: 260,
+    graficoAlto: 120,
+    /** Colores CSS de cada serie del gráfico (plantas, herbívoros, carnívoros). */
+    graficoColorPlantas: '#4f9d4f',
+    graficoColorHerbivoros: '#6bdc7a',
+    graficoColorDepredadores: '#ff5d5d',
+    /** Barras de necesidades del animal seleccionado, en píxeles de mundo. */
+    barraAncho: 16,
+    barraAlto: 3,
+    barraSeparacion: 1,
+    /** Distancia (píxeles de mundo) a la que se dibujan las barras sobre el bicho. */
+    barraOffsetY: 10,
+    /** Radio (en celdas) alrededor del clic para seleccionar un bicho. */
+    radioSeleccion: 1.5,
+    /** Movimiento del puntero (px) que separa un clic de un arrastre de cámara. */
+    umbralArrastrePx: 3,
+  },
+
+  // ─────────────────────────────────────────────────────────────
   // CÁMARA [P1]
   // ─────────────────────────────────────────────────────────────
   camara: {
@@ -221,4 +250,6 @@ export const ESTADO = {
   seed: CONFIG.mundo.seedPorDefecto,
   pausa: false,
   escalaSimulacion: CONFIG.tiempo.escalaSimulacion,
+  /** Modo depuración (T56): el color de las entidades es su estado de IA. */
+  depuracion: false,
 };

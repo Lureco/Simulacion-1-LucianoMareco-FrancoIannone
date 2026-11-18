@@ -8,6 +8,10 @@
  * Recordatorio PixiJS v8:
  *   - `app.init()` es ASÍNCRONO → hay que awaitsarlo.
  *   - El canvas se accede como `app.canvas` (en v7 era `app.view`).
+ *
+ * ⚠️ REFACTOR SoA (D13): la UI se adapta a los arrays tipados. La
+ * selección por clic recorre `manager.vivos` (ids) y `necesidadesRenderer`
+ * expone una **vista plana** para que la leyenda no sepa de SoA.
  */
 
 import { Application } from 'pixi.js';
@@ -22,10 +26,14 @@ import { Camera } from './render/camera.js';
 import { EntityRenderer } from './render/entityRenderer.js';
 import { TerrainRenderer } from './render/terrainRenderer.js';
 import { PlantRenderer } from './render/plantRenderer.js';
+import { NecesidadesRenderer } from './render/necesidadesRenderer.js';
 import { generarTerreno } from './world/terrain.js';
 import { TERRENO, PLANTA, nombreTerreno } from './world/cell.js';
 import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
 import { Hud } from './ui/hud.js';
+import { Controles } from './ui/controles.js';
+import { Leyenda } from './ui/leyenda.js';
+import { Grafico } from './ui/grafico.js';
 
 const app = new Application();
 
@@ -115,6 +123,10 @@ const plantRenderer = new PlantRenderer(app, {
 app.stage.addChild(plantRenderer.contenedor);
 app.stage.addChild(renderer.contenedor);
 
+// T56: barras de necesidades sobre la entidad seleccionada (encima de todo).
+const necesidadesRenderer = new NecesidadesRenderer(app, { tileSize: tile, manager });
+app.stage.addChild(necesidadesRenderer.contenedor);
+
 const camara = new Camera(
   CONFIG.mundo.ancho * tile,
   CONFIG.mundo.alto * tile,
@@ -124,6 +136,78 @@ const camara = new Camera(
 camara.conectar(app.canvas);
 
 const hud = new Hud(contenedor);
+
+// T33: barra de pausa y velocidad. La barra solo notifica; el estado real
+// vive en `ESTADO`, que es lo que lee el bucle principal.
+const controles = new Controles(contenedor, {
+  alCambiarPausa: (pausada) => {
+    ESTADO.pausa = pausada;
+  },
+  alCambiarVelocidad: (velocidad) => {
+    ESTADO.escalaSimulacion = velocidad;
+  },
+});
+
+// T55: gráfico de evolución de poblaciones.
+const grafico = new Grafico(contenedor);
+
+// T56: leyenda de colores y modo depuración.
+const leyenda = new Leyenda(contenedor);
+
+// ── Selección de entidad (T56) ───────────────────────────────────
+// Un clic sobre un animal muestra sus necesidades. Se distingue del
+// arrastre de cámara mirando cuánto se movió el puntero: si casi no se
+// movió, fue un clic.
+
+let punteroX = 0;
+let punteroY = 0;
+let movido = false;
+
+app.canvas.addEventListener('pointerdown', (e) => {
+  punteroX = e.clientX;
+  punteroY = e.clientY;
+  movido = false;
+});
+
+app.canvas.addEventListener('pointermove', (e) => {
+  const umbral = CONFIG.ui.umbralArrastrePx;
+  if (Math.abs(e.clientX - punteroX) > umbral || Math.abs(e.clientY - punteroY) > umbral) {
+    movido = true;
+  }
+});
+
+app.canvas.addEventListener('pointerup', (e) => {
+  if (movido) return; // fue un arrastre de cámara, no un clic
+
+  // Convierte la posición de pantalla a coordenadas de mundo.
+  const rect = app.canvas.getBoundingClientRect();
+  const mundoX = (e.clientX - rect.left - app.renderer.width / 2) / camara.zoom + camara.x;
+  const mundoY = (e.clientY - rect.top - app.renderer.height / 2) / camara.zoom + camara.y;
+
+  // Busca la entidad viva más cercana al clic, dentro de un radio corto.
+  const radio = tile * CONFIG.ui.radioSeleccion;
+  let mejor = null;
+  let mejorDistancia = radio * radio;
+  for (const id of manager.vivos) {
+    const dx = manager.x[id] * tile - mundoX;
+    const dy = manager.y[id] * tile - mundoY;
+    const distancia = dx * dx + dy * dy;
+    if (distancia < mejorDistancia) {
+      mejorDistancia = distancia;
+      mejor = id;
+    }
+  }
+
+  necesidadesRenderer.seleccionar(mejor);
+  if (mejor === null) {
+    console.log('[main] selección: ninguna');
+  } else {
+    console.log(
+      `[main] seleccionado: ${manager.tipo[mejor] === ESPECIE.HERBIVORO ? 'herbívoro' : 'carnívoro'} ` +
+        `en (${manager.celdaX(mejor)}, ${manager.celdaY(mejor)}) · estado ${manager.estado[mejor]}`,
+    );
+  }
+});
 
 window.addEventListener('resize', () => {
   camara.redimensionar(app.renderer.width, app.renderer.height);
@@ -140,10 +224,28 @@ window.addEventListener(
   'keydown',
   (e) => {
     switch (e.key.toLowerCase()) {
+      case 'd':
+        // T56: cambia el color de las entidades de "por especie" a
+        // "por estado de IA". Así se ve qué está haciendo cada animal.
+        ESTADO.depuracion = !ESTADO.depuracion;
+        leyenda.setDepuracion(ESTADO.depuracion);
+        renderer.setDepuracion(ESTADO.depuracion);
+        console.log(`[main] depuración: ${ESTADO.depuracion ? 'ON' : 'OFF'}`);
+        break;
       case ' ':
         ESTADO.pausa = !ESTADO.pausa;
+        controles.setPausa(ESTADO.pausa);
         console.log(`[main] ${ESTADO.pausa ? 'PAUSA' : 'CORRIENDO'}`);
         break;
+      case '1':
+      case '2':
+      case '4': {
+        const velocidad = Number(e.key);
+        ESTADO.escalaSimulacion = velocidad;
+        controles.setVelocidad(velocidad);
+        console.log(`[main] velocidad de simulación: ${velocidad}×`);
+        break;
+      }
       case 'f': {
         // Seguir a un herbívoro al azar.
         const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
@@ -167,6 +269,7 @@ window.addEventListener(
         ctx.tick = 0;
         ctx.nacimientosTotales = 0;
         ctx.muertesTotales = 0;
+        necesidadesRenderer.seleccionar(null);
         generarMundo();
         terrenoRenderer.generar(ctx.grid);
         sembrarVegetacion(ctx);
@@ -229,18 +332,47 @@ function bucle(ahora) {
   plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.plantas.ticksPorRefrescoRender);
   plantRenderer.render(camara);
   renderer.render(manager, camara);
+  necesidadesRenderer.render(camara);
+
+  const datosPoblacion = {
+    plantas: contarPlantas(ctx),
+    herbivoros: manager.contar(ESPECIE.HERBIVORO),
+    depredadores: manager.contar(ESPECIE.PREDADOR),
+  };
+
+  // T55: el gráfico se redibuja **una vez por segundo**, no por frame.
+  // `registrar` guarda una muestra por segundo y `renderizar` solo se
+  // llama cuando cambió el segundo.
+  grafico.registrar(ctx.tick, datosPoblacion);
+  if (ctx.tick - grafico.ultimoTick >= CONFIG.ui.graficoIntervaloTicks) {
+    grafico.ultimoTick = ctx.tick;
+    grafico.renderizar(datosPoblacion);
+  }
+
+  // T56: el contador por estado de IA va en la leyenda; también se pasan
+  // las necesidades del animal seleccionado (vista plana).
+  if (ESTADO.depuracion) {
+    const conteo = {};
+    for (const id of manager.vivos) {
+      const estado = manager.estado[id];
+      conteo[estado] = (conteo[estado] ?? 0) + 1;
+    }
+    leyenda.actualizar(conteo, necesidadesRenderer.seleccionada);
+  } else {
+    leyenda.actualizar(null, necesidadesRenderer.seleccionada);
+  }
 
   hud.actualizar(
     {
-      plantas: contarPlantas(ctx),
-      herbivoros: manager.contar(ESPECIE.HERBIVORO),
-      depredadores: manager.contar(ESPECIE.PREDADOR),
+      ...datosPoblacion,
       total: manager.total,
       nacidos: ctx.nacimientosTotales,
       muertos: ctx.muertesTotales,
       ticks: ctx.tick,
       seed: ESTADO.seed,
       fps,
+      velocidad: ESTADO.escalaSimulacion,
+      pausa: ESTADO.pausa,
     },
     ahora,
   );
@@ -265,7 +397,9 @@ console.log(
 );
 console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
 console.log(
-  '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · espacio = pausa · R = nueva seed · S = ver seed · T = terreno',
+  '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · ' +
+    'espacio = pausa · 1/2/4 = velocidad · D = depuración · clic = ver necesidades · ' +
+    'R = nueva seed · S = ver seed · T = terreno',
 );
 
 requestAnimationFrame(bucle);
