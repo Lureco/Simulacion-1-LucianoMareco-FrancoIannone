@@ -152,19 +152,20 @@ describe('T80 · EntityRenderer con ParticleContainer', () => {
     return { manager, id };
   }
 
-  it('voltea el sprite según dirX y jamás rota', () => {
+  it('voltea el sprite según dirX (arte mira a la izquierda) y jamás rota', () => {
     const atlas = atlasFalso();
     const r = new EntityRenderer(null, { atlas, tileSize: 8, capacidad: 16 });
     const { manager, id } = managerConUnBicho();
     const cam = camara({ x: 32, y: 32, ancho: 64, alto: 64 });
 
-    manager.dirX[id] = 1;
+    // El PNG mira a la izquierda: yendo a la izquierda NO se espeja.
+    manager.dirX[id] = -1;
     r.render(manager, cam, 0);
     const p = r.contenedor.particleChildren[0];
     expect(p.scaleX).toBeGreaterThan(0);
     expect(p.rotation).toBe(0);
 
-    manager.dirX[id] = -1;
+    manager.dirX[id] = 1;
     r.render(manager, cam, 0);
     expect(r.contenedor.particleChildren[0].scaleX).toBeLessThan(0);
     expect(r.contenedor.particleChildren[0].rotation).toBe(0);

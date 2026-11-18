@@ -155,30 +155,43 @@ export async function crearAtlas() {
 
   const urls = new Map(Object.entries(URLS).map(([ruta, url]) => [claveDe(ruta), url]));
 
-  for (let i = 0; i < claves.length; i++) {
-    const clave = claves[i];
-    const x = pad + (i % columnas) * (tam + pad);
-    const y = pad + ((i / columnas) | 0) * (tam + pad);
-    const url = urls.get(clave);
-    let dibujado = false;
-
-    if (url !== undefined) {
+  // Cargar y decodificar TODOS los PNG en paralelo. Hacer `await decode()`
+  // dentro del bucle de dibujo costaba 23 latencias seguidas y retrasaba todo
+  // el arranque (terreno, vegetación y animales) varios segundos.
+  const imagenes = new Map();
+  await Promise.all(
+    claves.map(async (clave) => {
+      const url = urls.get(clave);
+      if (url === undefined) return;
       try {
         const imagen = new Image();
         imagen.src = url;
         await imagen.decode();
-        // Los PNG tienen tamaños distintos (58×35, 60×35, 32×32...). Se dibujan
-        // a tamaño natural y centrados en el casillero: sin estirar ni deformar.
-        const anchoImg = imagen.naturalWidth || imagen.width;
-        const altoImg = imagen.naturalHeight || imagen.height;
-        const factor = Math.min(1, tam / Math.max(anchoImg, altoImg));
-        const ancho = anchoImg * factor;
-        const alto = altoImg * factor;
-        ctx.drawImage(imagen, x + (tam - ancho) / 2, y + (tam - alto) / 2, ancho, alto);
-        dibujado = true;
+        imagenes.set(clave, imagen);
       } catch {
         // PNG corrupto o no decodificable: se cae al frame de prueba.
       }
+    }),
+  );
+
+  // El orden de `claves` es fijo, así que los UV siguen siendo reproducibles.
+  for (let i = 0; i < claves.length; i++) {
+    const clave = claves[i];
+    const x = pad + (i % columnas) * (tam + pad);
+    const y = pad + ((i / columnas) | 0) * (tam + pad);
+    const imagen = imagenes.get(clave);
+    let dibujado = false;
+
+    if (imagen !== undefined) {
+      // Los PNG tienen tamaños distintos (58×35, 60×35, 32×32...). Se dibujan
+      // a tamaño natural y centrados en el casillero: sin estirar ni deformar.
+      const anchoImg = imagen.naturalWidth || imagen.width;
+      const altoImg = imagen.naturalHeight || imagen.height;
+      const factor = Math.min(1, tam / Math.max(anchoImg, altoImg));
+      const ancho = anchoImg * factor;
+      const alto = altoImg * factor;
+      ctx.drawImage(imagen, x + (tam - ancho) / 2, y + (tam - alto) / 2, ancho, alto);
+      dibujado = true;
     }
     if (!dibujado && cfg.generarFallback) dibujarFallback(ctx, clave, x, y, tam);
   }

@@ -38,6 +38,10 @@ import { Grafico } from './ui/grafico.js';
 
 const app = new Application();
 
+// F7.5/T75: empieza a cargar el atlas ANTES de inicializar Pixi para que las
+// 23 imágenes se descarguen/decodifiquen mientras `app.init()` hace su trabajo.
+const promesaAtlas = crearAtlas();
+
 await app.init({
   background: CONFIG.render.colorFondo,
   resizeTo: window,
@@ -97,9 +101,9 @@ function poblar() {
 // ── Mundo y render ────────────────────────────────────────────────
 // Primero la grilla: `poblar()` la usa para elegir celdas de tierra.
 
-// F7.5/T75: atlas único armado desde los PNG sueltos. Una sola textura base
-// para todos los sprites (obligatorio para ParticleContainer).
-const atlas = await crearAtlas();
+// Atlas único: una sola textura base para todos los sprites (obligatorio para
+// ParticleContainer). Ya viene cargándose desde antes de `app.init()`.
+const atlas = await promesaAtlas;
 
 const tile = CONFIG.mundo.tileSize;
 const terrenoRenderer = new TerrainRenderer(app, { tileSize: tile, colores: COLORES_TERRENO });
@@ -400,6 +404,12 @@ console.log(
     'espacio = pausa · 1/2/4 = velocidad · D = depuración · clic = ver necesidades · ' +
     'R = nueva seed · S = ver seed · T = terreno',
 );
+
+// Pixi crea el buffer de GPU en el PRIMER render con el tamaño de
+// `particleChildren`. Reservar la capacidad completa evita reasignaciones
+// cuando cambia la cámara o crece la población.
+plantRenderer.reservarBufferGPU(app);
+renderer.reservarBufferGPU(app);
 
 requestAnimationFrame(bucle);
 

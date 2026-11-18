@@ -44,19 +44,6 @@ export class EntityRenderer {
     /** Tamaño de un casillero de 64 px en píxeles de mundo (antes del zoom). */
     this.escalaBase = (tileSize * CONFIG.sprites.escalaAnimal) / CONFIG.sprites.tamanoFrame;
 
-    /** @type {ParticleContainer<Particle>} */
-    this.contenedor = new ParticleContainer({
-      texture: atlas.textura,
-      dynamicProperties: {
-        position: true, // cámara
-        vertex: true, // escala (zoom) y signo de scaleX (flip)
-        uvs: true, // frame del cycle de caminar
-        color: true, // modo depuración (T56)
-        rotation: false, // sprites laterales: siempre 0
-      },
-    });
-    this.contenedor.boundsArea = new Rectangle(0, 0, 1, 1);
-
     // Pool fijo: una partícula por id posible, creada UNA sola vez.
     /** @type {Particle[]} */
     this.particulaPorId = new Array(capacidad);
@@ -69,10 +56,49 @@ export class EntityRenderer {
     }
 
     /**
+     * Reservar la capacidad completa (con una COPIA, porque el array del
+     * container se recorta a los visibles) evita que Pixi tenga que agrandar
+     * el buffer de índices a mitad de la partida.
+     */
+    /** @type {ParticleContainer<Particle>} */
+    this.contenedor = new ParticleContainer({
+      texture: atlas.textura,
+      particles: this.particulaPorId.slice(),
+      dynamicProperties: {
+        position: true, // cámara
+        vertex: true, // escala (zoom) y signo de scaleX (flip)
+        uvs: true, // frame del cycle de caminar
+        color: true, // modo depuración (T56)
+        rotation: false, // sprites laterales: siempre 0
+      },
+    });
+    this.contenedor.boundsArea = new Rectangle(0, 0, 1, 1);
+
+    /**
+     * Pixi solo sube los atributos ESTÁTICOS (acá: `rotation`) cuando
+     * `_childrenDirty` es true. Sin esto el buffer estático se queda en los
+     * 4 bytes iniciales y `gl.drawElements` falla con
+     * `GL_INVALID_OPERATION: Vertex buffer is not big enough` → los animales
+     * no se ven. Las props dinámicas se suben solas; la rotación nunca cambia,
+     * así que basta marcarlo una vez (plantRenderer ya lo hace en reconstruir).
+     */
+    this.contenedor.update();
+
+    /**
      * Modo depuración (T56): teñir por estado de IA en vez de por especie.
      * @type {boolean}
      */
     this.depuracion = false;
+  }
+
+  /**
+   * Crea el buffer de GPU con la capacidad completa ANTES del primer frame.
+   * @param {import('pixi.js').Application} app
+   */
+  reservarBufferGPU(app) {
+    const pipe = app?.renderer?.renderPipes?.particle;
+    if (pipe === undefined) return; // tests headless: no hay renderer
+    pipe.getBuffers(this.contenedor);
   }
 
   /** @param {boolean} valor */
@@ -126,7 +152,9 @@ export class EntityRenderer {
 
       p.x = x;
       p.y = y;
-      p.scaleX = escala * (dirs[id] < 0 ? -1 : 1); // flip lateral, sin rotación
+      // Los PNG miran hacia la IZQUIERDA: dirX < 0 (izquierda) → sin espejo;
+      // dirX > 0 (derecha) → scaleX negativo. Siempre sin rotación.
+      p.scaleX = escala * (dirs[id] < 0 ? 1 : -1);
       p.scaleY = escala;
       p.tint = depuracion ? (COLOR_ESTADO[estados[id]] ?? 0xffffff) : 0xffffff;
 

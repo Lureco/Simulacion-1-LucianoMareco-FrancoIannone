@@ -43,21 +43,6 @@ export class PlantRenderer {
     /** Tamaño de un casillero de 64 px en píxeles de mundo (antes del zoom). */
     this.escalaBase = (tileSize * CONFIG.sprites.escalaPlanta) / CONFIG.sprites.tamanoFrame;
 
-    /** @type {ParticleContainer<Particle>} */
-    this.contenedor = new ParticleContainer({
-      texture: atlas.textura,
-      dynamicProperties: {
-        position: true,
-        vertex: true,
-        uvs: false,
-        color: false,
-        rotation: false,
-      },
-    });
-    // ParticleContainer no calcula bounds: hay que darle un área manual.
-    // La actualizamos en render() con el tamaño de la vista.
-    this.contenedor.boundsArea = new Rectangle(0, 0, 1, 1);
-
     // Pool fijo. Se crea TODO acá, nunca dentro del bucle.
     /** @type {Particle[]} */
     this.particulas = new Array(capacidad);
@@ -76,10 +61,51 @@ export class PlantRenderer {
       this.particulas[i] = p;
     }
 
+    /**
+     * Reservar la capacidad completa (con una COPIA, porque el array del
+     * container se recorta a los visibles) evita que Pixi tenga que agrandar
+     * el buffer de índices a mitad de la partida.
+     */
+    /** @type {ParticleContainer<Particle>} */
+    this.contenedor = new ParticleContainer({
+      texture: atlas.textura,
+      particles: this.particulas.slice(),
+      dynamicProperties: {
+        position: true,
+        vertex: true,
+        uvs: false,
+        color: false,
+        rotation: false,
+      },
+    });
+    // ParticleContainer no calcula bounds: hay que darle un área manual.
+    // La actualizamos en render() con el tamaño de la vista.
+    this.contenedor.boundsArea = new Rectangle(0, 0, 1, 1);
+
+    /**
+     * Pixi hace un render inicial ANTES del primer `bucle()` (autoStart del
+     * ticker), con las 65.536 partículas del pool y todavía sin reconstruir.
+     * Sin este `update()` los atributos estáticos no se suben y ese primer
+     * draw call falla con GL_INVALID_OPERATION. `reconstruir()` vuelve a
+     * marcarlo al cambiar los frames.
+     */
+    this.contenedor.update();
+
     /** Último tick en el que se reconstruyó la lista. */
     this.ultimoTick = -Infinity;
     /** Rectángulo de celdas visibles de la última reconstrucción. */
     this.rect = { x0: 0, y0: 0, x1: -1, y1: -1 };
+  }
+
+  /**
+   * Crea el buffer de GPU con la capacidad completa ANTES del primer frame,
+   * para que no haya que reasignarlo cuando cambie la cámara.
+   * @param {import('pixi.js').Application} app
+   */
+  reservarBufferGPU(app) {
+    const pipe = app?.renderer?.renderPipes?.particle;
+    if (pipe === undefined) return; // tests headless: no hay renderer
+    pipe.getBuffers(this.contenedor);
   }
 
   /**

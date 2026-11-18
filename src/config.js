@@ -251,8 +251,13 @@ export const CONFIG = {
     crecimientoReproduccion: 0.004,
     /** Velocidad a la que baja el deseo de reproducirse si tiene hambre o sed (T46). */
     decaimientoReproduccion: 0.02,
-    /** Ruido (radianes) que se le suma al rumbo por tick al explorar (T39). */
-    ruidoRumbo: 0.15,
+    /**
+     * Ruido (radianes) que se le suma al rumbo por tick al explorar (T39).
+     * Es un random walk: con 0.15 se giraba ~60° por segundo y el animal parecía
+     * dar vueltas sin parar. 0.02 mantiene el camino orgánico (~9°/s) sin que
+     * el rumbo cambie de golpe (bug reportado después de F7.5).
+     */
+    ruidoRumbo: 0.02,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -305,8 +310,8 @@ export const CONFIG = {
      * siempre antes de cazar y la población de carnívoros se extinguía.
      */
     segundosPersecucion: 30,
-    /** Ruido (radianes) que se le suma al rumbo por tick al explorar. */
-    ruidoRumbo: 0.15,
+    /** Ruido (radianes) por tick al explorar. Acumulativo: se mantiene bajo (ver herbívoro). */
+    ruidoRumbo: 0.02,
   },
 
   // ─────────────────────────────────────────────────────────────

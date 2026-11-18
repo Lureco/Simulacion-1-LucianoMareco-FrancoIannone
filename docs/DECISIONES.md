@@ -490,9 +490,41 @@ No hizo falta bajar el alcance visual ni partir en *chunks*: alcanzó con el cul
 
 **Verificación final:** `tests/atlas.test.js` cubre claves, mapeo por estado de planta, wrap del
 cycle y coincidencia con los PNG reales (9/11); `tests/render.test.js` cubre pool, culling, flip,
-frames y depuración. `npm run lint`, `npm test` (120 tests), `npm run build` y Prettier sobre los
-archivos tocados pasan. La medición T79 está registrada además junto a T59. La comprobación
+frames y depuración. `npm run lint`, `npm test`, `npm run build` y Prettier sobre los archivos
+tocados pasan. La medición T79 está registrada además junto a T59. La comprobación
 visual en pantalla la realiza el usuario con `npm run dev`.
+
+### Correcciones tras el commit de F7.5 (bugs 1 y 2)
+
+1. **Espejo invertido (bug 1).** Los PNG fuente miran hacia la **izquierda**, así que el signo es
+   el contrario del inicial: `dirX < 0` → `scaleX` positivo (sin espejo) y `dirX > 0` → `scaleX`
+   negativo. Antes el dibujo miraba al revés del movimiento. Lo cubre `tests/render.test.js`.
+2. **Rumbo que giraba sin parar (bug 2).** `deambular()` suma `ruidoRumbo` **en cada tick** (60 por
+   segundo), un random walk que con 0.15 rad producía ~60° de giro por segundo. Se bajó a
+   **0.02 rad** en herbívoro y carnívoro (~9°/s), conservando el camino orgánico sin el giro
+   frenético. El giro aleatorio programado cada 40-110 ticks (T39) se deja igual. Lo cubre
+   `tests/rumbo.test.js` para ambas especies.
+3. **Arranque lento (bug 3).** `crearAtlas()` decodificaba los 23 PNG **en serie** (`await
+   imagen.decode()` dentro del bucle de dibujo) y `main.js` esperaba el atlas antes de generar el
+   mundo y poblarlo, así que todo —incluidos los animales— tardaba en aparecer. Ahora las imágenes
+   se decodifican en paralelo con `Promise.all` y la carga arranca antes de `app.init()` para
+   solaparse con la inicialización de Pixi. El orden de `claves` no cambia, así que los UV siguen
+   siendo reproducibles.
+4. **Plantas primero, dinos varios segundos después (bug 4).** No era culling ni densidad (con la
+   seed 1337 hay 52 animales dentro de la cámara inicial) ni frames vacíos (`walk_0` tiene ~49 % y
+   ~38 % de píxeles opacos). La causa era un `GL_INVALID_OPERATION: Vertex buffer is not big enough
+   for the draw call`. Pixi crea `_staticBuffer` y `_dynamicBuffer` con `new Float32Array(1)` (4
+   bytes) y **solo los redimensiona dentro de `ParticleBuffer.update()`**. Ese update sube lo
+   estático únicamente si `_childrenDirty === true`. `plantRenderer.reconstruir()` llama a
+   `contenedor.update()`, pero `entityRenderer` nunca lo hacía: su buffer estático se quedó en 4
+   bytes para siempre y `gl.drawElements` fallaba, dejando a los animales invisibles. Además, el
+   ticker de Pixi hace un render inicial **antes** del primer `bucle()`, cuando el container de
+   plantas todavía tiene las 65.536 partículas del pool y aún no se reconstruyó: por eso las
+   plantas también fallaban en ese primer frame. Arreglo: `contenedor.update()` en el constructor
+   de ambos renderers (una sola vez; la rotación nunca cambia y las UV de plantas se remarcan en
+   `reconstruir()`) y `particles: pool.slice()` para reservar la capacidad completa desde el
+   inicio. Instrumentando el pipe se pasó de `staticData=4` en animales a `staticData=64000`, y
+   Chrome headless pasó de 5-9 `GL_INVALID_OPERATION` por corrida a **0**.
 
 ---
 
