@@ -161,11 +161,20 @@ Sistema de necesidades. **Normalizadas en `[0, 1]`**: `hambre`, `sed` y
 
 Además de actualizar las necesidades, el módulo expone:
 
-- `causaDeMuerte(id, ctx)` → `CAUSA_MUERTE.*` (`HAMBRE`, `SED`, `VEJEZ`) o
-  `NINGUNA` si sigue viva (T45); `NOMBRE_CAUSA_MUERTE` da el nombre legible.
+- `causaDeMuerte(id, ctx)` → `CAUSA_MUERTE.*` (`HAMBRE`, `SED`, `VEJEZ`,
+  `DEPREDADO`) o `NINGUNA` si sigue viva (T45); `NOMBRE_CAUSA_MUERTE` da el
+  nombre legible.
 - `debeMorir(id, ctx)` → atajo booleano.
-- `quiereReproducir(id, ctx)` → si el deseo supera el umbral, la energía alcanza
-  y el cooldown terminó.
+- `registrarMuerte(ctx, causa)` → suma la muerte al contador de su causa
+  (`ctx.muertesPorCausa`), compartido por las dos especies (T45).
+- `quiereReproducir(id, ctx, cfg?)` → si el deseo supera el umbral, la energía
+  alcanza y el cooldown terminó. `cfg` permite usar la config de la especie
+  (`herbivoro` o `depredador`); por defecto, la del herbívoro.
+
+**Deseo de reproducción (F5):** tras madurar, `deseoRepro` sube
+(`crecimientoReproduccion`) **solo si el animal está bien alimentado** (hambre y
+sed por debajo de sus umbrales críticos); con hambre o sed encima, **baja**
+(`decaimientoReproduccion`). Reproducirse en mal momento no tiene sentido.
 - `gastarEnergia(id, dt, ctx)` → descuenta energía según el terreno que pisa
   (T40): `costeAgua`, `costeArena` multiplican el gasto base.
 

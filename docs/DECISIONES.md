@@ -300,6 +300,55 @@ La regulación por competencia es una tarea de balance posterior, no de F4.
 
 ---
 
+## D15 · Unificación con `main` e IA del carnívoro (F5)
+
+**Contexto.** El repo tenía **dos historias huérfanas** con el mismo árbol en
+F3: `main` (versión OOP, un objeto por bicho, con la UI y la IA de las dos
+especies) y `master` (refactor SoA + IA del herbívoro). Había que dejar una
+sola rama con todo.
+
+**Decisión (implementada):**
+
+1. **Base `master` (SoA).** El refactor SoA (D13) es el que pidió el profesor,
+   así que la arquitectura que manda es la de `master`; de `main` se **trae lo
+   que faltaba**, no al revés.
+2. **Historia unificada.** `unificacion` arranca de `master` y hace un merge
+   `-s ours` de `origin/main`: el árbol queda intacto (base SoA) pero las dos
+   historias quedan emparentadas, así que los merges futuros ya tienen base.
+3. **UI portada de `main`** (T33, T55, T56): `src/ui/controles.js` (pausa y
+   1×/2×/4×), `src/ui/grafico.js` (poblaciones), `src/ui/leyenda.js`,
+   `src/render/paleta.js` y `src/render/necesidadesRenderer.js`. Se adaptaron a
+   los arrays tipados: la vista de necesidades recorre `vivos` (ids) y expone
+   una **vista plana** para que la leyenda no sepa de SoA.
+4. **IA del carnívoro reescrita en SoA** (`predator.js`, F5/T43-T44): prioridad
+   `hambre crítica > sed > reproducir > explorar`, detección de presa
+   (`buscarPresa` sobre el spatial hash), persecución con timeout
+   (`segundosPersecucion`, en arrays `presa`/`ticksPersecucion`), ataque a
+   `radioAtaque` y comida de la presa. El carnívoro es más rápido pero menos
+   eficiente: cada presa cuesta energía.
+5. **Depredación como causa de muerte** (T45): `CAUSA_MUERTE.DEPREDADO`, contada
+   en `ctx.muertesPorCausa.depredado`. `anotarMuerte` es **idempotente** (flag
+   `moribundo`) para que dos cazadores no cuenten la misma presa dos veces ni
+   se sume otra causa en el mismo tick.
+6. **El herbívoro huye** (T43) con **prioridad absoluta** (un herbívoro muerto
+   no come) y ambos **mantienen distancia al agua al deambular** (T38), leyendo
+   el campo BFS de `terrain.js`.
+7. **Lo que NO se trajo de `main`:** los módulos OOP que `master` ya reemplazó
+   (`death.js`, `mapaAgua.js`, `reproduction.js`, `pool.js`, `tests/needs.test.js`
+   y los scripts de depuración viejos). Traerlos habría dejado código muerto y
+   duplicado; su comportamiento ya está cubierto por `needs.js`, `eventos.js`,
+   los campos BFS de `terrain.js` y `tests/cadenaAlimenticia.test.js`.
+
+**Por qué:** una sola rama que corre, con la arquitectura que pidió el profesor
+y todo lo que aportaba la versión anterior, sin arrastrar dos implementaciones
+de lo mismo.
+
+**Verificación:** `tests/cadenaAlimenticia.test.js` cubre caza, no-duplicación de
+la presa, huida y T38; `scripts/simular.mjs` muestra las muertes `d` por
+depredación; y en pantalla se ven los estados `persiguiendo` / `huyendo`.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |
