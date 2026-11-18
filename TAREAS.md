@@ -269,13 +269,11 @@ simulacion-ecosistemas/
       *(herbívoros en F4 y depredadores en F5: `celdaLibreAdyacente` + nacimientos diferidos)*
 - [x] **T48 · P2** — Semilla inicial de herbívoros y depredadores en zonas habitables
       (`sembrar` + `poblar`: celdas de tierra al azar con el PRNG)
-- [ ] **T49 · P1** — Restricción de terreno en el movimiento (no cruzar agua profunda sin costo)
-      ⚠️ **Parcial (verificado 2026-11-18):** en `main` el agua **cuesta 4× energía**
-      (`needs.js` → `costeAgua`) y la IA **evita meterse** en ella (`terrain.js` genera los campos
-      BFS `aguaDist/aguaDir*`; `perception.js` → `direccionAjustadaAlAgua` mantiene
-      `distanciaOrilla` y permite beber desde la orilla con `radioBeber = 1.5`). Pero
-      **`movement.js` no consulta la grilla**: se perdió el `factorVelocidad` (agua ÷ 4) que sí
-      estaba en la rama `master`. Falta decidir si el agua profunda solo frena o si bloquea.
+- [x] **T49 · P1** — Restricción de terreno en el movimiento (no cruzar agua profunda sin costo)
+      *(hecho: `movement.js` consulta la celda destino y frena la velocidad según el terreno —
+      agua ÷ 4, arena ÷ 1.6 — con factores derivados de `costeAgua`/`costeArena`; el coste
+      energético lo cobra `needs.js` y el campo BFS mantiene a los animales lejos del agua.
+      Se eligió **frenar, no bloquear**: D17. Tests en `tests/movement.test.js`)*
 - [x] **T50 · Ambos** — Test de integración: la **cadena alimenticia completa** funciona
       (planta → herbívoro → depredador) y se nota en pantalla
       (`tests/cadenaAlimenticia.test.js` + `scripts/simular.mjs`, que ya cuenta las muertes

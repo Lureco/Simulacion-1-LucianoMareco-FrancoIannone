@@ -66,7 +66,7 @@ Hitos según `TAREAS.md`:
 | **F2** Datos y entidades base | ✅ Hecho | Entidad base, herbívoro, carnívoro, manager SoA, spatial hash, timestep fijo, render |
 | **F3** Plantas y autómata | ✅ Hecho | Crecimiento, estados, expansión, muerte por edad y `comerPlanta` (T27-T33). Sin humedad ni pisadas (D16) |
 | **F4** IA del herbívoro | ✅ Hecho | Necesidades, prioridad, comer/beber, penalización de terreno, reproducción y muerte (T34-T42 + T45-T47 lado herbívoro) |
-| **F5** Depredador y cadena | ✅ Hecho | Caza y persecución, depredación como causa de muerte, reproducción del carnívoro y test de la cadena (T43-T50) |
+| **F5** Depredador y cadena | ✅ Hecho | Caza y persecución, depredación, reproducción del carnívoro, restricción de terreno (D17) y test de la cadena (T43-T50) |
 
 ### Qué se ve hoy
 

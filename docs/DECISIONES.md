@@ -378,6 +378,36 @@ tarea concreta para terminar v1, con la corrección del contador incluida.
 
 ---
 
+## D17 · Restricción de terreno en el movimiento (T49)
+
+**Contexto.** T49 pedía que no se cruzara agua profunda "sin costo". En `main` ya estaban el
+coste energético de 4× (`needs.js`) y el campo BFS que mantiene a los animales en una franja
+alrededor del agua (D14), pero `movement.js` no miraba la grilla: el factor de velocidad de la
+rama `master` se había perdido en el refactor SoA.
+
+**Decisión (implementada):**
+
+1. **Frenar, no bloquear.** La celda **destino** modula la velocidad: agua ÷ 4, arena ÷ 1.6.
+   No hay un muro infranqueable: los animales ya evitan el agua al deambular y solo entran a
+   beber o si persiguen una presa. Un bloqueo duro exigiría definir "profundidad" (hoy el
+   terreno solo tiene el tipo `AGUA`, sin niveles) y podría dejar animales aislados en islas.
+2. **Sin parámetros nuevos.** El factor se deriva de los costes que ya existen:
+   `factorVelocidad = 1 / coste*` (`costeAgua = 4`, `costeArena = 1.6`). Así no se duplica un
+   número de balance en dos lugares.
+3. **Coste y velocidad se aplican en sitios distintos.** `movement.js` mira la celda destino para
+   frenar; `needs.js` mira la celda actual para cobrar energía (T40). Es un desfase de un tick en
+   la transición entre terrenos, aceptable y determinista.
+4. **Sin grilla = sin factor.** Los tests de entidades corren en un mundo vacío (`ctx.grid ===
+   null`) y siguen moviéndose a velocidad plena.
+
+**Por qué:** cierra F5 recuperando el comportamiento que ya tenía `master`, sin agregar capas de
+datos ni reglas de navegación nuevas.
+
+**Verificación:** `tests/movement.test.js` cubre tierra/arena/agua y `tests/determinismo.test.js`
+sigue pasando con el factor activo.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |
