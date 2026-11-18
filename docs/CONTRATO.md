@@ -217,7 +217,38 @@ Implementaciones previstas:
 
 ---
 
-## 6 · Protocolo de cambio
+## 6 · Renderers — `src/render/` (P1 + P2) — ✅ F7.5
+
+Los renderers son **consumidores** de datos: no escriben la grilla ni el `EntityManager`.
+Comparten una única textura base (`atlas.textura`) creada por `crearAtlas()` al arrancar.
+
+| Renderer | Constructor | API pública |
+|---|---|---|
+| `PlantRenderer` | `(app, { atlas, tileSize, capacidad })` | `reconstruir(grid, tick, cadaTicks, camara)`, `render(camara)`, `invalidar()`, `activas` (getter), `destruir()` |
+| `EntityRenderer` | `(app, { atlas, tileSize, capacidad? })` | `render(manager, camara, tick = 0)`, `setDepuracion(valor)`, `activas` (getter), `destruir()` |
+| `TerrainRenderer` | `(app, { tileSize, colores })` | Sin cambios (F1) |
+
+Contratos:
+
+- `atlas` es `{ textura, frames: Map<clave, Texture>, claves, ancho, alto }`, resultado de
+  `crearAtlas()` (`render/atlas.js`). Las claves y el mapeo estado/especie → frame viven en
+  `render/atlasDatos.js`, módulo puro importable desde Node (sin `import.meta.glob`).
+- La `capacidad` se reserva **al arrancar**: `grid.total` para plantas y
+  `CONFIG.entidades.maxEntidades` para animales. El pool nunca se agranda durante la simulación.
+- `PlantRenderer.reconstruir()` lee **solo el estado** de `grid.planta` (nunca la edad):
+  `SEMILLA`/`JOVEN`/`ADULTA` dibujan; `MUERTA`/`NADA` no. Se ejecuta cada
+  `CONFIG.plantas.ticksPorRefrescoRender` ticks o cuando cambia el rectángulo visible;
+  `invalidar()` la fuerza tras regenerar la grilla.
+- `EntityRenderer.render()` solo lee arrays SoA del manager (`x`, `y`, `dirX`, `tipo`,
+  `velocidad`, `estado`, `vivos`). El nuevo parámetro `tick` alimenta la animación y no avanza
+  en pausa. El sprite se voltea con `scaleX` según `dirX`, sin rotación.
+- Ambos usan `camara` (`x`, `y`, `zoom`, `vistaAnchoPx`, `vistaAltoPx`) y
+  `CONFIG.render.margenCulling` para no cargar partículas fuera de pantalla.
+- Cada renderer aporta **un** `ParticleContainer` (un draw call); no se hace `new` en el bucle.
+
+---
+
+## 7 · Protocolo de cambio
 
 1. Quien propose el cambio lo avisa **antes** de escribir código.
 2. Se actualiza **este documento** en la misma rama.

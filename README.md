@@ -67,6 +67,7 @@ Hitos según `TAREAS.md`:
 | **F3** Plantas y autómata | ✅ Hecho | Crecimiento, estados, expansión, muerte por edad y `comerPlanta` (T27-T33). Sin humedad ni pisadas (D16) |
 | **F4** IA del herbívoro | ✅ Hecho | Necesidades, prioridad, comer/beber, penalización de terreno, reproducción y muerte (T34-T42 + T45-T47 lado herbívoro) |
 | **F5** Depredador y cadena | ✅ Hecho | Caza y persecución, depredación, reproducción del carnívoro, restricción de terreno (D17) y test de la cadena (T43-T50) |
+| **F7.5** Sprites y atlas | ✅ Hecho | Atlas único de PNG reales + `ParticleContainer`: plantas por estado y animales con cycle de caminar (T75-T82); peor caso medido en 5,69 ms/frame |
 
 ### Qué se ve hoy
 
@@ -80,7 +81,10 @@ reproducen** cuando juntan energía y encuentran pareja, **huyen** si un
 carnívoro se acerca, y **mueren** de hambre, sed, vejez o **depredación** —
 cada causa contada por separado. Los carnívoros **persiguen y cazan** a los
 herbívoros (más rápidos, pero cada presa les cuesta energía), beben,
-deambulan manteniendo la distancia al agua y también se reproducen.
+deambulan manteniendo la distancia al agua y también se reproducen. Todo se ve con
+**sprites reales**: las plantas pasan de semilla a joven a adulta (y desaparecen al morir), y los
+animales son sprites laterales de **Triceratops** y **Ceratosaurio** que se voltean según su
+dirección y animan su caminata a velocidad distinta por especie.
 
 ### Lo que ya está garantizado (y se puede romper de una forma detectable)
 
@@ -92,9 +96,17 @@ deambulan manteniendo la distancia al agua y también se reproducen.
 - **Timestep fijo** de 1/60 s con acumulador: la simulación no depende del
   framerate.
 - **Sin `new` en el bucle**: entidades en **arrays tipados (SoA)** con lista de
-  `id` libres, y pool de sprites en el render.
-- **Sin `Graphics` por celda o por frame**: una sola textura generada al
-  arrancar, y sprites con `tint` por especie.
+  `id` libres; el render reserva su pool de partículas al arrancar y nunca lo agranda.
+- **Sin `Graphics` por celda o por frame**: un atlas único generado al arrancar desde los PNG de
+  `assets/sprites/` (sin atlas commiteado ni dependencias nuevas). Cada renderer es un
+  `ParticleContainer` → **2 draw calls por frame** sin importar la población.
+- **Capacidad tope garantizada**: hasta `grid.total` (65.536) celdas con planta y
+  `CONFIG.entidades.maxEntidades` (4.000) animales simultáneos: 5,69 ms/frame y 2,79 MB de heap
+  sin *sawtooth* en `node --expose-gc scripts/medirPeorCaso.mjs 60` (D18).
+- **Culling por cámara**: la vegetación solo se barre en el rectángulo visible más
+  `CONFIG.render.margenCulling`, y los animales fuera de pantalla no se cargan.
+
+Ver `docs/DECISIONES.md` D18 para la API de Pixi confirmada y las alternativas descartadas.
 
 ---
 
@@ -129,15 +141,19 @@ src/
 │  └─ simulacion.js     # el paso de simulación (usado por main y por tests)
 ├─ render/
 │  ├─ camera.js         # pan, zoom, seguimiento  ⚠️ adelantada de P1 (T53)
+│  ├─ atlas.js          # atlas único desde PNG sueltos (import.meta.glob + canvas)
+│  ├─ atlasDatos.js     # mapeo puro estado/especie → frame (sin Vite, para Node)
 │  ├─ terrainRenderer.js# el mapa entero en UNA textura + UN sprite (T15)
-│  ├─ plantRenderer.js  # sprites de plantas por estado (F3)
-│  └─ entityRenderer.js # sprites tintados, textura única
+│  ├─ plantRenderer.js  # ParticleContainer de plantas por estado + culling
+│  ├─ entityRenderer.js # ParticleContainer de animales: walk, flip y tint
+│  └─ necesidadesRenderer.js # vista plana de necesidades para la selección
 └─ ui/
    └─ hud.js            # contadores de población, tiempo, seed, FPS, nacidos/muertos
 
 scripts/
 ├─ verTerreno.mjs       # genera el mapa en Node y reporta proporciones
-└─ simular.mjs          # corre la simulación sin navegador (balance/rendimiento)
+├─ simular.mjs          # corre la simulación sin navegador (balance/rendimiento)
+└─ medirPeorCaso.mjs    # peor caso de render: 65.536 plantas + 4.000 animales (T79)
 
 docs/
 ├─ DECISIONES.md        # decisiones técnicas y por qué

@@ -27,8 +27,9 @@ import { EntityRenderer } from './render/entityRenderer.js';
 import { TerrainRenderer } from './render/terrainRenderer.js';
 import { PlantRenderer } from './render/plantRenderer.js';
 import { NecesidadesRenderer } from './render/necesidadesRenderer.js';
+import { crearAtlas } from './render/atlas.js';
 import { generarTerreno } from './world/terrain.js';
-import { TERRENO, PLANTA, nombreTerreno } from './world/cell.js';
+import { TERRENO, nombreTerreno } from './world/cell.js';
 import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
 import { Hud } from './ui/hud.js';
 import { Controles } from './ui/controles.js';
@@ -74,13 +75,6 @@ const COLORES_TERRENO = {
   [TERRENO.TIERRA]: CONFIG.terreno.colorTierra,
 };
 
-/** Colores de cada estado de planta, leídos de `CONFIG.plantas`. */
-const COLORES_PLANTA = {
-  [PLANTA.SEMILLA]: CONFIG.plantas.colorSemilla,
-  [PLANTA.JOVEN]: CONFIG.plantas.colorJoven,
-  [PLANTA.ADULTA]: CONFIG.plantas.colorAdulta,
-};
-
 /** Genera el terreno con la seed actual y lo deja en `ctx.grid`. */
 function generarMundo() {
   ctx.grid = generarTerreno({
@@ -103,6 +97,10 @@ function poblar() {
 // ── Mundo y render ────────────────────────────────────────────────
 // Primero la grilla: `poblar()` la usa para elegir celdas de tierra.
 
+// F7.5/T75: atlas único armado desde los PNG sueltos. Una sola textura base
+// para todos los sprites (obligatorio para ParticleContainer).
+const atlas = await crearAtlas();
+
 const tile = CONFIG.mundo.tileSize;
 const terrenoRenderer = new TerrainRenderer(app, { tileSize: tile, colores: COLORES_TERRENO });
 app.stage.addChild(terrenoRenderer.contenedor);
@@ -112,12 +110,12 @@ terrenoRenderer.generar(ctx.grid);
 sembrarVegetacion(ctx);
 poblar();
 
-const renderer = new EntityRenderer(app, { tileSize: tile });
+const renderer = new EntityRenderer(app, { atlas, tileSize: tile });
 
 const plantRenderer = new PlantRenderer(app, {
+  atlas,
   tileSize: tile,
-  colores: COLORES_PLANTA,
-  escala: CONFIG.plantas.escalaSprite,
+  capacidad: ctx.grid.total,
 });
 // Orden de capas: terreno abajo, plantas encima, entidades arriba.
 app.stage.addChild(plantRenderer.contenedor);
@@ -203,7 +201,7 @@ app.canvas.addEventListener('pointerup', (e) => {
     console.log('[main] selección: ninguna');
   } else {
     console.log(
-      `[main] seleccionado: ${manager.tipo[mejor] === ESPECIE.HERBIVORO ? 'herbívoro' : 'carnívoro'} ` +
+      `[main] seleccionado: ${manager.tipo[mejor] === ESPECIE.HERBIVORO ? 'Triceratops' : 'Ceratosaurio'} ` +
         `en (${manager.celdaX(mejor)}, ${manager.celdaY(mejor)}) · estado ${manager.estado[mejor]}`,
     );
   }
@@ -247,11 +245,11 @@ window.addEventListener(
         break;
       }
       case 'f': {
-        // Seguir a un herbívoro al azar.
+        // Seguir a un triceratops al azar.
         const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
         if (herbivoros.length > 0) {
           camara.seguir(manager, ctx.prng.pick(herbivoros), tile, 0.5);
-          console.log('[main] siguiendo a un herbívoro (F para soltar)');
+          console.log('[main] siguiendo a un triceratops (F para soltar)');
         }
         break;
       }
@@ -273,7 +271,7 @@ window.addEventListener(
         generarMundo();
         terrenoRenderer.generar(ctx.grid);
         sembrarVegetacion(ctx);
-        plantRenderer.ultimoTick = -Infinity;
+        plantRenderer.invalidar();
         poblar();
         break;
       }
@@ -329,9 +327,9 @@ function bucle(ahora) {
   }
 
   terrenoRenderer.render(camara);
-  plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.plantas.ticksPorRefrescoRender);
+  plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.plantas.ticksPorRefrescoRender, camara);
   plantRenderer.render(camara);
-  renderer.render(manager, camara);
+  renderer.render(manager, camara, ctx.tick);
   necesidadesRenderer.render(camara);
 
   const datosPoblacion = {
@@ -382,6 +380,7 @@ function bucle(ahora) {
 }
 
 console.log('[main] PixiJS v8 inicializado');
+console.log(`[main] Atlas: ${atlas.claves.length} frames · ${atlas.ancho}x${atlas.alto} px`);
 console.log(`[main] Mundo: ${CONFIG.mundo.ancho}x${CONFIG.mundo.alto} celdas`);
 console.log(`[main] Seed: ${ESTADO.seed}`);
 {
@@ -392,8 +391,8 @@ console.log(`[main] Seed: ${ESTADO.seed}`);
   );
 }
 console.log(
-  `[main] Población: ${manager.contar(ESPECIE.HERBIVORO)} herbívoros, ` +
-    `${manager.contar(ESPECIE.PREDADOR)} carnívoros`,
+  `[main] Población: ${manager.contar(ESPECIE.HERBIVORO)} triceratops, ` +
+    `${manager.contar(ESPECIE.PREDADOR)} ceratosaurios`,
 );
 console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
 console.log(

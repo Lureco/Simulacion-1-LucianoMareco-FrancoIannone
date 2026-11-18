@@ -408,6 +408,94 @@ sigue pasando con el factor activo.
 
 ---
 
+## D18 · Sprites sueltos + atlas automático (F7.5 / T75)
+
+**Contexto.** Se quiere reemplazar los círculos/cuadrados del render por sprites reales sin
+pagar un `Sprite` por entidad. En PixiJS v8 `ParticleContainer` solo admite partículas que
+comparten **la misma textura base**, así que el atlas no es opcional.
+
+**Decisión:**
+
+1. **Fuente suelta, atlas automático.** Los PNG fuente viven bajo `assets/sprites/` en carpetas
+   por tipo: `plantas/plantaNormal/` (3 archivos) y `animales/trike_herbivore/` (9) /
+   `animales/ceratosaurus_carnivore/` (11). El casillero del atlas es de **64 × 64 px**, pero los
+   PNG se dibujan **a su tamaño natural y centrados** (32 × 32, 58 × 35 y 60 × 35), sin estirar.
+   `render/atlas.js` los descubre con `import.meta.glob`, los ordena por ruta y los dibuja **una
+   vez** en un canvas offscreen → una sola `CanvasSource` con sub-texturas por frame
+   (`new Texture({ source, frame: Rectangle })`). No se commitea un atlas generado (evita
+   artefactos *stale*) y no se agrega ninguna dependencia de build.
+2. **Claves por ruta relativa** (`plantas/plantaNormal/semilla`,
+   `animales/trike_herbivore/walk_0`), no por nombre de archivo, para que no choquen
+   `walk_0.png` de distintas carpetas. Las rutas y cantidades viven en `CONFIG.sprites`, no se
+   hardcodean en `render/atlas.js`.
+3. **Plantas por evento de estado, no por edad.** `framePlanta()` lee solo `grid.planta`:
+   nace `SEMILLA` → sprite semilla; pasa a `JOVEN` → sprite joven; pasa a `ADULTA` → sprite
+   adulta. `MUERTA` y `NADA` **no se dibujan** (la planta desaparece). No se consulta
+   `ctx._edadPlantas`.
+4. **Animales: un cycle de caminar por especie.** La cantidad de cuadros **varía por especie** y
+   vive en `CONFIG.sprites.rutaAnimal[tipo].cuadros`: **9** para el triceratops
+   (`trike_herbivore/walk_0..8`) y **11** para el ceratosaurio
+   (`ceratosaurus_carnivore/walk_0..10`, el más rápido). Estos valores salen del arte real y
+   `tests/atlas.test.js` verifica que coincidan con los PNG descubiertos. Fase derivada de
+   `ctx.tick` y `manager.velocidad[id]` (sin arrays nuevos, determinista, se frena con la pausa).
+   Sprites **laterales**: se voltean con `scaleX` según `dirX`, sin rotación.
+5. **Nombres de display.** `NOMBRE_ESPECIE` pasa a decir *Triceratops* / *Ceratosaurio* en la
+   leyenda, el HUD y el gráfico; los ids internos siguen siendo `HERBIVORO`/`PREDADOR`.
+6. **Fallback temporal.** Si falta un PNG, se dibuja un frame de prueba en el mismo canvas, así
+   el juego corre mientras se carga el arte. Se desactiva con `CONFIG.sprites.generarFallback`.
+
+**Descartado:** editar un atlas a mano (coordenadas frágiles), frames de planta por edad, sprite
+de planta muerta (dura 1 tick y el refresh es cada 10: no se vería), rotar el sprite según el
+rumbo (se eligió flip lateral) y renombrar el enum completo de especies.
+
+**Trade-off aceptado:** con sprites laterales no se distingue si el animal camina hacia arriba o
+hacia abajo; se usa solo el signo de `dirX`.
+
+### Spike de `ParticleContainer` (T76) — API confirmada en `pixi.js@8.22.0`
+
+- `ParticleContainer` y `Particle` se instancian en Node sin WebGL, lo que permite tests headless
+  del pool (`tests/render.test.js`).
+- `particleChildren` es el array vivo: se rellena por índice y se recorta con `.length = usados`.
+  No se usa `addParticle()` (crea/pide espacio y es innecesario con un pool reservado).
+- `dynamicProperties` confirma `position`, `vertex` (incluye `scaleX`/`scaleY` → flip lateral),
+  `uvs` (frame del atlas), `color` (tint de depuración) y `rotation`. Los atributos `uvs`/`color`
+  son estáticos en plantas y se vuelven a subir con `container.update()` al reconstruir; en
+  animales son dinámicos (cada frame cambia el cuadro y el tint).
+- `boundsArea` es obligatorio: `ParticleContainer` no calcula bounds por su cuenta. Se actualiza
+  al tamaño de la vista en cada `render()`.
+- `GlParticleContainerAdaptor.execute()` emite **un solo `drawElements`** por container, sin
+  importar cuántas partículas tenga ⇒ **2 draw calls por frame** (plantas + animales).
+
+**Descartado de la API experimental / de `Sprite`:** un `Sprite` por entidad (objeto por bicho y
+pérdida del batch), `new Particle()`/`new Sprite()` dentro del bucle (rompe el pool y genera
+basura), `addParticle()` (innecesario con el array pre-reservado) y `rotation` dinámico (los
+sprites son laterales: solo `scaleX` con signo según `dirX`).
+
+### Medición del peor caso (T79)
+
+Comando: `node --expose-gc scripts/medirPeorCaso.mjs 60` (forza 65.536 plantas y 4.000 animales
+con zoom mínimo, es decir sin culling efectivo).
+
+| Métrica | Resultado |
+|---|---|
+| Celdas con planta | 65.536 / 65.536 |
+| Animales en pantalla | 4.000 / 4.000 |
+| Tiempo por frame | **5,69 ms** (5,21 ms con 120 frames) |
+| Draw calls por frame | 2 (uno por `ParticleContainer`) |
+| Heap Δ | 2,79 MB — idéntico con 60 y 120 frames ⇒ sin *GC sawtooth* |
+| Pool | reutilizado, nunca excedido |
+
+No hizo falta bajar el alcance visual ni partir en *chunks*: alcanzó con el culling por cámara
+(T64), que limita el barrido de la grilla al rectángulo visible.
+
+**Verificación final:** `tests/atlas.test.js` cubre claves, mapeo por estado de planta, wrap del
+cycle y coincidencia con los PNG reales (9/11); `tests/render.test.js` cubre pool, culling, flip,
+frames y depuración. `npm run lint`, `npm test` (120 tests), `npm run build` y Prettier sobre los
+archivos tocados pasan. La medición T79 está registrada además junto a T59. La comprobación
+visual en pantalla la realiza el usuario con `npm run dev`.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

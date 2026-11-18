@@ -38,10 +38,13 @@ export const COLOR_ESTADO = {
   [ESTADO_IA.BUSCANDO_PAREJA]: 0xd980ff,
 };
 
-/** Nombre legible de cada especie (para la leyenda). */
+/**
+ * Nombre legible de cada especie (leyenda, HUD y atlas).
+ * Son nombres de display: los ids internos siguen siendo HERBIVORO/PREDADOR.
+ */
 export const NOMBRE_ESPECIE = {
-  [ESPECIE.HERBIVORO]: 'herbívoro',
-  [ESPECIE.PREDADOR]: 'carnívoro',
+  [ESPECIE.HERBIVORO]: 'Triceratops',
+  [ESPECIE.PREDADOR]: 'Ceratosaurio',
 };
 
 /**

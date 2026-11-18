@@ -1,152 +1,169 @@
 /**
- * src/render/plantRenderer.js — Render de la vegetación (T32)
- * ============================================================
+ * src/render/plantRenderer.js — Render de la vegetación (T32, T77 · F7.5)
+ * ======================================================================
  *
  * La vegetación vive en la grilla (no son entidades). Dibujar 65.536 celdas
- * por frame no es viable, así que este renderer usa la misma estrategia que
- * el terreno pero con un giro:
+ * por frame no es viable, así que este renderer usa `ParticleContainer`:
  *
- * - **3 texturas** (una por estado: semilla, joven, adulta) generadas UNA vez.
- * - Un **pool de sprites** que solo cubre las celdas con planta viva.
- * - La lista de sprites se reconstruye **cada `ticksPorRefrescoRender` ticks**
- *   (no por frame): la vegetación cambia lento y así el costo es despreciable.
- * - Cambiar el `tint`/`texture` de un sprite no rompe el batch de Pixi.
+ * - **Un solo draw call**: todas las partículas comparten la textura base del
+ *   atlas (`CONFIG.sprites`), cambia el frame por UV según el estado.
+ * - **Capacidad reservada al arrancar**: `grid.ancho * grid.alto` partículas
+ *   creadas una sola vez. Nunca se hace `new Particle()` en el bucle.
+ * - **Culling por cámara (T64)**: el barrido de la grilla solo recorre el
+ *   rectángulo de celdas visibles (más `CONFIG.render.margenCulling`), no las
+ *   65.536 celdas. Es O(visibles) incluso en el peor caso.
+ * - La lista se reconstruye cada `CONFIG.plantas.ticksPorRefrescoRender` ticks
+ *   **o cuando se mueve la cámara**, porque el culling depende de la vista.
+ * - `position` y `vertex` son dinámicos (cámara/zoom); `uvs` y `color` son
+ *   estáticos y se suben con `container.update()` solo al reconstruir.
  *
- * Prohibido: `new Graphics()` por celda o por frame (TAREAS §2).
+ * El sprite se elige **solo por el estado** de `grid.planta`: nace semilla →
+ * joven → adulta, y muerta/vacía no se dibuja. Nunca se lee la edad.
  */
 
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Particle, ParticleContainer, Rectangle } from 'pixi.js';
+import { CONFIG } from '../config.js';
 import { PLANTA } from '../world/cell.js';
+import { framePlanta } from './atlasDatos.js';
 
 export class PlantRenderer {
   /**
    * @param {import('pixi.js').Application} app
-   * @param {{tileSize: number, colores: Record<number, number>, escala: number}} opciones
+   * @param {{
+   *   atlas: {textura: import('pixi.js').Texture, frames: Map<string, import('pixi.js').Texture>},
+   *   tileSize: number,
+   *   capacidad?: number
+   * }} opciones
    */
-  constructor(app, { tileSize, colores, escala }) {
-    this.app = app;
+  constructor(_app, { atlas, tileSize, capacidad = CONFIG.mundo.ancho * CONFIG.mundo.alto }) {
+    this.atlas = atlas;
     this.tileSize = tileSize;
-    this.colores = colores;
-    this.escala = escala;
+    this.capacidad = capacidad;
 
-    /** @type {Container} */
-    this.contenedor = new Container();
+    /** Tamaño de un casillero de 64 px en píxeles de mundo (antes del zoom). */
+    this.escalaBase = (tileSize * CONFIG.sprites.escalaPlanta) / CONFIG.sprites.tamanoFrame;
 
-    /** @type {Map<number, import('pixi.js').Texture>} Una textura por estado. */
-    this.texturas = new Map();
-    this.texturas.set(PLANTA.SEMILLA, this.crearTextura(0.3));
-    this.texturas.set(PLANTA.JOVEN, this.crearTextura(0.45));
-    this.texturas.set(PLANTA.ADULTA, this.crearTextura(0.6));
+    /** @type {ParticleContainer<Particle>} */
+    this.contenedor = new ParticleContainer({
+      texture: atlas.textura,
+      dynamicProperties: {
+        position: true,
+        vertex: true,
+        uvs: false,
+        color: false,
+        rotation: false,
+      },
+    });
+    // ParticleContainer no calcula bounds: hay que darle un área manual.
+    // La actualizamos en render() con el tamaño de la vista.
+    this.contenedor.boundsArea = new Rectangle(0, 0, 1, 1);
 
-    /** @type {Sprite[]} Sprites activos en pantalla. */
-    this.sprites = [];
-    /** @type {Sprite[]} Sprites libres para reutilizar. */
-    this.libres = [];
-    /**
-     * Posición de **mundo** (píxeles) de cada sprite, en arrays paralelos.
-     * Es la fuente de verdad de la posición: `render()` la proyecta a pantalla
-     * SIN sobreescribirla. (Antes se sobreescribía `sprite.x/y` con la
-     * posición de pantalla y las plantas "vibraban": cada frame reproyectaba
-     * una posición ya proyectada.)
-     * @type {Float32Array}
-     */
-    this.mundoX = new Float32Array(0);
+    // Pool fijo. Se crea TODO acá, nunca dentro del bucle.
+    /** @type {Particle[]} */
+    this.particulas = new Array(capacidad);
+    /** Posición de mundo (píxeles) de cada partícula activa. @type {Float32Array} */
+    this.mundoX = new Float32Array(capacidad);
     /** @type {Float32Array} */
-    this.mundoY = new Float32Array(0);
+    this.mundoY = new Float32Array(capacidad);
+    /** Frame por defecto hasta que reconstruir() asigne el real. */
+    const base = atlas.frames.get(framePlanta(PLANTA.JOVEN)) ?? atlas.textura;
+    for (let i = 0; i < capacidad; i++) {
+      const p = new Particle(base);
+      p.anchorX = 0.5;
+      p.anchorY = 0.5;
+      p.scaleX = this.escalaBase;
+      p.scaleY = this.escalaBase;
+      this.particulas[i] = p;
+    }
+
     /** Último tick en el que se reconstruyó la lista. */
     this.ultimoTick = -Infinity;
+    /** Rectángulo de celdas visibles de la última reconstrucción. */
+    this.rect = { x0: 0, y0: 0, x1: -1, y1: -1 };
   }
 
   /**
-   * Asegura que los arrays de posición tengan capacidad para `n` sprites.
-   * @param {number} n
+   * Fuerza una reconstrucción en el próximo `reconstruir()` (tecla R).
+   * Se usa porque al regenerar el mundo cambia la grilla, no la cámara.
    */
-  reservar(n) {
-    if (n <= this.mundoX.length) return;
-    const capacidad = Math.max(n, this.mundoX.length * 2, 64);
-    const nuevoX = new Float32Array(capacidad);
-    const nuevoY = new Float32Array(capacidad);
-    nuevoX.set(this.mundoX);
-    nuevoY.set(this.mundoY);
-    this.mundoX = nuevoX;
-    this.mundoY = nuevoY;
+  invalidar() {
+    this.ultimoTick = -Infinity;
+    this.rect.x1 = -1;
   }
 
   /**
-   * Textura base de una planta: un cuadradito redondeado blanco que luego se
-   * tiñe. Se genera UNA vez por tamaño.
-   * @param {number} fraccion Tamaño respecto del tile.
-   * @returns {import('pixi.js').Texture}
+   * Calcula el rectángulo de celdas visibles con margen.
+   * @param {import('./camera.js').Camera} camara
+   * @param {number} ancho Celdas de ancho de la grilla.
+   * @param {number} alto Celdas de alto de la grilla.
+   * @returns {{x0: number, y0: number, x1: number, y1: number}}
    */
-  crearTextura(fraccion) {
-    const lado = Math.max(2, this.tileSize * fraccion);
-    const g = new Graphics();
-    g.roundRect(0, 0, lado, lado, lado * 0.35).fill(0xffffff);
-    const textura = this.app.renderer.generateTexture({
-      target: g,
-      resolution: 2,
-      antialias: true,
-    });
-    g.destroy();
-    return textura;
+  rectVisible(camara, ancho, alto) {
+    const tile = this.tileSize;
+    const margen = CONFIG.render.margenCulling;
+    const medioX = camara.vistaAnchoPx / (2 * camara.zoom);
+    const medioY = camara.vistaAltoPx / (2 * camara.zoom);
+    const x0 = Math.max(0, Math.floor((camara.x - medioX - margen) / tile));
+    const y0 = Math.max(0, Math.floor((camara.y - medioY - margen) / tile));
+    const x1 = Math.min(ancho - 1, Math.ceil((camara.x + medioX + margen) / tile));
+    const y1 = Math.min(alto - 1, Math.ceil((camara.y + medioY + margen) / tile));
+    return { x0, y0, x1, y1 };
   }
 
   /**
-   * Reconstruye la lista de sprites a partir de la capa de plantas de la
-   * grilla. Se llama cada `ticksPorRefrescoRender` ticks (T32), no por frame.
+   * Reconstruye la lista de partículas visibles. Se llama cada
+   * `ticksPorRefrescoRender` ticks o cuando cambia el rectángulo visible.
    * @param {import('../world/grid.js').Grid} grid
    * @param {number} tick Tick actual de la simulación.
    * @param {number} cadaTicks Frecuencia de refresco, en ticks.
+   * @param {import('./camera.js').Camera} camara
    */
-  reconstruir(grid, tick, cadaTicks) {
-    if (grid === null || tick - this.ultimoTick < cadaTicks) return;
-    this.ultimoTick = tick;
+  reconstruir(grid, tick, cadaTicks, camara) {
+    if (grid === null) return;
 
     const ancho = grid.ancho;
+    const r = this.rectVisible(camara, ancho, grid.alto);
+    const mismoRect =
+      r.x0 === this.rect.x0 &&
+      r.y0 === this.rect.y0 &&
+      r.x1 === this.rect.x1 &&
+      r.y1 === this.rect.y1;
+    if (mismoRect && tick - this.ultimoTick < cadaTicks) return;
+
+    this.rect = r;
+    this.ultimoTick = tick;
+
     const planta = grid.planta;
     const tile = this.tileSize;
-    this.reservar(grid.total);
+    const children = this.contenedor.particleChildren;
+    const frames = this.atlas.frames;
     let usados = 0;
 
-    for (let i = 0; i < grid.total; i++) {
-      const estado = planta[i];
-      if (estado === PLANTA.NADA || estado === PLANTA.MUERTA) continue;
+    // Solo el rectángulo visible: nunca se recorren las 65.536 celdas.
+    for (let y = r.y0; y <= r.y1; y++) {
+      const fila = y * ancho;
+      for (let x = r.x0; x <= r.x1; x++) {
+        const clave = framePlanta(planta[fila + x]);
+        if (clave === null) continue; // NADA / MUERTA → desaparece
+        const frame = frames.get(clave);
+        if (frame === undefined || usados >= this.capacidad) continue;
 
-      const sprite = this.sprites[usados] ?? this.libres.pop() ?? this.crearSprite();
-      this.sprites[usados] = sprite;
-
-      const x = i % ancho;
-      const y = (i / ancho) | 0;
-
-      sprite.texture = this.texturas.get(estado) ?? this.texturas.get(PLANTA.JOVEN);
-      sprite.tint = this.colores[estado] ?? 0xffffff;
-      // Posición de mundo (centro de la celda). El render la proyecta.
-      this.mundoX[usados] = (x + 0.5) * tile;
-      this.mundoY[usados] = (y + 0.5) * tile;
-      sprite.visible = true;
-      usados++;
+        const p = this.particulas[usados];
+        p.texture = frame; // uv (estático) → se sube con update() al final
+        this.mundoX[usados] = (x + 0.5) * tile;
+        this.mundoY[usados] = (y + 0.5) * tile;
+        children[usados] = p;
+        usados++;
+      }
     }
 
-    // Los sprites que sobran vuelven al pool.
-    for (let k = usados; k < this.sprites.length; k++) {
-      const extra = this.sprites[k];
-      extra.visible = false;
-      this.libres.push(extra);
-    }
-    this.sprites.length = usados;
-  }
-
-  /** Crea un sprite nuevo ya anclado al centro. */
-  crearSprite() {
-    const sprite = new Sprite(this.texturas.get(PLANTA.JOVEN));
-    sprite.anchor.set(0.5);
-    sprite.scale.set(this.escala);
-    this.contenedor.addChild(sprite);
-    return sprite;
+    children.length = usados;
+    // Cambiaron las UV de los frames reutilizados → volver a subir lo estático.
+    this.contenedor.update();
   }
 
   /**
-   * Dibuja el frame: solo posiciona los sprites según la cámara, sin asignar.
+   * Dibuja el frame: solo posiciona las partículas según la cámara.
    * @param {import('./camera.js').Camera} camara
    */
   render(camara) {
@@ -155,25 +172,35 @@ export class PlantRenderer {
     const medioY = camara.vistaAltoPx / 2;
     const cx = camara.x;
     const cy = camara.y;
-    const escalaFinal = this.escala * zoom;
+    const escala = this.escalaBase * zoom;
+    const children = this.contenedor.particleChildren;
 
-    for (let i = 0; i < this.sprites.length; i++) {
-      const sprite = this.sprites[i];
-      sprite.x = (this.mundoX[i] - cx) * zoom + medioX;
-      sprite.y = (this.mundoY[i] - cy) * zoom + medioY;
-      sprite.scale.set(escalaFinal);
+    for (let i = 0; i < children.length; i++) {
+      const p = children[i];
+      p.x = (this.mundoX[i] - cx) * zoom + medioX;
+      p.y = (this.mundoY[i] - cy) * zoom + medioY;
+      p.scaleX = escala;
+      p.scaleY = escala;
     }
+
+    const bounds = this.contenedor.boundsArea;
+    bounds.x = 0;
+    bounds.y = 0;
+    bounds.width = camara.vistaAnchoPx;
+    bounds.height = camara.vistaAltoPx;
   }
 
-  /** Libera texturas y sprites. */
+  /** Cantidad de partículas en pantalla (para tests y diagnóstico). */
+  get activas() {
+    return this.contenedor.particleChildren.length;
+  }
+
+  /** Libera las partículas. La textura del atlas La dueña es quien la creó. */
   destruir() {
-    for (const sprite of this.sprites) sprite.destroy();
-    for (const sprite of this.libres) sprite.destroy();
-    for (const textura of this.texturas.values()) textura.destroy(true);
-    this.sprites.length = 0;
-    this.libres.length = 0;
+    this.particulas.length = 0;
+    this.contenedor.particleChildren.length = 0;
+    this.contenedor.destroy();
     this.mundoX = new Float32Array(0);
     this.mundoY = new Float32Array(0);
-    this.texturas.clear();
   }
 }

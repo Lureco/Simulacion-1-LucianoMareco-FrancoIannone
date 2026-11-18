@@ -31,8 +31,8 @@ const MAX_MUESTRAS = CONFIG.ui.graficoMaxMuestras;
 /** Series que se grafican, en orden de dibujo. */
 const SERIES = [
   { clave: 'plantas', etiqueta: 'plantas', color: CONFIG.ui.graficoColorPlantas },
-  { clave: 'herbivoros', etiqueta: 'herbívoros', color: CONFIG.ui.graficoColorHerbivoros },
-  { clave: 'depredadores', etiqueta: 'carnívoros', color: CONFIG.ui.graficoColorDepredadores },
+  { clave: 'herbivoros', etiqueta: 'triceratops', color: CONFIG.ui.graficoColorHerbivoros },
+  { clave: 'depredadores', etiqueta: 'ceratosaurios', color: CONFIG.ui.graficoColorDepredadores },
 ];
 
 export class Grafico {

@@ -9,6 +9,9 @@
  * Las marcadas como [AMBOS] se acuerdan en la reunión de sincronización.
  */
 
+import { ESPECIE } from './entities/entity.js';
+import { PLANTA } from './world/cell.js';
+
 export const CONFIG = {
   // ─────────────────────────────────────────────────────────────
   // MUNDO [AMBOS]
@@ -37,6 +40,63 @@ export const CONFIG = {
     margenCulling: 64,
     /** Píxeles por unidad de mundo (1 celda = tileSize px). */
     escala: 1,
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // SPRITES / ATLAS [P1] — F7.5
+  // ─────────────────────────────────────────────────────────────
+  sprites: {
+    /**
+     * Casillero del atlas, en píxeles. Los PNG se dibujan a su tamaño natural,
+     * centrados en el casillero (sin estirar) y se recortan si lo exceden.
+     */
+    tamanoFrame: 64,
+    /** Separación entre casilleros para que no se "sangren" los UV al hacer zoom. */
+    padding: 2,
+    /**
+     * Tamaño en pantalla del **casillero** del atlas, medido en tiles de mundo.
+     * El arte real ocupa solo una parte del casillero (32/64 en plantas,
+     * ~58/64 en animales), así que el sprite visible es más chico que esto.
+     */
+    escalaPlanta: 1.2,
+    escalaAnimal: 1.6,
+    /**
+     * Cuadros de animación que avanzan por cada celda de mundo recorrida.
+     * Multiplica la velocidad BASE de la especie (no la efectiva del terreno),
+     * así que el ceratosaurio anima más rápido que el triceratops.
+     */
+    cuadrosPorCelda: 4,
+    /**
+     * Clave del atlas para cada estado de planta (ruta relativa a `assets/sprites/`,
+     * sin extensión). La planta muerta no tiene frame: desaparece.
+     * @type {Record<number, string>}
+     */
+    rutaPlanta: {
+      [PLANTA.SEMILLA]: 'plantas/plantaNormal/semilla',
+      [PLANTA.JOVEN]: 'plantas/plantaNormal/joven',
+      [PLANTA.ADULTA]: 'plantas/plantaNormal/adulta',
+    },
+    /**
+     * Cycle de caminar por especie. Cada una tiene su propia carpeta, prefijo
+     * de archivo y cantidad de cuadros (las cantidades salieron del arte real).
+     */
+    rutaAnimal: {
+      [ESPECIE.HERBIVORO]: {
+        carpeta: 'animales/trike_herbivore',
+        prefijo: 'walk',
+        cuadros: 9,
+      },
+      [ESPECIE.PREDADOR]: {
+        carpeta: 'animales/ceratosaurus_carnivore',
+        prefijo: 'walk',
+        cuadros: 11,
+      },
+    },
+    /**
+     * Si falta un PNG, se dibuja un frame de prueba en el casillero correspondiente.
+     * Se puede desactivar cuando esté todo el arte cargado.
+     */
+    generarFallback: true,
   },
 
   // ─────────────────────────────────────────────────────────────

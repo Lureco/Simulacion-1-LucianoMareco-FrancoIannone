@@ -10,6 +10,10 @@
 > realmente hay en `main`, no solo contra el plan. F0–F5 completas (v1); F6 casi completa (T51
 > resuelta con posiciones `float`); F7 y F8 pendientes. Humedad y pisadas de herbívoros quedaron
 > descartadas por decisión (D16).
+>
+> **Agregado 2026-11-18:** fase **F7.5** (sprites de plantas y animales con atlas e
+> instancing). Son tareas **nuevas y pendientes**: no cambian la simulación, solo la
+> representación visual, y se dimensionan para el peor caso de población (ver T79).
 
 ---
 
@@ -78,6 +82,7 @@ simulacion-ecosistemas/
 ├─ vite.config.js
 ├─ docs/
 │  └─ DECISIONES.md
+├─ assets/                 # atlas de sprites (si se elige PNG+JSON en D18)
 ├─ src/
 │  ├─ main.js              # bootstrap + bucle principal
 │  ├─ config.js            # TODOS los parámetros de la simulación
@@ -86,7 +91,8 @@ simulacion-ecosistemas/
 │  ├─ entities/            # entity.js, plant.js, herbivore.js, predator.js
 │  ├─ systems/             # needs.js, perception.js, spatialHash.js,
 │  │                       # movement.js, plantGrowth.js, reproduction.js, death.js
-│  ├─ render/              # renderer.js, camera.js, assets.js
+│  ├─ render/              # atlas.js (F7.5), camera.js, terrainRenderer.js,
+│  │                       # plantRenderer.js, entityRenderer.js (F7.5: ParticleContainer)
 │  └─ ui/                  # hud.js, chart.js
 └─ tests/
 ```
@@ -95,7 +101,8 @@ simulacion-ecosistemas/
 
 ## 5. Convenciones de trabajo
 
-- Rama por fase: `main`, `feat/mundo`, `feat/entidades`, `feat/ia`, `feat/ui`, `feat/vegetacion`
+- Rama por fase: `main`, `feat/mundo`, `feat/entidades`, `feat/ia`, `feat/ui`, `feat/vegetacion`,
+  `feat/sprites` (F7.5)
 - **Commit chico y testeable**: 1 commit = 1 cambio con sentido. Nada de "wip final final"
 - **Toda feature debe quedar visible en pantalla antes de pasar a la siguiente fase**
 - Ningún parámetro hardcodeado: todo en `src/config.js`
@@ -129,9 +136,10 @@ simulacion-ecosistemas/
 | F5 · Depredador + reproducción y muerte | 3 días | Cadena alimenticia completa y observable |
 | F6 · Movimiento suave + UI + gráfico | 2 días | Animación interpolada, HUD, gráfica |
 | F7 · Balance y performance | 2 días | 10+ min estable con muchas entidades |
+| F7.5 · Sprites e instancing | 2 días | Atlas único + `ParticleContainer`, población al tope sin caída de FPS |
 | F8 · Extras (v2) + entrega | 3 días | Segunda planta, mutaciones, README, demo, informe |
 
-**Total estimado: ~19 días de trabajo repartido.** Ajustar según ritmo real.
+**Total estimado: ~21 días de trabajo repartido.** Ajustar según ritmo real.
 
 **Reunión de sincronización:** 20 min diarios. Es el costo más barato que existe.
 
@@ -316,6 +324,10 @@ simulacion-ecosistemas/
       *(casi todo ya está; quedan constantes sueltas en la IA, p. ej. los 40–110 ticks entre giros)*
 - [ ] **T59 · Ambos** — Ejecutar 10+ minutos seguidos y registrar: poblaciones, colapsos, FPS,
       memoria (`scripts/simular.mjs` ya corre la simulación sin navegador)
+      → Registro parcial aportado por **T79**: peor caso de render (65.536 plantas + 4.000
+      animales) en **5,69 ms/frame**, 2 draw calls, heap Δ 2,79 MB (idéntico con 60 y 120
+      frames ⇒ sin *GC sawtooth*). Comando: `node --expose-gc scripts/medirPeorCaso.mjs 60`.
+      Detalle en D18. La corrida larga de 10+ minutos sigue pendiente.
 - [ ] **T60 · Ambos** — **Bucle de ajuste**: cambiar un parámetro → 1 corrida medida → decidir
       (no cambiar cinco cosas a la vez)
 - [ ] **T61 · P1** — Corregir los 5 bugs más frecuentes antes de seguir
@@ -332,6 +344,87 @@ simulacion-ecosistemas/
       (`CONFIG.render.margenCulling` existe, pero los renderers todavía no lo usan)
 
 > **Hito F7:** la simulación es **estable, reproducible y rinde a 60 FPS**. Ya se puede enseñar.
+
+---
+
+### F7.5 · Sprites de plantas y animales (atlas + instancing)
+
+**Objetivo:** reemplazar los círculos/cuadrados actuales por sprites reales **sin que el costo de
+render crezca con la población**. Es un cambio de representación, no de mecánica: no se tocan
+`needs.js`, la IA ni la grilla.
+
+**Restricción de diseño:** tienen que poder existir **todas las entidades posibles** a la vez —
+hasta `CONFIG.entidades.maxEntidades` (4000) animales y hasta `grid.total` (65.536)
+celdas con planta — sin bajar el framerate ni generar basura por frame. La capacidad se reserva
+**al arrancar**; nunca se agranda el container durante la simulación.
+
+> Verificado en `node_modules/pixi.js@8.22`: `ParticleContainer` solo acepta partículas que
+> comparten **la misma textura base** (`TextureSource`); por eso el atlas no es opcional. Además
+> es una API marcada como **experimental** en v8: `Particle` reemplaza a `Sprite` adentro del
+> container, y los cambios de `uvs`/`color` requieren `dynamicProperties` o `update()`.
+
+- [x] **T75 · P1** — Atlas único armado **automáticamente desde sprites sueltos**: todos los PNG
+      bajo `assets/sprites/` se descubren con `import.meta.glob`, se ordenan por ruta y se dibujan
+      en un canvas offscreen al arrancar → una sola textura base con frames por UV. Plantas:
+      `plantaNormal/{semilla,joven,adulta}.png`; la planta muerta **desaparece**, no tiene frame.
+      El sprite cambia por **evento de estado** de `grid.planta` (al nacer, al pasar a joven, al
+      pasar a adulta), **no por edad** y sin leer la capa `_edadPlantas`. Animales: cycles de
+      caminar `trike_herbivore/walk_0..8` (9 cuadros) y
+      `ceratosaurus_carnivore/walk_0..10` (11 cuadros) — sprites laterales, se voltean con
+      `scaleX` según `dirX`, sin rotación. Casilleros de **64 × 64**: PNG dibujados a tamaño
+      natural y centrados (sin estirar). Rutas, prefijos y cantidad de cuadros **por especie** en
+      `CONFIG.sprites` (`rutaPlanta` / `rutaAnimal`); arte real verificado en `tests/atlas.test.js`.
+      Nombres visibles en `paleta.js`.
+- [x] **T76 · P1** — **Spike de validación contra Pixi v8.22 instalado** (no contra la doc de
+      memoria): `ParticleContainer`, `Particle`, `dynamicProperties` (`position`, `vertex` —que
+      incluye `scaleX` para el flip—, `uvs`, `color`), `addParticle` / `particleChildren`,
+      `update()` y `boundsArea`. Probar 1000 partículas con dos frames del mismo atlas y confirmar
+      que sale en **un solo draw call**. Anotar el resultado y los puntos de API confirmados en
+      `docs/DECISIONES.md` (D18).
+      *(Confirmado: `particleChildren`, `update()`, `boundsArea` y `dynamicProperties` existen en
+      `pixi.js@8.22.0`; `GlParticleContainerAdaptor.execute` emite un solo `drawElements` por
+      container → 2 draw calls totales. Cubierto por `tests/render.test.js`.)*
+- [x] **T77 · P1** — Migrar `render/plantRenderer.js` a `ParticleContainer`: pool fijo de
+      `Particle` dimensionado para **`grid.ancho * grid.alto`**, frame del atlas elegido **solo por
+      el estado de `grid.planta`** (`SEMILLA`/`JOVEN`/`ADULTA`; `MUERTA` y `NADA` no se dibujan),
+      sin consultar edad, y actualización de la lista solo cada
+      `CONFIG.plantas.ticksPorRefrescoRender` ticks como hoy. Sin `new Particle()` ni
+      `new Sprite()` en el bucle. Coordinar con **T64**: aplicar culling por cámara
+      (`CONFIG.render.margenCulling`) antes de cargar las partículas visibles, para que el peor
+      caso no signifique dibujar 65.536 partículas fuera de pantalla.
+- [x] **T78 · P2** — Migrar `render/entityRenderer.js` a `ParticleContainer`: pool fijo de
+      `Particle` para **`CONFIG.entidades.maxEntidades`**, alta/baja por `id` reutilizando
+      partículas (sin `new` en el bucle), cycle de caminar por especie del atlas con fase derivada
+      de `ctx.tick` y `manager.velocidad[id]` (sin arrays nuevos), **`scaleX` con signo según
+      `dirX`** (sprites laterales, `rotation = 0`) y `color` para el modo depuración de **T56**.
+      El renderer recibe `ctx.tick` como parámetro nuevo — cierra la parte visual pendiente de
+      **T52** con el trade-off aceptado de no distinguir la dirección vertical. Respetar el
+      contrato SoA (D13): el renderer solo lee arrays.
+- [x] **T79 · Ambos** — **Prueba del peor caso (definición de "todas las entidades"):** forzar
+      vegetación en todas las celdas habitables y poblar hasta el tope de animales; medir FPS,
+      draw calls, heap y tiempo de `update()`/`reconstruir()` con `scripts/simular.mjs` y con el
+      Performance monitor. Verificar que no hay *GC sawtooth* (ni un `new` por entidad/frame). Si
+      65.536 partículas no entran en presupuesto, decidir y documentar entre culling estricto,
+      *chunks* por región o tope de plantas visibles — **sin cambiar la simulación**.
+      *(Resultado: 65.536/65.536 plantas y 4.000/4.000 animales, 5,69 ms/frame, 2 draw calls,
+      heap Δ 2,79 MB sin sawtooth —verificado también con 120 frames—, pool reutilizado y nunca
+      excedido. Medido con `node --expose-gc scripts/medirPeorCaso.mjs 60`. No hizo falta
+      recortar el alcance visual: alcanzó con el culling por cámara de T64.)*
+- [x] **T80 · P2** — Tests de regresión de la capa de render: `estado → frame` de planta por evento
+      (`SEMILLA`/`JOVEN`/`ADULTA`, `MUERTA` ⇒ ninguno, **sin depender de la edad**), cycle de
+      caminar por especie con wrap determinista, flip según `dirX`, el pool nunca supera la
+      capacidad reservada, y nacimientos/muertes no dejan partículas huérfanas. La lógica de mapeo
+      se testea en Node, sin WebGL.
+- [x] **T81 · P1** — Actualizar `docs/DECISIONES.md` con **D18** (atlas + `ParticleContainer`,
+      por qué se descarta `Sprite` por entidad y qué se descartó de la API experimental),
+      `docs/CONTRATO.md` si cambia la interfaz pública de los renderers, y el README (control de
+      sprites y límites de capacidad).
+- [x] **T82 · Ambos** — Cierre: `npm run lint`, `npm test` y `npm run build` en verde; efecto
+      visible en pantalla (plantas y animales con sprite propio) y medición del peor caso
+      registrada junto a T59. *(Verificación automática en verde: lint, 120 tests, build y Prettier sobre los archivos tocados; medición registrada en T59 y D18. La comprobación visual en pantalla la hace el usuario con `npm run dev`.)*
+
+> **Hito F7.5:** la simulación se ve con sprites reales y aguanta la población máxima sin caer de
+> FPS. Si T79 no pasa, se baja el alcance visual (más culling/chunks), **nunca** la simulación.
 
 ---
 
@@ -367,6 +460,10 @@ T24 vecindario         →  T32/T33/T37 → T43 depredador
 T34..T35 necesidades   →  T45/T46/T47 (muerte y reproducción)
 T25 timestep fijo      →  T42 test de determinismo
 T51 movimiento suave   →  T53 cámara
+T76 spike Pixi v8      →  T75 atlas  →  T77/T78 migración de renderers
+T64 culling            →  T77/T79 (peor caso sin dibujar fuera de pantalla)
+T78 flip del sprite (scaleX) →  cierre visual de T52
+T77/T78/T79            →  T80/T81/T82
 ```
 
 **Regla:** si una tarea depende de otra que no está terminada, no se empieza. Se elige otra del
@@ -400,6 +497,9 @@ Una tarea está terminada cuando:
 | Perder la mitad del tiempo en el mapa perfecto | Medio | El terreno es **decorativo y procedural**; 1 día y listo |
 | Simulación que colapsa en 20 segundos | Medio | Tests de integración largos + ajuste de balance documentado |
 | Que la IA invente APIs de PixiJS | Medio | La IA suele mezclar v7 y v8 — revisar el `node_modules/pixi.js` y no la doc de memoria |
+| `ParticleContainer` cambie (API experimental en v8) | Medio | Spike T76 contra la versión instalada, conclusión escrita en D18 antes de migrar |
+| El atlas rompa el batch por usar varias texturas base | Alto | **Una sola `TextureSource`**, frames por UV; verificado en T75/T76 antes de T77/T78 |
+| 65.536 partículas de planta saturen la GPU | Alto | Culling (T64) + medición del peor caso (T79); si falla, chunks, no recortar la simulación |
 | Repartir el código en el último día | Alto | **El código se sube al repo todos los días.** Sin excepciones |
 
 ---

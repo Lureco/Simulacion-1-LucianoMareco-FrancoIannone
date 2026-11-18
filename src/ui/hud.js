@@ -60,8 +60,8 @@ export class Hud {
     const segundos = (d.ticks / 60).toFixed(1);
     this.elemento.textContent = [
       `plantas     ${String(d.plantas).padStart(4)}`,
-      `herbívoros  ${String(d.herbivoros).padStart(4)}`,
-      `carnívoros  ${String(d.depredadores).padStart(4)}`,
+      `triceratops ${String(d.herbivoros).padStart(4)}`,
+      `ceratosaurios ${String(d.depredadores).padStart(4)}`,
       `total       ${String(d.total).padStart(4)}`,
       `nacidos     ${String(d.nacidos).padStart(4)}`,
       `muertos     ${String(d.muertos).padStart(4)}`,

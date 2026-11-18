@@ -1,21 +1,28 @@
 /**
- * src/render/entityRenderer.js — Render de entidades (P2)
- * ======================================================
+ * src/render/entityRenderer.js — Render de entidades (P2, T78 · F7.5)
+ * ==================================================================
  *
  * REGLAS (TAREAS §2):
- * - Prohibido `new Graphics()` por celda o por frame. Acá la textura se
- *   genera **una sola vez** al arrancar y se reutiliza para todos.
- * - Cada entidad es un `Sprite` con `tint` por especie. Cambiar el `tint`
- *   no rompe el batch de Pixi.
- * - Los sprites se reciclan con un pool: no se crean ni se destruyen
- *   durante la simulación.
+ * - Prohibido `new Graphics()` por celda o por frame. Acá no se crea NADA
+ *   durante la simulación: el pool de `Particle` se arma al arrancar.
+ * - Un solo draw call: `ParticleContainer` con la textura base del atlas.
+ * - ⚠️ REFACTOR SoA (D13): los datos llegan por `id` desde `EntityManager`.
+ *   La partícula de cada `id` se guarda en un array indexado por `id`.
  *
- * ⚠️ REFACTOR SoA (D13): los datos llegan por `id` desde `EntityManager`.
- * El sprite de cada `id` se guarda en un array indexado por `id`.
+ * Animación (T78): un cycle de caminar por especie, con cantidad de cuadros
+ * distinta (configurada en `CONFIG.sprites.rutaAnimal`). La fase sale de
+ * `ctx.tick` y de la velocidad BASE de la especie — no de la velocidad
+ * efectiva del terreno —, así que se frena con la pausa y el ceratosaurio
+ * anima más rápido que el triceratops.
+ *
+ * Los sprites son **laterales**: se voltean con `scaleX` según `dirX`, sin
+ * rotación (trade-off D18: no se distingue arriba de abajo).
  */
 
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Particle, ParticleContainer, Rectangle } from 'pixi.js';
+import { CONFIG } from '../config.js';
 import { COLOR_ESPECIE, COLOR_ESTADO } from './paleta.js';
+import { faseCaminar, frameAnimal } from './atlasDatos.js';
 
 /** Color de cada especie (reexportado desde la paleta por compatibilidad). */
 export { COLOR_ESPECIE };
@@ -23,165 +30,127 @@ export { COLOR_ESPECIE };
 export class EntityRenderer {
   /**
    * @param {import('pixi.js').Application} app
-   * @param {{tileSize: number}} opciones
+   * @param {{
+   *   atlas: {textura: import('pixi.js').Texture, frames: Map<string, import('pixi.js').Texture>},
+   *   tileSize: number,
+   *   capacidad?: number
+   * }} opciones
    */
-  constructor(app, { tileSize }) {
-    this.app = app;
+  constructor(_app, { atlas, tileSize, capacidad = CONFIG.entidades.maxEntidades }) {
+    this.atlas = atlas;
     this.tileSize = tileSize;
+    this.capacidad = capacidad;
 
-    /** @type {Container} Contenedor donde viven los sprites. */
-    this.contenedor = new Container();
+    /** Tamaño de un casillero de 64 px en píxeles de mundo (antes del zoom). */
+    this.escalaBase = (tileSize * CONFIG.sprites.escalaAnimal) / CONFIG.sprites.tamanoFrame;
 
-    /** Textura base de una entidad (se genera UNA vez). */
-    this.textura = this.crearTextura();
+    /** @type {ParticleContainer<Particle>} */
+    this.contenedor = new ParticleContainer({
+      texture: atlas.textura,
+      dynamicProperties: {
+        position: true, // cámara
+        vertex: true, // escala (zoom) y signo de scaleX (flip)
+        uvs: true, // frame del cycle de caminar
+        color: true, // modo depuración (T56)
+        rotation: false, // sprites laterales: siempre 0
+      },
+    });
+    this.contenedor.boundsArea = new Rectangle(0, 0, 1, 1);
 
-    /** @type {(Sprite|undefined)[]} Sprite de cada id. */
-    this.spritePorId = [];
-    /** @type {number[]} Ids con sprite, en orden (para iterar sin buscar). */
-    this.lista = [];
-    /** @type {Sprite[]} Sprites libres para reutilizar. */
-    this.libres = [];
-    /** Versión del manager para la que se reconstruyó la lista. */
-    this.version = -1;
+    // Pool fijo: una partícula por id posible, creada UNA sola vez.
+    /** @type {Particle[]} */
+    this.particulaPorId = new Array(capacidad);
+    for (let i = 0; i < capacidad; i++) {
+      const p = new Particle(atlas.textura);
+      p.anchorX = 0.5;
+      p.anchorY = 0.5;
+      p.rotation = 0;
+      this.particulaPorId[i] = p;
+    }
 
     /**
-     * Modo depuración (T56): en vez de teñir por especie, se tiñe por el
-     * estado de la IA, para ver qué está haciendo cada animal.
+     * Modo depuración (T56): teñir por estado de IA en vez de por especie.
      * @type {boolean}
      */
     this.depuracion = false;
   }
 
-  /**
-   * Activa o desactiva el modo depuración.
-   * @param {boolean} valor
-   */
+  /** @param {boolean} valor */
   setDepuracion(valor) {
     this.depuracion = valor;
-    this.version = -1; // fuerza el recoloreado
   }
 
   /**
-   * Color de una entidad según el modo actual.
-   * @param {number} id
-   * @param {import('../entities/entityManager.js').EntityManager} manager
-   * @returns {number}
-   */
-  colorDe(id, manager) {
-    if (this.depuracion) {
-      return COLOR_ESTADO[manager.estado[id]] ?? 0xffffff;
-    }
-    return COLOR_ESPECIE[manager.tipo[id]] ?? 0xffffff;
-  }
-
-  /**
-   * Genera la textura base de un bicho: un círculo blanco que después se
-   * tiñe por especie. Se hace UNA vez.
-   * @returns {import('pixi.js').Texture}
-   */
-  crearTextura() {
-    const radio = this.tileSize * 0.45;
-    const g = new Graphics();
-    g.circle(this.tileSize / 2, this.tileSize / 2, radio).fill(0xffffff);
-    const textura = this.app.renderer.generateTexture({
-      target: g,
-      resolution: 2,
-      antialias: true,
-    });
-    g.destroy();
-    return textura;
-  }
-
-  /**
-   * Aclara el contenido (se llama si el renderer se destruye).
-   */
-  destruir() {
-    for (const id of this.lista) {
-      this.spritePorId[id]?.destroy();
-    }
-    for (const sprite of this.libres) {
-      sprite.destroy();
-    }
-    this.spritePorId.length = 0;
-    this.lista.length = 0;
-    this.libres.length = 0;
-    this.textura.destroy(true);
-  }
-
-  /**
-   * Sincroniza los sprites con la población actual. Solo corre cuando
-   * cambia la población (el manager avisa con `version`).
-   * @param {import('../entities/entityManager.js').EntityManager} manager
-   */
-  sincronizar(manager) {
-    if (manager.version === this.version) return;
-    this.version = manager.version;
-
-    const vivos = new Set(manager.vivos);
-    const nuevaLista = [];
-
-    for (const id of manager.vivos) {
-      let sprite = this.spritePorId[id];
-      if (sprite === undefined) {
-        sprite = this.libres.pop() ?? new Sprite(this.textura);
-        sprite.anchor.set(0.5);
-        this.contenedor.addChild(sprite);
-        this.spritePorId[id] = sprite;
-      }
-      sprite.visible = true;
-      sprite.tint = this.colorDe(id, manager);
-      nuevaLista.push(id);
-    }
-
-    // Los ids que ya no están vivos: su sprite vuelve al pool.
-    for (const id of this.lista) {
-      if (!vivos.has(id)) {
-        const sprite = this.spritePorId[id];
-        if (sprite !== undefined) {
-          sprite.visible = false;
-          this.contenedor.removeChild(sprite);
-          this.libres.push(sprite);
-          this.spritePorId[id] = undefined;
-        }
-      }
-    }
-
-    this.lista = nuevaLista;
-  }
-
-  /**
-   * Dibuja el frame. No asigna memoria: solo escribe en los sprites.
+   * Dibuja el frame. No asigna memoria: rellena las partículas del pool.
    * @param {import('../entities/entityManager.js').EntityManager} manager
    * @param {import('./camera.js').Camera} camara
+   * @param {number} tick Tick actual de la simulación (para la animación).
    */
-  render(manager, camara) {
-    this.sincronizar(manager);
-
+  render(manager, camara, tick = 0) {
     const tile = this.tileSize;
     const zoom = camara.zoom;
     const medioX = camara.vistaAnchoPx / 2;
     const medioY = camara.vistaAltoPx / 2;
     const cx = camara.x;
     const cy = camara.y;
+    const margen = CONFIG.render.margenCulling;
+    const anchoVista = camara.vistaAnchoPx;
+    const altoVista = camara.vistaAltoPx;
+    const escala = this.escalaBase * zoom;
 
-    const lista = this.lista;
-    const sprites = this.spritePorId;
+    const children = this.contenedor.particleChildren;
+    const frames = this.atlas.frames;
     const xs = manager.x;
     const ys = manager.y;
+    const dirs = manager.dirX;
+    const tipos = manager.tipo;
+    const vels = manager.velocidad;
+    const estados = manager.estado;
+    const vivos = manager.vivos;
+    const depuracion = this.depuracion;
 
-    for (let i = 0; i < lista.length; i++) {
-      const id = lista[i];
-      const sprite = /** @type {Sprite} */ (sprites[id]);
-      sprite.x = (xs[id] * tile - cx) * zoom + medioX;
-      sprite.y = (ys[id] * tile - cy) * zoom + medioY;
-      sprite.scale.set(zoom);
+    let usados = 0;
+    for (let k = 0; k < vivos.length; k++) {
+      const id = vivos[k];
+      if (id >= this.capacidad) continue;
+      const p = this.particulaPorId[id];
 
-      // En modo depuración el color depende del estado de IA, que cambia
-      // cada tick: hay que recolorear. Fuera de ese modo, el color por
-      // especie ya se puso en `sincronizar()` y no se toca.
-      if (this.depuracion) {
-        sprite.tint = this.colorDe(id, manager);
-      }
+      const x = (xs[id] * tile - cx) * zoom + medioX;
+      const y = (ys[id] * tile - cy) * zoom + medioY;
+      if (x < -margen || x > anchoVista + margen || y < -margen || y > altoVista + margen) continue;
+
+      const tipo = tipos[id];
+      const clave = frameAnimal(tipo, faseCaminar(tick, vels[id]));
+      const frame = clave === null ? undefined : frames.get(clave);
+      if (frame !== undefined) p.texture = frame;
+
+      p.x = x;
+      p.y = y;
+      p.scaleX = escala * (dirs[id] < 0 ? -1 : 1); // flip lateral, sin rotación
+      p.scaleY = escala;
+      p.tint = depuracion ? (COLOR_ESTADO[estados[id]] ?? 0xffffff) : 0xffffff;
+
+      children[usados] = p;
+      usados++;
     }
+
+    children.length = usados;
+    const bounds = this.contenedor.boundsArea;
+    bounds.x = 0;
+    bounds.y = 0;
+    bounds.width = anchoVista;
+    bounds.height = altoVista;
+  }
+
+  /** Cantidad de partículas en pantalla (para tests y diagnóstico). */
+  get activas() {
+    return this.contenedor.particleChildren.length;
+  }
+
+  /** Libera las partículas. La textura del atlas la dueña es quien la creó. */
+  destruir() {
+    this.particulaPorId.length = 0;
+    this.contenedor.particleChildren.length = 0;
+    this.contenedor.destroy();
   }
 }
