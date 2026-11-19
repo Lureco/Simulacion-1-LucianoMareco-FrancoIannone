@@ -52,12 +52,31 @@ Otros comandos:
 | **R** | Regenerar el mundo y la población con una seed nueva |
 | **S** | Mostrar la seed actual en consola |
 | **T** | Mostrar el conteo de terreno (agua/arena/tierra) en consola |
-| **⚙ Mapa** | Abrir el panel para generar un mapa con seed, plantas y NPCs iniciales (tres posiciones: oculto, abajo, pantalla completa) |
+| **⚙ Configuración** | Abrir el panel para editar los valores de `config.js` por categorías y administrar presets (tres posiciones: oculto, abajo, pantalla completa, con scroll con la rueda) |
 
-Tras abrir el panel, cargá los valores y apretá **Generar mapa** (o **Enter** en un campo).
-La seed acepta un número o cualquier texto; las cantidades de NPCs se limitan a
+El panel tiene una categoría por sección de `config.js` (`mundo`, `render`, `sprites`,
+`tiempo`, `ia`, `terreno`, `plantas`, `entidades`, `herbivoro`, `depredador`,
+`percepcion`, `ui` y `camara`) más una categoría **Presets**. Se pueden editar números,
+booleanos y colores; las rutas de sprites no se muestran porque el atlas se arma al
+iniciar y no se pueden cambiar desde el panel. El contenido scrollea con la rueda y el
+tirador `◥` de la esquina superior derecha permite agrandar el panel arrastrando: en
+**abajo** cambia la altura (anclado al borde inferior, arrastrá hacia arriba) y en
+**pantalla** cambia ancho y alto. El panel recuerda su posición, tamaño y punto del scroll en
+`localStorage` (`ecosistemas.ui.v1`), así que **Aplicar y recargar** lo reabre donde estaba —y en
+la misma parte de la lista— en vez de cerrarlo.
+
+Cargá los valores y apretá **Aplicar y recargar** (o **Enter** en un campo): se guardan
+los cambios y la página recarga para que todo se lea desde cero. **Restablecer** vuelve
+a los valores por defecto sin borrar tus presets. La seed acepta un número o cualquier
+texto (se hashea de forma determinista); las cantidades de NPCs se limitan a
 `CONFIG.entidades.maxEntidades` en total. **R** genera una seed nueva manteniendo las
 cantidades elegidas en el panel.
+
+En **Presets** hay incluidos (*Por defecto*, *Bosque frondoso*, *Cacería*, *Isla
+tranquila*, *Simulación rápida*) y los tuyos. Elegir uno **llena el formulario** para
+que lo revises y recién apliques. Podés guardar el estado actual con **Guardar como…**,
+borrar tus presets, descargar el seleccionado o la colección completa en JSON y subirlos
+con **Subir JSON** (los nombres repetidos se actualizan). Todo se guarda en `localStorage`.
 
 ---
 

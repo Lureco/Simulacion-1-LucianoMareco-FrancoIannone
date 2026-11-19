@@ -491,6 +491,21 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
       `regenerarMundo()` en `main.js`, que también usa la tecla R. La vegetación se siembra con
       cantidad exacta vía `sembrarVegetacion(ctx, cantidad)`, sin cambiar el modo por densidad
       que usan los scripts. 8 tests nuevos del panel + 4 de siembra exacta ⇒ 138 tests. Ver D24)*
+- [x] **T85 · Ambos** — **Panel de configuración completo** (evolución de T84): renombrado a
+      *Configuración*, con una categoría por sección de `config.js`, scroll con la rueda y edición
+      de números, booleanos y colores (las rutas de sprites ya no se muestran). Incluye **presets**
+      incluidos y guardados: cargar en el formulario, guardar, borrar, descargar uno o todos e
+      importar JSON (`ecosistemas-presets-v1`). **Aplicar y recargar** valida todo, guarda los
+      overrides en `localStorage` (`ecosistemas.config.v1`) y recarga la página, así también se
+      aplican los valores que se capturan al arrancar (mundo, atlas, zoom, colores);
+      **Restablecer** limpia solo los overrides activos. Las acciones están en la cabecera, al lado
+      del título; los botones de posición se quitaron y el botón flotante sigue recorriendo
+      *oculto → abajo → pantalla*. Tirador `◥` arriba a la derecha para agrandar arrastrando: en
+      *abajo* cambia la altura anclada al borde inferior y en *pantalla* cambia ancho y alto, con
+      límites al viewport. Posición, tamaños y scroll se guardan en `ecosistemas.ui.v1` para que la
+      recarga no cierre el menú ni pierda el punto de la lista. Nuevos módulos `configUtils.js`,
+      `configPersistencia.js` y `presets.js`; 175 tests en total, `npm run lint` y `npm run build`
+      en verde.
 
 > Opcionales si sobra tiempo: ciclo día/noche, clima, biomas, más especies.
 

@@ -11,6 +11,8 @@
 
 import { ESPECIE } from './entities/entity.js';
 import { PLANTA } from './world/cell.js';
+import { cargarOverrides } from './core/configPersistencia.js';
+import { clonarConfig, copiarValidos } from './core/configUtils.js';
 
 export const CONFIG = {
   // ─────────────────────────────────────────────────────────────
@@ -424,6 +426,50 @@ export const CONFIG = {
     dtEnfocar: 0.5,
     /** Límite de la cámara dentro de los bordes del mundo. */
     limiteMundo: true,
+  },
+};
+
+/**
+ * Valores originales, sin los cambios del menú. Se usan como referencia para
+ * validar lo que se guarda y para que los presets arranquen siempre desde lo
+ * mismo (aunque haya overrides activos).
+ */
+export const CONFIG_BASE = clonarConfig(CONFIG);
+
+/** Overrides guardados desde el menú Configuración. Se aplican ANTES de
+ * derivar `TICKS_POR_SEGUNDO` y `ESTADO`, así todo el arranque los respeta. */
+copiarValidos(CONFIG_BASE, cargarOverrides(), CONFIG);
+
+/**
+ * Presets incluidos: solo overrides parciales sobre `CONFIG_BASE` (la regla
+ * del proyecto sigue cumplida: los números viven en este archivo).
+ */
+export const PRESETS = {
+  'Por defecto': {},
+  'Bosque frondoso': {
+    plantas: { densidadSemilla: 0.12, probExpansion: 0.14, poblacionInicial: 4000 },
+    herbivoro: { poblacionInicial: 160 },
+    depredador: { poblacionInicial: 12 },
+  },
+  Cacería: {
+    plantas: { poblacionInicial: 1500 },
+    herbivoro: { poblacionInicial: 140 },
+    depredador: {
+      poblacionInicial: 80,
+      velocidad: 2,
+      radioVision: 12,
+      energiaPorPresa: 45,
+      segundosPersecucion: 40,
+    },
+  },
+  'Isla tranquila': {
+    herbivoro: { poblacionInicial: 40, consumoHambre: 0.005, consumoSed: 0.002 },
+    depredador: { poblacionInicial: 0 },
+    tiempo: { escalaSimulacion: 1 },
+  },
+  'Simulación rápida': {
+    tiempo: { escalaSimulacion: 4 },
+    plantas: { ticksSemillaAJoven: 8, ticksJovenAAdulta: 24, ticksPorRefrescoRender: 4 },
   },
 };
 

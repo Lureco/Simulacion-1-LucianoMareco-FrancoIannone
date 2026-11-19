@@ -36,6 +36,7 @@ import { Controles } from './ui/controles.js';
 import { Leyenda } from './ui/leyenda.js';
 import { Grafico } from './ui/grafico.js';
 import { GeneradorMapa } from './ui/generadorMapa.js';
+import { guardarOverrides, limpiarOverrides } from './core/configPersistencia.js';
 
 const app = new Application();
 
@@ -183,9 +184,18 @@ const grafico = new Grafico(contenedor);
 // T56: leyenda de colores y modo depuración.
 const leyenda = new Leyenda(contenedor);
 
-// F8/T84: panel para generar mapas con seed y poblaciones iniciales elegidas.
+// F8/T84: panel de configuración (categorías + presets). Al aplicar se guardan
+// los overrides y se recarga la página: así hasta los valores que se capturan
+// al arrancar (colores, tamaño del mundo, zoom, atlas) se aplican sin parches.
 const generadorMapa = new GeneradorMapa(contenedor, {
-  alGenerar: regenerarMundo,
+  alGenerar: (valores) => {
+    guardarOverrides(valores);
+    location.reload();
+  },
+  alRestablecer: () => {
+    limpiarOverrides();
+    location.reload();
+  },
   seed: ESTADO.seed,
   plantas: ESTADO.inicial.plantas,
   herbivoros: ESTADO.inicial.herbivoros,
@@ -446,7 +456,7 @@ console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
 console.log(
   '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · ' +
     'espacio = pausa · 1/2/4 = velocidad · D = depuración · clic = ver necesidades · ' +
-    'R = nueva seed · S = ver seed · T = terreno · ⚙ Mapa = generar con seed/poblaciones',
+    'R = nueva seed · S = ver seed · T = terreno · ⚙ Configuración = editar valores y presets',
 );
 
 // Pixi crea el buffer de GPU en el PRIMER render con el tamaño de
