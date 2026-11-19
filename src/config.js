@@ -376,6 +376,17 @@ export const CONFIG = {
     distanciaBebida: 1,
     /** Fracción de `distanciaOrilla` usada como objetivo con sed media (T38). */
     factorDistanciaSedMedia: 0.5,
+    /**
+     * Separación estilo boids: radio (en celdas) en el que un animal siente a
+     * los demás de su especie y ajusta el rumbo para no amontonarse.
+     */
+    radioSeparacion: 1,
+    /**
+     * Intensidad de la separación cuando el vecino está prácticamente encima
+     * (0 = desactivada). Decae linealmente hasta 0 en `radioSeparacion`; con
+     * el valor default un vecino a ~0.7 celdas puede invertir el rumbo.
+     */
+    fuerzaSeparacion: 2,
   },
 
   // ─────────────────────────────────────────────────────────────

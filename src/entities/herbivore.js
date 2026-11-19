@@ -22,6 +22,7 @@
 import { Especie, ESTADO_IA } from './entity.js';
 import { CONFIG } from '../config.js';
 import { mover } from '../systems/movement.js';
+import { aplicarSeparacion } from '../systems/separacion.js';
 import { comerPlanta } from '../systems/plantGrowth.js';
 import {
   buscarComida,
@@ -83,6 +84,7 @@ export class Herbivoro extends Especie {
     }
 
     this.pensar(id, dt, ctx);
+    aplicarSeparacion(id, ctx);
     mover(id, dt, ctx);
     gastarEnergia(id, dt, ctx);
   }

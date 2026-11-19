@@ -20,6 +20,7 @@
  */
 
 import { mover } from '../systems/movement.js';
+import { aplicarSeparacion } from '../systems/separacion.js';
 
 /** Tipos de especie. Los valores se usan como índice de `tipo` en la grilla. */
 export const ESPECIE = {
@@ -77,6 +78,7 @@ export class Especie {
     const a = ctx.entidades;
     a.edad[id] += 1;
     this.pensar(id, dt, ctx);
+    aplicarSeparacion(id, ctx);
     mover(id, dt, ctx);
   }
 

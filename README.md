@@ -106,7 +106,9 @@ reproducen** cuando juntan energía y encuentran pareja, **huyen** si un
 carnívoro se acerca, y **mueren** de hambre, sed, vejez o **depredación** —
 cada causa contada por separado. Los carnívoros **persiguen y cazan** a los
 herbívoros (más rápidos, pero cada presa les cuesta energía), beben,
-deambulan manteniendo la distancia al agua y también se reproducen. Todo se ve con
+deambulan manteniendo la distancia al agua y también se reproducen. Unos y otros
+ajustan su rumbo para **no amontonarse** con los de su especie (separación estilo
+boids, con radio e intensidad configurables). Todo se ve con
 **sprites reales**: las plantas pasan de semilla a joven a adulta (y desaparecen al morir), y los
 animales son sprites laterales de **Triceratops** y **Ceratosaurio** que se voltean según su
 dirección y animan su caminata a velocidad distinta por especie.

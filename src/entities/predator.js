@@ -25,6 +25,7 @@
 import { Especie, ESPECIE, ESTADO_IA } from './entity.js';
 import { CONFIG, TICKS_POR_SEGUNDO } from '../config.js';
 import { mover } from '../systems/movement.js';
+import { aplicarSeparacion } from '../systems/separacion.js';
 import {
   buscarPresa,
   buscarAgua,
@@ -84,6 +85,7 @@ export class Depredador extends Especie {
     }
 
     this.pensar(id, dt, ctx);
+    aplicarSeparacion(id, ctx);
     mover(id, dt, ctx);
     gastarEnergia(id, dt, ctx);
   }
