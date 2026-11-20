@@ -32,6 +32,41 @@ export class Hud {
     `;
     contenedor.appendChild(this.elemento);
 
+    // El texto va en un span aparte: el botón de copiar seed es hijo del HUD
+    // y no debe borrarse cada vez que se refrescan los contadores.
+    this.texto = document.createElement('span');
+    this.elemento.appendChild(this.texto);
+
+    this.botonSeed = document.createElement('button');
+    this.botonSeed.type = 'button';
+    this.botonSeed.className = 'hud-copiar-seed';
+    this.botonSeed.textContent = 'copiar seed';
+    this.botonSeed.title = 'Copiar la seed actual al portapapeles (tecla S)';
+    this.botonSeed.style.cssText = `
+      display: block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      font: inherit;
+      color: #e6e6e6;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      cursor: pointer;
+      pointer-events: auto;
+    `;
+    this.elemento.appendChild(this.botonSeed);
+
+    /**
+     * Callback que instala `main.js`: devuelve una promesa de `true`/`false`
+     * según se pudo copiar. Así el HUD no conoce la seed ni el simulador.
+     * @type {(() => Promise<boolean>)|null}
+     */
+    this.alCopiarSeed = null;
+    this.botonSeed.addEventListener('click', () => {
+      if (this.alCopiarSeed !== null) this.alCopiarSeed().then((ok) => this.avisarCopia(ok));
+    });
+    this._temporizadorAviso = null;
+
     this.ultimaActualizacion = 0;
     this.datos = {
       plantas: 0,
@@ -63,7 +98,7 @@ export class Hud {
 
     const d = this.datos;
     const segundos = (d.ticks / TICKS_POR_SEGUNDO).toFixed(1);
-    this.elemento.textContent = [
+    this.texto.textContent = [
       `plantas     ${String(d.plantas).padStart(4)}`,
       `  pasto     ${String(d.pasto).padStart(4)}`,
       `  micelio   ${String(d.micelio).padStart(4)}`,
@@ -81,8 +116,22 @@ export class Hud {
     ].join('\n');
   }
 
+  /**
+   * Muestra el resultado de copiar la seed y vuelve al texto normal.
+   * @param {boolean} ok
+   */
+  avisarCopia(ok) {
+    this.botonSeed.textContent = ok ? 'seed copiada ✓' : 'no se pudo copiar';
+    if (this._temporizadorAviso !== null) clearTimeout(this._temporizadorAviso);
+    this._temporizadorAviso = setTimeout(() => {
+      this.botonSeed.textContent = 'copiar seed';
+      this._temporizadorAviso = null;
+    }, CONFIG.ui.avisoCopiaMs);
+  }
+
   /** Saca el HUD del DOM. */
   destruir() {
+    if (this._temporizadorAviso !== null) clearTimeout(this._temporizadorAviso);
     this.elemento.remove();
   }
 }

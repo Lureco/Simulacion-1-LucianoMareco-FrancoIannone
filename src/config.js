@@ -211,11 +211,11 @@ export const CONFIG = {
 
     // ── F8/T65-T66: segunda especie y competencia territorial ──
     /** Fracción de la siembra inicial que nace como micelio (0..1). */
-    fraccionMicelio: 0.12,
+    fraccionMicelio: 0.08,
     /**
      * Reglas por especie. Solo se guarda lo que DIFIERE de las reglas base de
-     * arriba: `pasto` hereda todo ({}), `micelio` crece más despacio, vive más
-     * y puede desplazar al pasto (T66). No se hardcodea nada en `plantGrowth.js`.
+     * arriba: `pasto` hereda todo ({}), `micelio` crece más despacio y puede
+     * desplazar al pasto (T66). No se hardcodea nada en `plantGrowth.js`.
      */
     especies: {
       [ESPECIE_PLANTA.PASTO]: {},
@@ -223,7 +223,7 @@ export const CONFIG = {
         probExpansion: 0.05,
         ticksVidaAdulta: 900,
         /** Probabilidad de colonizar una celda vecina ocupada por pasto. */
-        probDesplazamiento: 0.25,
+        probDesplazamiento: 0.0002,
       },
     },
     /** Colores del micelio en el frame de prueba del atlas (0xRRGGBB). */
@@ -455,6 +455,8 @@ export const CONFIG = {
     umbralArrastrePx: 3,
     /** Cada cuántos ms se refresca el texto del HUD. */
     hudIntervaloMs: 200,
+    /** Cuánto tiempo se muestra el aviso de "seed copiada" (F8/T68). */
+    avisoCopiaMs: 1800,
     /** Segmentos de las barras de necesidades de la leyenda. */
     barraSegmentos: 8,
   },

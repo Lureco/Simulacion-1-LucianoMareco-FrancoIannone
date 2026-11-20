@@ -40,6 +40,7 @@ import { Controles } from './ui/controles.js';
 import { Leyenda } from './ui/leyenda.js';
 import { Grafico } from './ui/grafico.js';
 import { GeneradorMapa } from './ui/generadorMapa.js';
+import { copiarTexto } from './ui/portapapeles.js';
 import { guardarOverrides, limpiarOverrides } from './core/configPersistencia.js';
 
 const app = new Application();
@@ -171,6 +172,12 @@ const camara = new Camera(
 camara.conectar(app.canvas);
 
 const hud = new Hud(contenedor);
+
+// F8/T68: la seed se copia igual desde el botón del HUD que con la tecla S.
+async function copiarSeed() {
+  return copiarTexto(String(ESTADO.seed));
+}
+hud.alCopiarSeed = copiarSeed;
 
 // T33: barra de pausa y velocidad. La barra solo notifica; el estado real
 // vive en `ESTADO`, que es lo que lee el bucle principal.
@@ -339,7 +346,7 @@ window.addEventListener(
         break;
       }
       case 's':
-        console.log(`[main] seed actual: ${ESTADO.seed}`);
+        copiarSeed().then((ok) => hud.avisarCopia(ok));
         break;
       case 't': {
         const { agua, arena, tierra } = ctx.grid.contarTerreno();
@@ -467,7 +474,7 @@ console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
 console.log(
   '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · ' +
     'espacio = pausa · 1/2/4 = velocidad · D = depuración · clic = ver necesidades · ' +
-    'R = nueva seed · S = ver seed · T = terreno · ⚙ Configuración = editar valores y presets',
+    'R = nueva seed · S = copiar seed · T = terreno · ⚙ Configuración = editar valores y presets',
 );
 
 // Pixi crea el buffer de GPU en el PRIMER render con el tamaño de
