@@ -7,10 +7,12 @@ herbívoros y depredadores interactúan sobre un terreno generado por ruido.
 - **Profesor:** Facundo Saiegh
 - **Stack:** JavaScript ES2022 · [PixiJS v8](https://pixijs.com) · Vite · Vitest · ESLint + Prettier
 
-> **Estado actual:** F5 hecha. La cadena alimenticia completa funciona: los
-> herbívoros comen, beben, se reproducen y **huyen**; los carnívoros los
-> **cazan**. El mundo procedural y las plantas ya están. Ver
-> [Estado](#estado-del-proyecto).
+> **Estado actual:** F8 (extras y entrega) implementada y verificada. Dos
+> especies vegetales compiten por el territorio, los animales heredan y mutan
+> cinco rasgos, la seed se copia con un clic y el build de producción fue
+> verificado servido. El video, las capturas y la revisión cruzada final son
+> pasos manuales: ver [Estado](#estado-del-proyecto) y
+> [Demo y revisión](docs/DEMO.md).
 
 ---
 
@@ -48,15 +50,18 @@ Otros comandos:
 | **Rueda** | Zoom in/out |
 | **F** | Seguir a un herbívoro al azar |
 | **G** | Volver al centro del mundo |
+| **D** | Alternar la vista de depuración (color por estado de IA) |
+| **1 / 2 / 4** | Cambiar la velocidad de simulación |
+| **Clic** | Seleccionar un animal y ver sus barras de hambre/sed |
 | **Espacio** | Pausar / reanudar |
 | **R** | Regenerar el mundo y la población con una seed nueva |
-| **S** | Mostrar la seed actual en consola |
-| **T** | Mostrar el conteo de terreno (agua/arena/tierra) en consola |
+| **S** | Copiar la seed actual al portapapeles (también hay un botón en el HUD) |
+| **T** | Mostrar el conteo de terreno y plantas en el HUD |
 | **⚙ Configuración** | Abrir el panel para editar los valores de `config.js` por categorías y administrar presets (tres posiciones: oculto, abajo, pantalla completa, con scroll con la rueda) |
 
 El panel tiene una categoría por sección de `config.js` (`mundo`, `render`, `sprites`,
-`tiempo`, `ia`, `terreno`, `plantas`, `entidades`, `herbivoro`, `depredador`,
-`percepcion`, `ui` y `camara`) más una categoría **Presets**. Se pueden editar números,
+`tiempo`, `ia`, `terreno`, `plantas`, `entidades`, `genetica`, `herbivoro`,
+`depredador`, `percepcion`, `ui` y `camara`) más una categoría **Presets**. Se pueden editar números,
 booleanos y colores; las rutas de sprites no se muestran porque el atlas se arma al
 iniciar y no se pueden cambiar desde el panel. El contenido scrollea con la rueda y el
 tirador `◥` de la esquina superior derecha permite agrandar el panel arrastrando: en
@@ -92,7 +97,10 @@ Hitos según `TAREAS.md`:
 | **F3** Plantas y autómata | ✅ Hecho | Crecimiento, estados, expansión, muerte por edad y `comerPlanta` (T27-T33). Sin humedad ni pisadas (D16) |
 | **F4** IA del herbívoro | ✅ Hecho | Necesidades, prioridad, comer/beber, penalización de terreno, reproducción y muerte (T34-T42 + T45-T47 lado herbívoro) |
 | **F5** Depredador y cadena | ✅ Hecho | Caza y persecución, depredación, reproducción del carnívoro, restricción de terreno (D17) y test de la cadena (T43-T50) |
+| **F6** Movimiento, UI y gráfico | ✅ Hecho | Posición float, cámara, HUD, gráfico, leyenda y vista de necesidades (T51-T57) |
+| **F7** Balance y performance | ✅ Hecho | 10 min simulados, bucle de ajuste, perfilado y culling (T58-T64, T83) |
 | **F7.5** Sprites y atlas | ✅ Hecho | Atlas único de PNG reales + `ParticleContainer`: plantas por estado y animales con cycle de caminar (T75-T82); peor caso medido en 5,69 ms/frame |
+| **F8** Extras y entrega | ✅ Hecho (código) | Pasto + micelio con competencia, herencia de 5 genes, seed copiable, build servido, docs y entrega (T65-T74). Video y revisión cruzada: pasos manuales en `docs/DEMO.md` |
 
 ### Qué se ve hoy
 
@@ -114,6 +122,17 @@ intensidad configurables). Todo se ve con
 **sprites reales**: las plantas pasan de semilla a joven a adulta (y desaparecen al morir), y los
 animales son sprites laterales de **Triceratops** y **Ceratosaurio** que se voltean según su
 dirección y animan su caminata a velocidad distinta por especie.
+
+La tierra la comparten **pasto** y **micelio** (T65/T66): el pasto crece más
+rápido, el micelio vive más y puede arrebatarle celdas vecinas con una
+probabilidad baja configurable. El HUD muestra ambas poblaciones y cuántos
+desplazamientos lleva el micelio; con la seed por defecto conviven durante
+varios minutos antes de que el micelio empiece a ganar terreno. Los animales
+nacen con **genes** que heredan de ambos padres y pueden mutar (T67): un
+individuo veloz se mueve y anima más rápido, uno grande se dibuja más grande,
+uno con más percepción ve más lejos, uno con más consumo come y bebe más
+rápido, y el gen de reproducción acorta o alarga su cooldown. Los cambios son
+visibles en pantalla y reproducibles con la misma seed.
 
 ### Lo que ya está garantizado (y se puede romper de una forma detectable)
 
@@ -166,7 +185,8 @@ src/
 │  ├─ plantGrowth.js    # autómata de vegetación + `comerPlanta` (T27-T32)
 │  ├─ needs.js          # hambre/sed/deseoRepro + causas de muerte (T34/T45)
 │  ├─ perception.js     # buscar plantas/agua/pareja en el radio de visión (T36)
-│  ├─ eventos.js        # nacimientos y muertes diferidos (T46/T47)
+│  ├─ eventos.js        # nacimientos y muertes diferidos (T46/T47, T67)
+│  ├─ genetica.js       # herencia y mutación de cinco genes (T67)
 │  └─ simulacion.js     # el paso de simulación (usado por main y por tests)
 ├─ render/
 │  ├─ camera.js         # pan, zoom, seguimiento  ⚠️ adelantada de P1 (T53)
@@ -214,5 +234,7 @@ tests/                   # Vitest
   estructura de datos, por qué de cada decisión.
 - [`docs/CONTRATO.md`](docs/CONTRATO.md) — las clases compartidas entre P1 y
   P2 y cómo se acuerdan los cambios.
+- [`docs/DEMO.md`](docs/DEMO.md) — guion de grabación, capturas y revisión
+  cruzada final (F8/T72-T73).
 - [`TAREAS.md`](TAREAS.md) — el plan de tareas completo.
 - [`Gdd-Tdd.txt`](Gdd-Tdd.txt) — el documento de diseño de la cátedra.

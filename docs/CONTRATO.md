@@ -28,6 +28,11 @@
 | `cooldown` | `Int32Array` | ticks | Ticks que faltan para poder volver a reproducirse (F4) |
 | `edad` | `Int32Array` | ticks | Antigüedad en ticks |
 | `velocidad` | `Float32Array` | celdas/s | Velocidad base (copiada de la especie al crear) |
+| `genVelocidad` | `Float32Array` | × | Multiplicador genético de velocidad (F8/T67, neutro = 1) |
+| `genTamano` | `Float32Array` | × | Multiplicador genético del tamaño del sprite (T67) |
+| `genPercepcion` | `Float32Array` | × | Multiplicador genético de los radios de búsqueda (T67) |
+| `genConsumo` | `Float32Array` | × | Multiplicador genético de hambre y sed (T67) |
+| `genReproduccion` | `Float32Array` | × | Multiplicador genético del cooldown (T67) |
 | `dirX`, `dirY` | `Float32Array` | — | Rumbo normalizado (longitud ≈ 1) |
 | `ticksParaGiro` | `Int32Array` | ticks | Cuánto falta para volver a sortear rumbo |
 | `estado` | `Uint8Array` | — | Estado de la IA (`ESTADO_IA.*`, numérico) |
@@ -69,6 +74,13 @@ diferidos (F4).
    muera toda a la vez) y a la cría recién nacida (`edad = 0`).
 4. La especie **no conoce** el terreno, la grilla ni el render. Habla con el
    mundo a través de `ctx` (el contexto de simulación).
+5. Los cinco `gen*` valen `1` en `crear()` y se sobreescriben al aplicar un
+    nacimiento con genes heredados (T67). Nunca son negativos: `config.genetica`
+    los limita a `[minRasgo, maxRasgo]`.
+6. `anotarNacimiento(ctx, tipo, indice, padre, madre)` escribe una tupla plana
+    `(tipo, indice, 5 genes)` en `ctx._nacimientos`. `aplicarNacimientos()` la
+    consume en bloques de `PASO_NACIMIENTO` números. Llamar sin padres da genes
+    neutrales y no consume PRNG.
 
 ---
 
@@ -83,6 +95,7 @@ class Grid {
 
   terreno: Uint8Array;   // TERRENO.*   (P1 escribe)
   planta:  Uint8Array;   // PLANTA.*    (P1 escribe, F3)
+  especiePlanta: Uint8Array; // ESPECIE_PLANTA.* (P1 escribe, F8/T65): PASTO o MICELIO
   ocupante: Int32Array;  // id de entidad por celda, -1 = libre (P2 escribe)
   altura:  Float32Array; // altura normalizada 0..1 (P1 escribe)
 
@@ -136,8 +149,11 @@ Constantes de tipo de terreno y de estado de planta, en un solo lugar:
 ```js
 export const TERRENO = { AGUA: 0, ARENA: 1, TIERRA: 2 };
 export const PLANTA = { NADA: 0, SEMILLA: 1, JOVEN: 2, ADULTA: 3, MUERTA: 4 };
+export const ESPECIE_PLANTA = { PASTO: 0, MICELIO: 1 };
 ```
 
+`PLANTA` describe el **estado** de la celda; `ESPECIE_PLANTA` describe **qué**
+especie la ocupa y vive en la capa paralela `Grid.especiePlanta` (F8/T65).
 Además de las constantes, `nombreTerreno(tipo)` y `nombrePlanta(estado)` dan
 **nombres legibles** para el HUD y el log de depuración.
 
@@ -232,9 +248,10 @@ Contratos:
 - La `capacidad` se reserva **al arrancar**: `grid.total` para plantas y
   `CONFIG.entidades.maxEntidades` para animales. El pool nunca se agranda durante la simulación.
 - `PlantRenderer.reconstruir()` lee **solo el estado** de `grid.planta` (nunca la edad):
-  `SEMILLA`/`JOVEN`/`ADULTA` dibujan; `MUERTA`/`NADA` no. Se ejecuta cada
-  `CONFIG.plantas.ticksPorRefrescoRender` ticks o cuando cambia el rectángulo visible;
-  `invalidar()` la fuerza tras regenerar la grilla.
+  `SEMILLA`/`JOVEN`/`ADULTA` dibujan; `MUERTA`/`NADA` no. La clave del frame sale de
+  `framePlanta(estado, grid.especiePlanta[i])` (F8/T65), sin cambiar la API del renderer.
+  Se ejecuta cada `CONFIG.plantas.ticksPorRefrescoRender` ticks o cuando cambia el
+  rectángulo visible; `invalidar()` la fuerza tras regenerar la grilla.
 - `EntityRenderer.render()` solo lee arrays SoA del manager (`x`, `y`, `dirX`, `tipo`,
   `velocidad`, `estado`, `vivos`). El nuevo parámetro `tick` alimenta la animación y no avanza
   en pausa. El sprite se voltea con `scaleX` según `dirX`, sin rotación.

@@ -586,7 +586,9 @@ dar más tiempo de persecución.
 **Queda para el próximo bucle.** No se probaron `radioReproduccion` ni `radioVision`: cada uno
 debe ser su propia corrida (regla de un parámetro por experimento). El declive de depredadores
 queda documentado como **limitación conocida de v1**, no como bug: la simulación sigue siendo
-reproducible y los herbívoros no colapsan.
+reproducible y los herbívoros no colapsan. La corrida final de F8 (con genes y dos especies
+vegetales) terminó con 0 depredadores al minuto 10, así que el desequilibrio persiste y debe
+revisarse en un próximo bucle de balance.
 
 **Verificación:** logs `t60-run1.log`, `t60-run2.log` y `t60-run3.log` en
 `C:\Users\Admin\AppData\Local\Temp\opencode\`.
@@ -754,6 +756,126 @@ acordó que el maquetado CSS de la UI no es un parámetro de balance.
 **Verificación:** `npm run lint`, `npm test` (138) y `npm run build` pasan; Prettier sobre los
 archivos tocados pasa. 8 tests del panel (posiciones, validación, seeds y callback) y 4 de
 siembra exacta (cantidad, tope de tierra, determinismo y compatibilidad por densidad).
+
+---
+
+## D25 · Dos especies vegetales y competencia territorial (F8 · T65/T66)
+
+**Contexto.** El GDD proponía como extensión una segunda especie vegetal con reglas distintas y
+competencia por el territorio. La grilla ya guardaba el *estado* de la planta en una capa
+`Uint8Array`; hacía falta distinguir *qué* planta ocupa la celda sin convertir 65.536 celdas en
+objetos.
+
+**Decisión.**
+
+1. **Capa paralela, no objetos.** `Grid.especiePlanta` es otro `Uint8Array` con el mismo índice
+   plano que `planta`/`terreno`. `planta` sigue diciendo `SEMILLA/JOVEN/ADULTA/MUERTA` y
+   `especiePlanta` dice `PASTO` (0) o `MICELIO` (1). Una grilla vieja sin la capa se lee como
+   todo pasto, así que no hubo migración.
+2. **Reglas por sobreescritura.** `CONFIG.plantas.especies[especie]` contiene solo lo que difiere
+   de las reglas base; `regla(cfg, especie, clave)` decide en el lugar de uso sin asignar nada en
+   el bucle. El micelio expande menos (`0.05` contra `0.08`), vive más (`900` contra `500` ticks)
+   y tiene `probDesplazamiento`, que el pasto no tiene.
+3. **Competencia sin asignaciones.** `buscarVecinaLibre()` prefiere celdas vacías; si no hay,
+   solo el micelio puede arrebatar una celda al pasto. El retorno codifica el desplazamiento como
+   `-2 - j` (un entero negativo no puede confundirse con un índice), evitando objetos temporales
+   por intento. El conteo acumulado vive en `ctx.desplazamientos`.
+4. **Sin PNG propio.** El atlas reserva claves sintéticas `plantas/micelio/{semilla,joven,adulta}`
+   y dibuja un frame de prueba con los colores `colorMicelio*`. El renderer elige la clave con
+   `framePlanta(estado, especie)`. Cuando haya arte propio basta reemplazar esas entradas del
+   atlas: el simulador no cambia.
+
+**Balance medido.** `node scripts/simular.mjs 1337 10` con `fraccionMicelio = 0.08` y
+`probDesplazamiento = 0.0002`: al minuto 1 hay ~3.500 micelios sobre ~35.000 plantas; al minuto
+10 conviven ~19.000 micelios y ~16.000 pastos con ~2.600 desplazamientos. Valores más altos
+(0.001) extinguían el pasto antes del minuto 5; valores más bajos (0.0005 con expansión reducida)
+extinguían el micelio. Los parámetros quedaron en `CONFIG.plantas` y el HUD muestra ambas
+poblaciones y los desplazamientos.
+
+**Descartado:** dar reglas distintas por especie en `plantGrowth.js` con `if (especie === …)`
+(duplicaba la lógica y rompía la regla de "ningún número fuera de `config.js`"), y models de
+competencia con objetos por planta (memoria y GC).
+
+**Verificación:** `tests/especiesVegetales.test.js` (8 tests: capa, siembra determinista, reglas
+por especie, desplazamiento, no retroceso del pasto y selección del frame) y el script de balance
+headless. Total en este hito: 196 tests.
+
+---
+
+## D26 · Herencia y mutación de rasgos (F8 · T67)
+
+**Contexto.** El GDD lista como extensión la herencia de velocidad, tamaño, percepción, consumo
+y tiempo de reproducción. Hoy solo la velocidad era dato por individuo; el resto eran constantes
+de especie.
+
+**Decisión.**
+
+1. **Cinco genes SoA.** `EntityManager` agrega `genVelocidad`, `genTamano`, `genPercepcion`,
+   `genConsumo` y `genReproduccion` (`Float32Array`). Todos valen 1 al nacer: son multiplicadores
+   del rasgo base de la especie, no valores absolutos. Los arrays crecen con `reservar()` y se
+   reinician al reciclar un id.
+2. **Herencia de dos padres con mutación.** `anotarNacimiento()` recibe los ids de ambos
+   progenitores y calcula los genes **en el momento de anotar** con `genesDeCria()`. Calcularlos
+   al aplicar el evento sería incorrecto: `aplicarMuertes()` corre antes que
+   `aplicarNacimientos()` y el id de un padre muerto podría ser reutilizado por otra cría. El
+   promedio usa `CONFIG.genetica.pesoPadre`; cada gen muta con `probMutacion`, suma/resta
+   `deltaMutacion` y se limita a `[minRasgo, maxRasgo]`. Todo sale de `ctx.prng` en orden fijo.
+3. **Buffer reutilizable.** La tupla de nacimiento pasó de `(tipo, indice)` a
+   `(tipo, indice, 5 genes)`. `bufferGenes(ctx)` se crea una vez y se rellena en sitio: cero
+   objetos nuevos por nacimiento. Las llamadas sin padres siguen generando genes neutrales sin
+   consumir azar, para no romper tests ni corridas anteriores.
+4. **Efectos observables.** El gen de velocidad escala el paso en `movement.js` y la fase de la
+   animación; el de tamaño escala `scaleX/scaleY` del sprite; el de percepción multiplica los
+   radios de búsqueda de comida, agua, pareja y presa; el de consumo escala hambre y sed; el de
+   reproducción escala el cooldown de ambos padres. Así la evolución es visible en pantalla, no
+   solo un número en un array.
+5. **Tolerancia Float32.** Los tests comparan genes con `toBeCloseTo`, porque los arrays son
+   `Float32Array` (D13) y `1.2` se guarda como `1.2000000476837158`.
+
+**Descartado:** un objeto `Genotipo` por animal (rompe SoA), `Math.random()` para mutar (rompe
+determinismo) y guardar solo un padre (perdía la mitad de la información genética).
+
+**Verificación:** `tests/genetica.test.js` (11 tests) y la huella de `tests/determinismo.test.js`
+incluye ahora los cinco genes. Total en este hito: 207 tests.
+
+---
+
+## D27 · Entrega: seed copiable, build servido y cero logs (F8 · T68/T69/T74)
+
+**Contexto.** Para cerrar F8 hacían falta tres cosas de entrega, no de simulación:
+poder copiar la seed, comprobar el build fuera de Vite dev y sacar los `console.log`
+de depuración que quedaron durante el desarrollo.
+
+**Decisión.**
+
+1. **Seed en el HUD y copiable.** El botón *copiar seed* y la tecla `S` llaman a
+   `copiarSeed()` en `main.js`: `navigator.clipboard.writeText` con fallback a
+   `document.execCommand('copy')`. El HUD solo recibe un callback que devuelve
+   `Promise<boolean>`, así no conoce la seed ni el simulador. El resultado se
+   muestra debajo del botón durante `CONFIG.ui.avisoCopiaMs` (1800 ms).
+2. **El aviso es reutilizable.** `Hud.avisar(texto)` reemplaza el antiguo
+   `avisarCopia(ok)` como método base; `avisarCopia()` es un wrapper. Lo usan
+   también los atajos `D`, espacio, `1/2/4`, `F`, `R` y `T`, y el mensaje de
+   arranque. Así no se pierde información al quitar la consola.
+3. **Build verificado servido.** `npm run build` genera `dist/` y
+   `npm run preview -- --host 127.0.0.1 --port 4173` sirve `index.html` y
+   `assets/index-*.js` sin errores. La comprobación se repite en T74; el script
+   `scripts/simular.mjs` dejó de leer el array eliminado `manager.energia[id]` y
+   reporta `hambre`/`sed`, conteo por especie y desplazamientos.
+4. **Sin logs de debug.** `npm run lint:prod` (`eslint src --rule
+   "no-console:error"`) bloquea cualquier `console.*` en `src/`. Quedan solo
+   comentarios que explican la decisión, no llamadas ejecutables.
+
+**Descartado:** dejar los avisos en la consola "por si acaso" (rompía la
+definition of done de T74), depender solo de Clipboard API sin fallback y dar
+por bueno el build sin servirlo.
+
+**Verificación:** `npm run lint`, `npm run lint:prod`, `npm test -- --run`
+(21 archivos, 210 tests), `npx prettier --check .`, `npm run build`,
+`npm run preview` y `node scripts/simular.mjs 1337 10`. La corrida final de
+10 min con seed 1337 terminó en 156 herbívoros, 0 depredadores, 19.287
+micelios, 16.470 pastos y 2.642 desplazamientos. El guion de demo y la revisión
+cruzada pendiente están en `docs/DEMO.md`.
 
 ---
 

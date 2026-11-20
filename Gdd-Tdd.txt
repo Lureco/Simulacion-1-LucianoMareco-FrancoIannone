@@ -464,3 +464,42 @@ La simulación deberá permitir observar situaciones como:
 * Aparición de desequilibrios en la cadena alimenticia.
 * Recuperación o colapso de determinadas especies.
 De esta manera, el proyecto permitirá demostrar la aplicación conjunta de vida artificial y generación procedural dentro de una simulación interactiva.
+________________
+
+
+19. Implementación final (F8 — cierre del proyecto)
+Estado: implementado y verificado. Esta sección registra lo que quedó realmente en el código, no solo lo previsto en las secciones anteriores.
+
+19.1 Alcance entregado
+* Mundo 2D procedural de 256 x 256 celdas con agua, arena y tierra, generado por Value Noise + fBm con semilla (seed por defecto: 1337).
+* Grilla de memoria contigua: terreno, estado de planta, especie de planta, id de ocupante, altura y campos BFS de navegacion, todos con el mismo indice plano.
+* Plantas con estados semilla -> joven -> adulta -> muerte, expansion por automata celular y muerte por edad.
+* Dos especies vegetales: pasto (crecimiento rapido) y micelio (vive mas, expande menos y puede desplazar al pasto). Compiten por celdas vecinas con reglas locales y probabilidades configurables.
+* Herbivoros y depredadores con necesidades normalizadas (hambre, sed, deseo de reproduccion), percepcion por vecindario, prioridad de decision, comer/beber, reproduccion y muerte por causas separadas.
+* Cadena alimenticia completa: planta -> herbivoro -> depredador, con depredacion contada por separado.
+* Movimiento continuo en coordenadas de celda, con paso fijo de 1/60 s, acumulador y penalizacion del terreno.
+* Cinco genes por animal (velocidad, tamano, percepcion, consumo y reproduccion), heredados de ambos padres con mutacion acotada. Son multiplicadores en arrays tipados (SoA), no objetos por individuo.
+* HUD con poblaciones por especie vegetal, desplazamientos, animales, nacidos, muertos, tiempo, seed, FPS y estado; grafico de poblaciones, leyenda, vista de necesidades y panel de configuracion con presets.
+* Seed visible y copiable con tecla S o boton del HUD, con fallback para navegadores sin Clipboard API.
+* sprites reales en un atlas unico armado al arrancar y dos ParticleContainer con culling por camara.
+
+19.2 Decisiones de cierre
+* D25: la especie de planta vive en una capa Uint8Array paralela; el micelio reserva claves sinteticas en el atlas hasta que haya arte propio.
+* D26: los genes se calculan al anotar el nacimiento, no al aplicarlo, porque los ids de padres muertos pueden reciclarse antes de aplicar el evento.
+* T74: no quedan console.log de depuracion en src/; los avisos de atajos y arranque se muestran en el HUD y npm run lint:prod lo comprueba.
+* El video y las capturas quedan como pasos manuales: este entorno no tiene ffmpeg ni navegador headless. El guion esta en docs/DEMO.md.
+
+19.3 Balance medido
+* Corrida de referencia: node scripts/simular.mjs 1337 10 (10 minutos simulados, 175,1 s reales).
+* Con la configuracion final, pasto y micelio conviven durante toda la corrida; hacia el minuto 10 hay 19.287 micelios, 16.470 pastos y 2.642 desplazamientos.
+* En la corrida final los herbivoros pasaron de 120 a 156 (131 nacimientos) y los depredadores de 25 a 0: el declive de depredadores se acentuo con la genetica y sigue siendo una limitacion conocida y documentada (D20), no un fallo de determinismo.
+* Peor caso de render: 65.536 plantas y 4.000 animales en pantalla, 5,69 ms/frame y 2 draw calls (T79). Medicion ampliada en T83: 4,16 ms de mediana con el mismo escenario.
+
+19.4 Verificacion final
+* npm run lint: OK.
+* npm run lint:prod: OK (sin console en src/).
+* npm test -- --run: 21 archivos y 210 tests en verde.
+* npx prettier --check .: OK.
+* npm run build: OK; npm run preview -- --host 127.0.0.1 --port 4173 sirve index.html y los assets del build.
+* Las instrucciones de ejecucion, controles y estado por fase estan en README.md; el guion de demo, capturas y revision cruzada en docs/DEMO.md.
+* Decisiones tecnicas completas en docs/DECISIONES.md (D1-D26) y contrato de datos en docs/CONTRATO.md.

@@ -6,9 +6,10 @@
 **Doc base:** `Gdd-Tdd.txt`
 **Stack:** JavaScript + PixiJS
 
-> **Estado verificado en código (2026-11-18):** los checkboxes se actualizaron contra lo que
-> realmente hay en `main`, no solo contra el plan. F0–F6 completas (v1); F7 y F8 pendientes.
-> Humedad y pisadas de herbívoros quedaron descartadas por decisión (D16).
+> **Estado verificado en código (2026-11-20):** los checkboxes se actualizaron contra lo que
+> realmente hay en `main`, no solo contra el plan. F0–F7.5 completas; F8 con el código
+> terminado y verificado. Quedan como acciones humanas el video, las capturas y la revisión
+> cruzada final (T72/T73). Humedad y pisadas de herbívoros quedaron descartadas por decisión (D16).
 >
 > **Agregado 2026-11-18:** fase **F7.5** (sprites de plantas y animales con atlas e
 > instancing), **completada** (T75–T82): no cambia la simulación, solo la representación visual,
@@ -469,21 +470,41 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
 
 ### F8 · Extras (v2) y entrega
 
-- [ ] **T65 · P2** — **Segunda especie vegetal** con reglas de expansión distintas (pasto vs micelio)
-- [ ] **T66 · P2** — **Competencia territorial** entre especies vegetales: una desplaza a la otra
-- [ ] **T67 · P2** — **Mutaciones y herencia**: variación en velocidad, tamaño, percepción,
+- [x] **T65 · P2** — **Segunda especie vegetal** con reglas de expansión distintas (pasto vs micelio)
+      *(capa paralela `especiePlanta`, reglas por sobreescritura en `CONFIG.plantas.especies`;
+      8 tests en `tests/especiesVegetales.test.js`. D25)*
+- [x] **T66 · P2** — **Competencia territorial** entre especies vegetales: una desplaza a la otra
+      *(solo el micelio desplaza al pasto, codificado como `-2 - j` en `buscarVecinaLibre`;
+      `ctx.desplazamientos` cuenta los eventos. Balance a 10 min con seed 1337: ~19.000
+      micelios, ~16.000 pastos y ~2.642 desplazamientos)*
+- [x] **T67 · P2** — **Mutaciones y herencia**: variación en velocidad, tamaño, percepción,
       consumo, tiempo de reproducción
-- [ ] **T68 · P1** — Mostrar y copiar la seed para poder reproducir un escenario interesante
-      *(mostrar ya está en el HUD y con tecla `S`; falta copiar al portapapeles)*
-- [ ] **T69 · P1** — Build de producción (`npm run build`) y verificar que funciona servido,
-      no solo en dev *(hay `dist/` generado; falta probar `npm run preview`)*
-- [ ] **T70 · Ambos** — `README.md`: qué es, cómo correr, controles, decisiones técnicas, capturas
-      *(todo menos las capturas)*
-- [ ] **T71 · Ambos** — Informe/GDD final actualizado con lo realmente implementado
+      *(cinco `Float32Array` SoA, herencia de dos padres calculada al anotar el nacimiento,
+      mutación con `CONFIG.genetica` y tupla plana reutilizable; 11 tests en
+      `tests/genetica.test.js`. D26)*
+- [x] **T68 · P1** — Mostrar y copiar la seed para poder reproducir un escenario interesante
+      *(seed en el HUD, botón *copiar seed* y tecla `S` con `navigator.clipboard` + fallback;
+      aviso temporal en el HUD)*
+- [x] **T69 · P1** — Build de producción (`npm run build`) y verificar que funciona servido,
+      no solo en dev *(probado con `npm run preview -- --host 127.0.0.1 --port 4173`:
+      `index.html` y assets servidos. `scripts/simular.mjs` también quedó libre de
+      `manager.energia[id]`)*
+- [x] **T70 · Ambos** — `README.md`: qué es, cómo correr, controles, decisiones técnicas, capturas
+      *(README completo con estado por fase, controles, config/presets, estructura y
+      garantías; **las capturas siguen pendientes**, con nombres y contenido en
+      `docs/DEMO.md`)*
+- [x] **T71 · Ambos** — Informe/GDD final actualizado con lo realmente implementado
+      *(sección 19 de `Gdd-Tdd.txt` + D25/D26/D27 en `docs/DECISIONES.md` y contrato
+      actualizado con genes y `especiePlanta`)*
 - [ ] **T72 · Ambos** — Grabar demo en video mostrando: expansión vegetal, crecimiento de
       poblaciones, un colapso y una recuperación
+      *(guion de 4 escenas listo en `docs/DEMO.md`; no se pudo grabar automáticamente:
+      no hay `ffmpeg`, `chrome`, `msedge` ni `chromium` en este entorno)*
 - [ ] **T73 · Ambos** — Code review cruzado final: cada uno lee y comenta el código del otro
-- [ ] **T74 · Ambos** — Entrega con commits limpios y sin `console.log` de debug
+      *(plantilla y puntos a revisar en `docs/DEMO.md`; requiere la firma de P1 y P2)*
+- [x] **T74 · Ambos** — Entrega con commits limpios y sin `console.log` de debug
+      *(sin `console.*` ejecutable en `src/`, verificado con `npm run lint:prod`;
+      avisos movidos a `hud.avisar()`. `lint`, 210 tests, Prettier y build en verde)*
 - [x] **T84 · Ambos** — **Menú para generar mapas** con seed, plantas y NPCs iniciales elegidos
       *(pedido extra: panel con tres posiciones —oculto, cajón abajo y pantalla completa— y campos
       para seed, plantas, herbívoros y depredadores. `src/ui/generadorMapa.js` valida los rangos,
@@ -568,16 +589,23 @@ Una tarea está terminada cuando:
 ## 11. Checklist de entrega final
 
 - [ ] `npm install && npm run dev` funciona en una máquina limpia
-- [ ] `npm run build` genera un `dist/` funcional
+      *(verificado en el entorno de desarrollo; queda repetirlo en una máquina limpia)*
+- [x] `npm run build` genera un `dist/` funcional
+      *(verificado también con `npm run preview -- --host 127.0.0.1 --port 4173`)*
 - [ ] Misma seed ⇒ mismo resultado (demostrado en pantalla)
       *(los tests `determinismo.test.js` y `terreno.test.js` ya lo verifican; falta mostrarlo en la demo)*
 - [x] Los tres niveles tróficos son visibles y observables
 - [x] HUD + gráfico de poblaciones funcionando
-- [ ] 60 FPS con una población grande (medido, no supuesto)
+- [x] 60 FPS con una población grande (medido, no supuesto)
+      *(T79/T83: peor caso 65.536 plantas + 4.000 animales en 4,16–5,69 ms/frame; presupuesto 16,67 ms)*
 - [ ] `README.md` completo con instrucciones y capturas
+      *(README completo; capturas pendientes, guion en `docs/DEMO.md`)*
 - [ ] Video demo de la simulación corriendo
-- [ ] Informe final con lo balanceado realizado vs. esperado
-- [ ] Repositorio sin `console.log` de debug ni archivos basura
+      *(guion listo en `docs/DEMO.md`; grabación manual pendiente, T72)*
+- [x] Informe final con lo balanceado realizado vs. esperado
+      *(sección 19 de `Gdd-Tdd.txt`; D20 documenta el declive de depredadores)*
+- [x] Repositorio sin `console.log` de debug ni archivos basura
+      *(verificado con `npm run lint:prod`; T74)*
 
 ---
 
