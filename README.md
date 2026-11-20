@@ -73,7 +73,9 @@ la misma parte de la lista— en vez de cerrarlo.
 En **Configuración → ui** está `mostrarBarrasSobreEntidad` (desactivado por
 defecto). Al hacer clic en un animal, sus necesidades y genes siempre se muestran en
 la leyenda; ese checkbox solo decide si además se dibujan las barras **sobre**
-el sprite.
+el sprite. Con las barras apagadas, un triángulo amarillo señala al animal
+elegido. Su tamaño y separación se ajustan con `marcadorSeleccionTamano` y
+`marcadorSeleccionOffsetY` (en píxeles de mundo).
 
 Cargá los valores y apretá **Aplicar y recargar** (o **Enter** en un campo): se guardan
 los cambios y la página recarga para que todo se lea desde cero. **Restablecer** vuelve

@@ -17,7 +17,8 @@
  *
  * El overlay sobre el sprite se activa con
  * `CONFIG.ui.mostrarBarrasSobreEntidad` (false por defecto). La leyenda sigue
- * recibiendo `seleccionada` con todos los datos aunque no se dibuje nada encima.
+ * recibiendo `seleccionada` con todos los datos aunque no se dibuje nada encima:
+ * en ese caso apenas un triángulo señala al animal clickeado.
  *
  * ⚠️ REFACTOR SoA (D13): la selección es un **id** (número) o `null`, y
  * los datos se leen de los arrays tipados del `EntityManager`. Para que
@@ -32,7 +33,7 @@
  */
 
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { COLOR_NECESIDAD } from './paleta.js';
+import { COLOR_NECESIDAD, COLOR_SELECCION } from './paleta.js';
 import { CONFIG } from '../config.js';
 import { leerGenes } from '../ui/geneticaVista.js';
 
@@ -162,6 +163,45 @@ export class NecesidadesRenderer {
   }
 
   /**
+   * Señala al animal con un triángulo mientras el overlay de barras esté
+   * apagado. Reutiliza el mismo `Graphics` y solo redibuja cuando cambian la
+   * posición, la cámara o el tamaño configurado del marcador.
+   *
+   * @param {object} seleccion Vista plana de la entidad seleccionada.
+   * @param {import('./camera.js').Camera} camara
+   */
+  dibujarMarcador(seleccion, camara) {
+    for (const barra of this.barras) barra.relleno.visible = false;
+
+    const x = this.manager.x[seleccion.id];
+    const y = this.manager.y[seleccion.id];
+    const clave = [
+      'marcador',
+      x.toFixed(3),
+      y.toFixed(3),
+      camara.x.toFixed(3),
+      camara.y.toFixed(3),
+      camara.zoom.toFixed(4),
+      CONFIG.ui.marcadorSeleccionTamano,
+      CONFIG.ui.marcadorSeleccionOffsetY,
+    ].join(',');
+    if (clave === this.ultimaClave) return;
+    this.ultimaClave = clave;
+
+    const ex = (x * this.tileSize - camara.x) * camara.zoom + camara.vistaAnchoPx / 2;
+    const ey = (y * this.tileSize - camara.y) * camara.zoom + camara.vistaAltoPx / 2;
+    const tamano = CONFIG.ui.marcadorSeleccionTamano * camara.zoom;
+    const arriba = ey - CONFIG.ui.marcadorSeleccionOffsetY * camara.zoom;
+
+    // Punta hacia abajo, apuntando al animal; la base queda por encima.
+    this.fondo.clear();
+    this.fondo
+      .poly([ex - tamano / 2, arriba - tamano, ex + tamano / 2, arriba - tamano, ex, arriba])
+      .fill({ color: COLOR_SELECCION.relleno, alpha: 0.95 })
+      .stroke({ color: COLOR_SELECCION.borde, width: Math.max(1, camara.zoom) });
+  }
+
+  /**
    * Dibuja las barras de la entidad seleccionada.
    * @param {import('./camera.js').Camera} camara
    */
@@ -177,11 +217,16 @@ export class NecesidadesRenderer {
     this.seleccionada = this.crearVista(this.idSeleccionado);
     const seleccion = this.seleccionada;
 
-    // Sin selección, animal muerto u overlay desactivado en `CONFIG.ui`:
-    // la vista plana sigue disponible para la leyenda, pero no se dibuja nada
-    // encima del sprite (F8: desactivado por defecto).
-    if (seleccion === null || !seleccion.vivo || !CONFIG.ui.mostrarBarrasSobreEntidad) {
+    // Sin selección o con el animal muerto no hay nada que marcar.
+    if (seleccion === null || !seleccion.vivo) {
       this.ocultarBarras();
+      return;
+    }
+
+    // Overlay apagado: solo el triángulo. La vista plana ya se actualizó arriba,
+    // así que la leyenda sigue mostrando necesidades y genes del animal.
+    if (!CONFIG.ui.mostrarBarrasSobreEntidad) {
+      this.dibujarMarcador(seleccion, camara);
       return;
     }
 
@@ -193,6 +238,7 @@ export class NecesidadesRenderer {
     // hace pan/zoom, hay que recolocar las barras igualmente.
     const valores = NECESIDADES.map((n) => this.valorNormalizado(seleccion, n.clave));
     const clave = [
+      'barras',
       x.toFixed(3),
       y.toFixed(3),
       camara.x.toFixed(3),

@@ -4,7 +4,7 @@
  * Verifican pool fijo, culling, mapeo estado→frame, flip y depuración.
  */
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ParticleContainer, Rectangle, Texture } from 'pixi.js';
 import { CONFIG } from '../src/config.js';
 import { ESPECIE, ESTADO_IA } from '../src/entities/entity.js';
@@ -319,5 +319,39 @@ describe('F8 · overlay sobre el animal seleccionado', () => {
     CONFIG.ui.mostrarBarrasSobreEntidad = true;
     r.render(cam);
     expect(barra.visible).toBe(true);
+  });
+
+  it('deja un triángulo marcador cuando el overlay está apagado', () => {
+    const app = { renderer: { generateTexture: () => Texture.EMPTY } };
+    const manager = new EntityManager();
+    const id = manager.crear(ESPECIE.HERBIVORO);
+    manager.x[id] = 4;
+    manager.y[id] = 4;
+
+    const r = new NecesidadesRenderer(app, { tileSize: 8, manager });
+    r.seleccionar(id);
+    const limpiar = vi.spyOn(r.fondo, 'clear');
+    const cam = camara({ x: 32, y: 32, zoom: 1, ancho: 128, alto: 128 });
+
+    r.render(cam);
+    expect(r.barras.every((b) => !b.relleno.visible)).toBe(true);
+    expect(r.ultimaClave.startsWith('marcador')).toBe(true);
+    expect(r.fondo.context.instructions.length).toBeGreaterThan(0);
+    expect(limpiar).toHaveBeenCalledTimes(1);
+
+    // Mismo animal y misma cámara: el triángulo no se redibuja.
+    r.render(cam);
+    expect(limpiar).toHaveBeenCalledTimes(1);
+
+    // Al panear cambia la posición de pantalla y el marcador se recoloca.
+    r.render(camara({ x: 132, y: 32, zoom: 1, ancho: 128, alto: 128 }));
+    expect(limpiar).toHaveBeenCalledTimes(2);
+
+    // Al prender el overlay cambian las barras y el triángulo desaparece.
+    CONFIG.ui.mostrarBarrasSobreEntidad = true;
+    r.render(cam);
+    expect(r.ultimaClave.startsWith('barras')).toBe(true);
+    expect(r.barras[0].relleno.visible).toBe(true);
+    limpiar.mockRestore();
   });
 });

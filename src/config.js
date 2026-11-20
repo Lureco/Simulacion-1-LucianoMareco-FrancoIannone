@@ -446,9 +446,12 @@ export const CONFIG = {
     /**
      * Dibuja las barras de necesidades y genes **sobre** el animal seleccionado.
      * Desactivado por defecto: el clic sigue llenando la leyenda, pero no tapa
-     * el sprite. Se activa desde Configuración → ui (F8).
+     * el sprite. En su lugar se dibuja un triángulo marcador (F8).
      */
     mostrarBarrasSobreEntidad: false,
+    /** Triángulo que marca al animal cuando el overlay de barras está apagado. */
+    marcadorSeleccionTamano: 7,
+    marcadorSeleccionOffsetY: 5,
     /** Barras de necesidades del animal seleccionado, en píxeles de mundo. */
     barraAncho: 16,
     barraAlto: 3,

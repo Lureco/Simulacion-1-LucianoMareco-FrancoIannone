@@ -871,7 +871,7 @@ definition of done de T74), depender solo de Clipboard API sin fallback y dar
 por bueno el build sin servirlo.
 
 **Verificación:** `npm run lint`, `npm run lint:prod`, `npm test -- --run`
-(22 archivos, 218 tests tras D28/D29), `npx prettier --check .`,
+(22 archivos, 219 tests tras D28/D29), `npx prettier --check .`,
 `npm run build`, `npm run preview` y `node scripts/simular.mjs 1337 10`. La corrida final de
 10 min con seed 1337 terminó en 156 herbívoros, 0 depredadores, 19.287
 micelios, 16.470 pastos y 2.642 desplazamientos. El guion de demo y la revisión
@@ -913,7 +913,7 @@ historia de un individuo).
 **Verificación:** `tests/geneticaVista.test.js` (6 tests) y un test nuevo en
 `tests/render.test.js` confirman la lectura SoA, la normalización, los marcadores
 y el HTML de la leyenda. `npm run lint`, `npm test -- --run` (22 archivos,
-218 tests tras D29), Prettier y build en verde.
+219 tests tras D29), Prettier y build en verde.
 
 ---
 
@@ -934,14 +934,22 @@ quien solo quiere mirar la simulación.
    `Graphics`/`Sprite` sobre el animal. Así el clic sigue teniendo efecto.
 3. Al estar apagado se ocultan también los sprites de las barras, que antes
    podían quedar en `(0,0)` antes del primer clic.
+4. Para que el clic no parezca ignorado, queda un **triángulo** amarillo con
+   borde oscuro apuntando al animal. Se dibuja con el mismo `Graphics` que las
+   barras y con la misma conversión a coordenadas de pantalla, así que sigue al
+   sprite al panear/zoom. El tamaño y el offset son configurables
+   (`marcadorSeleccionTamano`, `marcadorSeleccionOffsetY`). La clave de cache
+   incluye un prefijo de modo (`marcador`/`barras`) para que el cambio de flag
+   fuerce redibujar aunque la geometría no cambie.
 
-**Descartado:** quitar el overlay por completo (alguien puede querer ver las
-barras pegadas al bicho) y ponerlo en `true` por defecto (el pedido era lo
-contrario).
+**Descartado:** no dibujar nada con el overlay apagado (el usuario pidió "aunque
+sea un triangulito"), un marcador con textura propia (sumaría draw calls y
+texturas) y poner el overlay en `true` por defecto (el pedido era lo contrario).
 
 **Verificación:** `tests/render.test.js` comprueba que con el valor por defecto
-no se dibuja nada sobre el sprite pero `seleccionada` sigue trayendo hambre y
-genes, y que al activar el flag las barras vuelven a hacerse visibles.
+el marcador se dibuja una sola vez siguiendo a la cámara, `seleccionada` sigue
+trayendo hambre y genes, y que al activar el flag las barras vuelven a hacerse
+visibles.
 
 ---
 

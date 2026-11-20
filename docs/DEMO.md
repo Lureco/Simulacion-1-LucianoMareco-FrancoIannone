@@ -49,8 +49,10 @@ la competencia es emergente de reglas locales, no de un objeto por planta.
    actualizan una vez por segundo; en el HUD aumentan `nacidos` y `muertos`.
 4. Clic sobre un animal para ver, en la leyenda, sus barras de hambre y sed y
    debajo sus cinco genes con `↑`/`↓`/`=`. El overlay sobre el sprite viene
-   desactivado (`CONFIG.ui.mostrarBarrasSobreEntidad = false`); si se activa en
-   Configuración → ui, las barras siguen al sprite al panear/zoom (T61).
+   desactivado (`CONFIG.ui.mostrarBarrasSobreEntidad = false`), así que solo
+   aparece un triángulo amarillo sobre el animal elegido; al panear/zoom el
+   triángulo lo sigue. Si se activa el flag en Configuración → ui, el triángulo
+   se reemplaza por las barras (T61).
 
 **Qué debe quedar claro:** la población cambia por nacimientos y muertes
 observables; la depredación es una causa de muerte separada en el contador.
@@ -135,7 +137,7 @@ Ejecutada sobre el estado final de F8:
 |---|---|
 | `npm run lint` | ✅ |
 | `npm run lint:prod` | ✅ (sin `console.*` en `src/`) |
-| `npm test -- --run` | ✅ 22 archivos, 218 tests (incluye el inspector de genes y el overlay opcional) |
+| `npm test -- --run` | ✅ 22 archivos, 219 tests (incluye el inspector de genes y el marcador de selección) |
 | `npx prettier --check .` | ✅ |
 | `npm run build` | ✅ `dist/` generado |
 | `npm run preview -- --host 127.0.0.1 --port 4173` | ✅ `index.html` y assets servidos |

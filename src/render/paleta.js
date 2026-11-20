@@ -70,6 +70,15 @@ export const COLOR_GEN = {
   reproduccion: 0x8ce99a,
 };
 
+/**
+ * Marcador del animal seleccionado cuando el overlay de barras está apagado.
+ * Amarillo con borde oscuro para que se distinga sobre cualquier terreno.
+ */
+export const COLOR_SELECCION = {
+  relleno: 0xffe066,
+  borde: 0x11151c,
+};
+
 /** Convierte un color 0xRRGGBB a `#rrggbb` (para CSS). */
 export function aCss(color) {
   if (color === undefined || color === null) return '#ffffff';
