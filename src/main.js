@@ -140,7 +140,11 @@ function regenerarMundo({ seed, plantas, herbivoros, depredadores }) {
 const atlas = await promesaAtlas;
 
 const tile = CONFIG.mundo.tileSize;
-const terrenoRenderer = new TerrainRenderer(app, { tileSize: tile, colores: COLORES_TERRENO });
+const terrenoRenderer = new TerrainRenderer(app, {
+  tileSize: tile,
+  colores: COLORES_TERRENO,
+  marchingSquares: CONFIG.terreno.marchingSquares,
+});
 app.stage.addChild(terrenoRenderer.contenedor);
 
 generarMundo();

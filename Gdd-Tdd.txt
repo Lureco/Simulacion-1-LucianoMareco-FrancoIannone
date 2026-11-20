@@ -498,8 +498,8 @@ Estado: implementado y verificado. Esta sección registra lo que quedó realment
 19.4 Verificacion final
 * npm run lint: OK.
 * npm run lint:prod: OK (sin console en src/).
-* npm test -- --run: 22 archivos y 219 tests en verde (incluye el inspector de genes D28 y el marcador de seleccion D29).
+* npm test -- --run: 23 archivos y 228 tests en verde (incluye el inspector de genes D28, el marcador de seleccion D29 y el marching squares de terreno D30).
 * npx prettier --check .: OK.
 * npm run build: OK; npm run preview -- --host 127.0.0.1 --port 4173 sirve index.html y los assets del build.
 * Las instrucciones de ejecucion, controles y estado por fase estan en README.md; el guion de demo, capturas y revision cruzada en docs/DEMO.md.
-* Decisiones tecnicas completas en docs/DECISIONES.md (D1-D26) y contrato de datos en docs/CONTRATO.md.
+* Decisiones tecnicas completas en docs/DECISIONES.md (D1-D30) y contrato de datos en docs/CONTRATO.md.

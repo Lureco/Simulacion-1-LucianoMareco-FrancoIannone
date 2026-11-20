@@ -163,6 +163,8 @@ export const CONFIG = {
     caidaBorde: 0.42,
     /** Semilla offset para que altura y humedad no se correlacionen. */
     offsetSemillaHumedad: 7919,
+    /** Suavizar bordes agua/arena/tierra con marching squares (pixel art). */
+    marchingSquares: true,
     /** Colores 0xRRGGBB de cada tipo de terreno (sombreado por altura). */
     colorAgua: 0x2a4d8f,
     colorArena: 0xd8c596,

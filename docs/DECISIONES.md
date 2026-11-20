@@ -953,6 +953,46 @@ visibles.
 
 ---
 
+## D30 · Terreno con marching squares en estilo pixel art
+
+**Contexto.** El terreno se renderizaba como una textura de 1 píxel por celda
+escalada al tamaño de tile, lo que producía bordes rectos entre agua, arena y
+tierra. Se pidió suavizar esas transiciones con marching squares manteniendo un
+aspecto pixel art.
+
+**Decisión.**
+
+1. **Lógica pura separada.** `src/render/terrainMarching.js` concentra el
+   muestreo acotado, la interpolación bilineal por tile y la resolución del tipo
+   por píxel (`terrenoDePixel`/`alturaDePixel`) en capas `AGUA < ARENA < TIERRA`.
+   Es determinista y testeable en Node, sin DOM ni Pixi.
+2. **Textura a resolución de tile.** Con marching squares activo, el
+   `TerrainRenderer` genera un canvas de `ancho*tileSize × alto*tileSize`, pinta
+   cada píxel del tile según la transición y sube **una sola textura + un solo
+   `Sprite`**, con `scaleMode: 'nearest'` y escala de render `zoom` (no
+   `zoom*tileSize`). Se conserva el sombreado por altura y el jitter determinista
+   por celda; en píxeles de transición se usa altura interpolada para evitar
+   bandas planas.
+3. **Configurable y reversible.** `CONFIG.terreno.marchingSquares` (booleano,
+   `true` por defecto, editable desde Configuración) activa/desactiva el modo. Al
+   desactivarlo se usa el render clásico de 1 px por celda escalado a
+   `zoom*tileSize`, sin cambiar la API pública del renderer.
+4. **Sin trabajo por frame.** La textura se genera solo en `generar(grid)` (carga
+   o regeneración); el bucle solo posiciona el sprite, respetando "sin `Graphics`
+   ni objetos por celda o por frame".
+
+**Descartado:** generar geometría/sprites por celda o por borde (rompe la regla
+de draw calls y el presupuesto), antialiasing suave (choca con el pixel art) y
+hardcodear el umbral de marching squares fuera de la lógica derivada del tamaño
+de tile.
+
+**Verificación:** `tests/terrainMarching.test.js` cubre muestreo acotado,
+interpolación, uniformidad, suavizado de bordes, determinismo y altura. `npm run
+lint`, `npm run lint:prod`, `npm test -- --run` (23 archivos, 228 tests),
+`npx prettier --check .` y `npm run build` en verde.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

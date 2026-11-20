@@ -238,10 +238,16 @@ Comparten una única textura base (`atlas.textura`) creada por `crearAtlas()` al
 |---|---|---|
 | `PlantRenderer` | `(app, { atlas, tileSize, capacidad })` | `reconstruir(grid, tick, cadaTicks, camara)`, `render(camara)`, `invalidar()`, `activas` (getter), `destruir()` |
 | `EntityRenderer` | `(app, { atlas, tileSize, capacidad? })` | `render(manager, camara, tick = 0)`, `setDepuracion(valor)`, `activas` (getter), `destruir()` |
-| `TerrainRenderer` | `(app, { tileSize, colores })` | Sin cambios (F1) |
+| `TerrainRenderer` | `(app, { tileSize, colores, marchingSquares? })` | `generar(grid)`, `render(camara)`, `destruir()` (F1, mejorado en D30) |
 
 Contratos:
 
+- `TerrainRenderer` pinta el terreno **una sola vez** en `generar(grid)` como una
+  textura única con `scaleMode: 'nearest'`. Con `marchingSquares` activo
+  (`CONFIG.terreno.marchingSquares`, por defecto `true`) usa `terrainMarching.js`
+  para bordes pixel-art a resolución `ancho*tileSize × alto*tileSize` y `render()`
+  escala el sprite por `zoom`; si se desactiva, vuelve a 1 px por celda y escala
+  por `zoom * tileSize`. En ambos casos no hay `Graphics` ni trabajo por celda/frame.
 - `atlas` es `{ textura, frames: Map<clave, Texture>, claves, ancho, alto }`, resultado de
   `crearAtlas()` (`render/atlas.js`). Las claves y el mapeo estado/especie → frame viven en
   `render/atlasDatos.js`, módulo puro importable desde Node (sin `import.meta.glob`).
