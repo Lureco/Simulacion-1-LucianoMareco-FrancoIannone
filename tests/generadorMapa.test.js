@@ -433,7 +433,6 @@ describe('categorías, scroll y tipos de campo', () => {
   it('crea inputs solo para números, booleanos y colores', () => {
     const { panel } = crearPanel();
     expect(panel.campos['terreno.umbralAgua'].type).toBe('number');
-    expect(panel.campos['camara.limiteMundo'].type).toBe('checkbox');
     expect(panel.campos['terreno.colorAgua'].type).toBe('color');
     expect(panel.campos['ui.graficoColorPlantas'].type).toBe('color');
     expect(panel.campos['sprites.generarFallback'].type).toBe('checkbox');
@@ -468,13 +467,13 @@ describe('validación y callback', () => {
     const { panel, alGenerar } = crearPanel({ maxPlantas: 1000, maxNpcs: 100 });
     llenar(panel, { plantas: 100, herbivoros: 10, depredadores: 3 });
     panel.campos['terreno.colorAgua'].value = '#ff0000';
-    panel.campos['camara.limiteMundo'].checked = false;
+    panel.campos['sprites.generarFallback'].checked = false;
 
     panel.botonGenerar.click();
 
     const valores = alGenerar.mock.calls[0][0];
     expect(valores.terreno.colorAgua).toBe(0xff0000);
-    expect(valores.camara.limiteMundo).toBe(false);
+    expect(valores.sprites.generarFallback).toBe(false);
   });
 
   it('acepta seeds en texto y las hashea de forma determinista', () => {

@@ -16,15 +16,15 @@ describe('presets', () => {
   it('limpia valores: solo números, booleanos y colores conocidos', () => {
     const limpio = limpiarValores({
       terreno: { umbralAgua: 0.42, colorAgua: 0x123456, invento: 9 },
-      camara: { limiteMundo: false },
+      sprites: { generarFallback: false },
       ui: { graficoColorPlantas: '#ABCDEF' },
-      sprites: { rutaPlanta: { 1: 'otra/ruta' } },
+      spritesExtra: { rutaPlanta: { 1: 'otra/ruta' } },
       invento: 1,
     });
 
     expect(limpio).toEqual({
       terreno: { umbralAgua: 0.42, colorAgua: 0x123456 },
-      camara: { limiteMundo: false },
+      sprites: { generarFallback: false },
       ui: { graficoColorPlantas: '#abcdef' },
     });
   });

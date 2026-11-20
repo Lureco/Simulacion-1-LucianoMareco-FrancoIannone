@@ -27,8 +27,6 @@ export const CONFIG = {
     seedPorDefecto: 1337,
     /** Tamaño de celda en píxeles de pantalla. */
     tileSize: 8,
-    /** Tamaño base de una textura de celda (para sprites tintados). */
-    tileBaseSize: 8,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -40,8 +38,6 @@ export const CONFIG = {
     altoVentana: 720,
     /** Culling: margen extra alrededor de la cámara en píxeles. */
     margenCulling: 64,
-    /** Píxeles por unidad de mundo (1 celda = tileSize px). */
-    escala: 1,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -63,11 +59,10 @@ export const CONFIG = {
     escalaPlanta: 1.2,
     escalaAnimal: 1.6,
     /**
-     * Cuadros de animación que avanzan por cada celda de mundo recorrida.
-     * Multiplica la velocidad BASE de la especie (no la efectiva del terreno),
-     * así que el ceratosaurio anima más rápido que el triceratops.
+     * Velocidad de la animación de caminar: cuadros que avanzan por cada celda
+     * recorrida a velocidad base. Sincroniza la zancada con el desplazamiento.
      */
-    cuadrosPorCelda: 4,
+    velocidadAnimacion: 4,
     /**
      * Clave del atlas para cada estado de planta (ruta relativa a `assets/sprites/`,
      * sin extensión). La planta muerta no tiene frame: desaparece.
@@ -161,8 +156,6 @@ export const CONFIG = {
      * Forma masas de agua cerradas en vez de costas cortadas (T18).
      */
     caidaBorde: 0.42,
-    /** Semilla offset para que altura y humedad no se correlacionen. */
-    offsetSemillaHumedad: 7919,
     /** Suavizar bordes agua/arena/tierra con marching squares (pixel art). */
     marchingSquares: true,
     /** Resolución del marching squares en píxeles por celda (textura = mundo × este valor). */
@@ -182,12 +175,6 @@ export const CONFIG = {
   // PLANTAS [P1] — autómata celular
   // ─────────────────────────────────────────────────────────────
   plantas: {
-    /** Estados: 0 = NADA, 1 = SEMILLA, 2 = JOVEN, 3 = ADULTA, 4 = MUERTA. */
-    estadoNada: 0,
-    estadoSemilla: 1,
-    estadoJoven: 2,
-    estadoAdulta: 3,
-    estadoMuerta: 4,
     /** Ticks de simulación entre estados de crecimiento. */
     ticksSemillaAJoven: 20,
     ticksJovenAAdulta: 60,
@@ -207,12 +194,6 @@ export const CONFIG = {
      * medido en 2247 celdas, para que el mapa inicial no cambie de aspecto.
      */
     poblacionInicial: 2247,
-    /** Colores de cada estado de planta para el render (0xRRGGBB). */
-    colorSemilla: 0x6f7f4a,
-    colorJoven: 0x6fae52,
-    colorAdulta: 0x3f8f3a,
-    /** Tamaño del sprite de una planta adulta en fracción del tile. */
-    escalaSprite: 0.55,
     /** Actualizar el render de plantas cada N ticks (la vegetación cambia lento). */
     ticksPorRefrescoRender: 10,
 
@@ -490,8 +471,6 @@ export const CONFIG = {
     factorZoom: 1.12,
     /** Segundos de transición al enfocar una entidad con la tecla F (main.js). */
     dtEnfocar: 0.5,
-    /** Límite de la cámara dentro de los bordes del mundo. */
-    limiteMundo: true,
   },
 };
 

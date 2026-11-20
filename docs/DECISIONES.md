@@ -360,8 +360,7 @@ herbívoro → planta es `comerPlanta()`.
 **Decisión (alcance cerrado):**
 
 1. **Sin humedad.** El crecimiento sigue dependiendo solo del tipo de celda (`TIERRA`) y del
-   contador de ticks del estado. No se agrega una capa de humedad; la clave
-   `offsetSemillaHumedad` de `config.terreno` hoy no se usa y se puede sacar en una limpieza.
+   contador de ticks del estado. No se agrega una capa de humedad.
 2. **Sin pisadas.** La interacción herbívoro → planta es **comer**: `comerPlanta()` baja el
    estado o borra la planta y devuelve si se pudo comer. Pisar no produce un comportamiento observable
    ni encaja con las reglas del autómata, así que se descarta.
@@ -552,8 +551,7 @@ A (IA), B (simulación/mundo) y C (cámara/UI/bucle).
 
 **Descartado:** mover a config los números de maquetado CSS del HUD/leyenda, los *epsilons*
 numéricos (`0.0001`) y los códigos de tecla: no son parámetros de simulación y ensuciarían la
-config sin ningún beneficio de balance. `CONFIG.camara.limiteMundo` sigue sin cablear (T58 no
-cambia comportamiento).
+config sin ningún beneficio de balance.
 
 **Verificación:** `npm run lint`, `npm test` (122 tests en ese momento; 126 tras los tests de
 regresión de T61), `npm run build` y Prettier sobre los 13 archivos tocados pasan. Los valores

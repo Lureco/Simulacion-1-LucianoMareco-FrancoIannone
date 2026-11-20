@@ -126,13 +126,12 @@ function dibujarFallback(ctx, clave, x, y, tam) {
   );
 
   if (!Number.isNaN(estado)) {
-    const cfg = CONFIG.plantas;
     const color =
       estado === PLANTA.SEMILLA
-        ? cfg.colorSemilla
+        ? 0x6f7f4a
         : estado === PLANTA.JOVEN
-          ? cfg.colorJoven
-          : cfg.colorAdulta;
+          ? 0x6fae52
+          : 0x3f8f3a;
     const radio =
       estado === PLANTA.SEMILLA ? tam * 0.16 : estado === PLANTA.JOVEN ? tam * 0.26 : tam * 0.36;
     ctx.fillStyle = css(color);

@@ -116,11 +116,15 @@ export function frameAnimal(tipo, cuadro, cuadros = cuadrosDe(tipo)) {
  *
  * @param {number} tick Tick actual de la simulación.
  * @param {number} velocidad Velocidad base de la especie, en celdas/segundo.
- * @param {number} [cuadrosPorCelda]
+ * @param {number} [velocidadAnimacion]
  * @returns {number} Fase (puede crecer sin límite; `frameAnimal()` hace el wrap).
  */
-export function faseCaminar(tick, velocidad, cuadrosPorCelda = CONFIG.sprites.cuadrosPorCelda) {
-  return Math.floor(tick * CONFIG.tiempo.pasoFijo * velocidad * cuadrosPorCelda);
+export function faseCaminar(
+  tick,
+  velocidad,
+  velocidadAnimacion = CONFIG.sprites.velocidadAnimacion,
+) {
+  return Math.floor(tick * CONFIG.tiempo.pasoFijo * velocidad * velocidadAnimacion);
 }
 
 /** Reexportado para que los consumidores del atlas no cambien de import. */
