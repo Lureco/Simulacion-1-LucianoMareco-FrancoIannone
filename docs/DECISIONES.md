@@ -543,7 +543,7 @@ A (IA), B (simulación/mundo) y C (cámara/UI/bucle).
    usa en persecución (`segundosPersecucion * TICKS_POR_SEGUNDO`), HUD, gráfico, suavizado de la
    cámara y FPS inicial. No se escribió `60` en ningún consumidor: si cambia `pasoFijo`, todo
    convierte junto.
-3. **Resto del inventario.** `fraccionEdadInicial`, `maxIntentosHabitable`,
+3. **Resto del inventario.** `fraccionEdadInicial`,
    `umbralVecindadDiagonal`, `distanciaBebida`, `factorDistanciaSedMedia`, `zoomMin/zoomMax`,
    `factorZoom`, `dtEnfocar`, `hudIntervaloMs`, `barraSegmentos`, `deltaMaximo` y `suavizadoFps`
    pasan a su sección correspondiente. `CONFIG.camara.suavizado` **se usa ahora** en
@@ -993,6 +993,29 @@ de tile.
 interpolación, uniformidad, suavizado de bordes, determinismo y altura. `npm run
 lint`, `npm run lint:prod`, `npm test -- --run` (23 archivos, 228 tests),
 `npx prettier --check .` y `npm run build` en verde.
+
+---
+
+## D31 · Lista precalculada de celdas habitables para la siembra
+
+**Contexto.** `celdaHabitableAlAzar` elegía una celda de tierra por muestreo con rechazo (hasta N
+intentos) y caía a una posición cualquiera si no encontraba tierra. Eso no garantizaba
+uniformidad y podía devolver celdas no habitables en mapas con poca tierra.
+
+**Decisión.**
+- `generarTerreno` registra, durante la misma pasada de clasificación del terreno, los índices
+  planos de las celdas `TIERRA` en `grid.celdasHabitables` (opción A: buffer temporal de tamaño
+  `total` y vista `subarray(0, n)`, sin pasadas extra). `construirCeldasHabitables(grid)` queda
+  disponible para recalcular la lista a partir de `grid.terreno`.
+- `celdaHabitableAlAzar` selecciona en O(1) un índice uniforme de esa lista usando el PRNG
+  (1 sorteo por selección). Si no hay grid, si la lista falta (se construye bajo demanda) o si
+  está vacía, conserva el fallback a una posición aleatoria dentro del mundo para no dejar la
+  población en cero.
+- Se elimina `terreno.maxIntentosHabitable`, que ya no aplica.
+
+**Nota:** el terreno sigue siendo determinista, pero cambia el patrón de consumo del PRNG al
+sembrar entidades: para una misma seed/config, las posiciones iniciales (y la evolución
+posterior) pueden diferir respecto a versiones anteriores.
 
 ---
 

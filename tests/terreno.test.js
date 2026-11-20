@@ -12,7 +12,11 @@ import { CONFIG } from '../src/config.js';
 import { PRNG } from '../src/core/prng.js';
 import { crearContexto } from '../src/core/contexto.js';
 import { fbm2D, valueNoise2D } from '../src/core/noise.js';
-import { generarTerreno, celdaHabitableAlAzar } from '../src/world/terrain.js';
+import {
+  construirCeldasHabitables,
+  generarTerreno,
+  celdaHabitableAlAzar,
+} from '../src/world/terrain.js';
 import { Grid } from '../src/world/grid.js';
 import { TERRENO } from '../src/world/cell.js';
 
@@ -229,6 +233,21 @@ describe('grilla', () => {
 });
 
 describe('siembra sobre el terreno', () => {
+  it('precálcula la lista de celdas habitables al generar el terreno', () => {
+    const grid = mapa(1337);
+    const { tierra } = grid.contarTerreno();
+    expect(grid.celdasHabitables).toBeInstanceOf(Uint32Array);
+    expect(grid.celdasHabitables.length).toBe(tierra);
+
+    let anterior = -1;
+    for (let k = 0; k < grid.celdasHabitables.length; k++) {
+      const i = grid.celdasHabitables[k];
+      expect(i).toBeGreaterThan(anterior);
+      expect(grid.terreno[i]).toBe(TERRENO.TIERRA);
+      anterior = i;
+    }
+  });
+
   it('siembra en celdas de tierra', () => {
     const prng = new PRNG(1337);
     const ctx = crearContexto({
@@ -242,6 +261,38 @@ describe('siembra sobre el terreno', () => {
       const { x, y } = celdaHabitableAlAzar(ctx);
       expect(ctx.grid.esTierra(Math.floor(x), Math.floor(y))).toBe(true);
     }
+  });
+
+  it('construye la lista bajo demanda si la grilla no la tiene', () => {
+    const prng = new PRNG(1337);
+    const ctx = crearContexto({
+      prng,
+      mundo: { ancho: 96, alto: 96 },
+      config: CONFIG,
+    });
+    const grid = mapa(1337);
+    grid.celdasHabitables = null;
+    ctx.grid = grid;
+
+    const { x, y } = celdaHabitableAlAzar(ctx);
+    expect(grid.celdasHabitables).toBeInstanceOf(Uint32Array);
+    expect(grid.esTierra(Math.floor(x), Math.floor(y))).toBe(true);
+  });
+
+  it('si no hay celdas habitables, usa un fallback dentro del mundo', () => {
+    const prng = new PRNG(1337);
+    const ctx = crearContexto({ prng, mundo: { ancho: 8, alto: 8 }, config: CONFIG });
+    const grid = new Grid(8, 8);
+    grid.terreno.fill(TERRENO.AGUA);
+    construirCeldasHabitables(grid);
+    ctx.grid = grid;
+
+    const { x, y } = celdaHabitableAlAzar(ctx);
+    expect(grid.celdasHabitables.length).toBe(0);
+    expect(x).toBeGreaterThanOrEqual(0);
+    expect(x).toBeLessThanOrEqual(7);
+    expect(y).toBeGreaterThanOrEqual(0);
+    expect(y).toBeLessThanOrEqual(7);
   });
 
   it('sin grilla siembra igual (mundo vacío para los tests de entidades)', () => {

@@ -100,6 +100,22 @@ export function calcularCampos(grid) {
 }
 
 /**
+ * Construye la lista de índices planos de celdas habitables (`TERRENO.TIERRA`).
+ * Recorre el terreno en orden de barrido determinista (y, luego x).
+ * @param {Grid} grid
+ * @returns {Uint32Array}
+ */
+export function construirCeldasHabitables(grid) {
+  const tmp = new Uint32Array(grid.total);
+  let n = 0;
+  for (let i = 0; i < grid.total; i++) {
+    if (grid.terreno[i] === TERRENO.TIERRA) tmp[n++] = i;
+  }
+  grid.celdasHabitables = tmp.subarray(0, n);
+  return grid.celdasHabitables;
+}
+
+/**
  * Genera el terreno completo de una vez.
  * @param {object} opciones
  * @param {number} opciones.ancho Ancho en celdas.
@@ -126,6 +142,9 @@ export function generarTerreno({ ancho, alto, seed, config }) {
   // isla quede redonda.
   const escalaCentro = Math.sqrt(centroX * centroX + centroY * centroY) || 1;
 
+  const tmpHabitables = new Uint32Array(grid.total);
+  let nHabitables = 0;
+
   for (let y = 0; y < alto; y++) {
     for (let x = 0; x < ancho; x++) {
       const i = y * ancho + x;
@@ -149,9 +168,12 @@ export function generarTerreno({ ancho, alto, seed, config }) {
         grid.terreno[i] = TERRENO.ARENA;
       } else {
         grid.terreno[i] = TERRENO.TIERRA;
+        tmpHabitables[nHabitables++] = i;
       }
     }
   }
+
+  grid.celdasHabitables = tmpHabitables.subarray(0, nHabitables);
 
   // Campos derivados para la navegación de los herbívoros (agua/tierra).
   calcularCampos(grid);
@@ -167,19 +189,18 @@ export function generarTerreno({ ancho, alto, seed, config }) {
  */
 export function celdaHabitableAlAzar(ctx) {
   const { ancho, alto } = ctx.mundo;
-  const maxIntentos = ctx.config.terreno.maxIntentosHabitable;
+  const grid = ctx.grid;
 
-  if (ctx.grid) {
-    for (let intento = 0; intento < maxIntentos; intento++) {
-      const x = ctx.prng.int(0, ancho);
-      const y = ctx.prng.int(0, alto);
-      if (ctx.grid.esTierra(x, y)) {
-        return { x: x + 0.5, y: y + 0.5 };
-      }
+  if (grid) {
+    let habitables = grid.celdasHabitables;
+    if (!habitables) habitables = construirCeldasHabitables(grid);
+
+    if (habitables.length > 0) {
+      const i = habitables[ctx.prng.int(0, habitables.length)];
+      return { x: (i % grid.ancho) + 0.5, y: ((i / grid.ancho) | 0) + 0.5 };
     }
-    // Si tras N intentos no hay tierra (mapa casi todo agua), se siembra
-    // igual en una posición libre cualquiera: mejor un animal varado que
-    // una población de cero.
+    // Si no hay tierra (mapa casi todo agua/arena), se siembra igual en una
+    // posición libre cualquiera: mejor un animal varado que población cero.
   }
 
   return {

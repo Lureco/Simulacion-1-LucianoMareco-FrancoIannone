@@ -167,8 +167,6 @@ export const CONFIG = {
     colorAgua: 0x2a4d8f,
     colorArena: 0xd8c596,
     colorTierra: 0x4b7a3a,
-    /** Intentos máximos para encontrar una celda habitable al generar el mundo. */
-    maxIntentosHabitable: 64,
   },
 
   // ─────────────────────────────────────────────────────────────

@@ -54,6 +54,12 @@ export class Grid {
     this.tierraDirX = new Int8Array(this.total);
     /** @type {Int8Array} Componente Y hacia la tierra más cercana (-1/0/1). */
     this.tierraDirY = new Int8Array(this.total);
+    /**
+     * Índices planos de celdas habitables (`TERRENO.TIERRA`), en orden de barrido.
+     * `null` hasta que se calcula (p. ej. al generar el terreno).
+     * @type {Uint32Array|null}
+     */
+    this.celdasHabitables = null;
 
     // Por defecto todo es tierra: un mundo sin terreno generado es habitable.
     this.terreno.fill(TERRENO.TIERRA);
