@@ -12,7 +12,7 @@
  * - **Culling por cámara (T64)**: el barrido de la grilla solo recorre el
  *   rectángulo de celdas visibles (más `CONFIG.render.margenCulling`), no las
  *   65.536 celdas. Es O(visibles) incluso en el peor caso.
- * - La lista se reconstruye cada `CONFIG.plantas.ticksPorRefrescoRender` ticks
+ * - La lista se reconstruye cada `CONFIG.entidadesEstaticas.ticksPorRefrescoRender` ticks
  *   **o cuando se mueve la cámara**, porque el culling depende de la vista.
  * - `position` y `vertex` son dinámicos (cámara/zoom); `uvs` y `color` son
  *   estáticos y se suben con `container.update()` solo al reconstruir.

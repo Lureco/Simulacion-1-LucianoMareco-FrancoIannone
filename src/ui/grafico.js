@@ -30,7 +30,8 @@ const MAX_MUESTRAS = CONFIG.ui.graficoMaxMuestras;
 
 /** Series que se grafican, en orden de dibujo. */
 const SERIES = [
-  { clave: 'plantas', etiqueta: 'plantas', color: CONFIG.ui.graficoColorPlantas },
+  { clave: 'pasto', etiqueta: 'pasto', color: CONFIG.ui.graficoColorPasto },
+  { clave: 'micelio', etiqueta: 'micelio', color: CONFIG.ui.graficoColorMicelio },
   { clave: 'herbivoros', etiqueta: 'triceratops', color: CONFIG.ui.graficoColorHerbivoros },
   { clave: 'depredadores', etiqueta: 'ceratosaurios', color: CONFIG.ui.graficoColorDepredadores },
 ];
@@ -69,7 +70,7 @@ export class Grafico {
     /**
      * Historial de muestras. Array circular: se sobrescribe el más viejo
      * en vez de crecer sin límite.
-     * @type {{tick: number, plantas: number, herbivoros: number, depredadores: number}[]}
+     * @type {{tick: number, pasto: number, micelio: number, herbivoros: number, depredadores: number}[]}
      */
     this.muestras = [];
     /** Índice de escritura en el array circular. @type {number} */
@@ -114,7 +115,8 @@ export class Grafico {
 
     const muestra = {
       tick,
-      plantas: datos.plantas,
+      pasto: datos.pasto ?? datos.plantas ?? 0,
+      micelio: datos.micelio ?? 0,
       herbivoros: datos.herbivoros,
       depredadores: datos.depredadores,
     };

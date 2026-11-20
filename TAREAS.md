@@ -431,7 +431,7 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
       `Particle` dimensionado para **`grid.ancho * grid.alto`**, frame del atlas elegido **solo por
       el estado de `grid.planta`** (`SEMILLA`/`JOVEN`/`ADULTA`; `MUERTA` y `NADA` no se dibujan),
       sin consultar edad, y actualización de la lista solo cada
-      `CONFIG.plantas.ticksPorRefrescoRender` ticks como hoy. Sin `new Particle()` ni
+      `CONFIG.entidadesEstaticas.ticksPorRefrescoRender` ticks como hoy. Sin `new Particle()` ni
       `new Sprite()` en el bucle. Coordinar con **T64**: aplicar culling por cámara
       (`CONFIG.render.margenCulling`) antes de cargar las partículas visibles, para que el peor
       caso no signifique dibujar 65.536 partículas fuera de pantalla.
@@ -474,8 +474,8 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
 ### F8 · Extras (v2) y entrega
 
 - [x] **T65 · P2** — **Segunda especie vegetal** con reglas de expansión distintas (pasto vs micelio)
-      *(capa paralela `especiePlanta`, reglas por sobreescritura en `CONFIG.plantas.especies`;
-      8 tests en `tests/especiesVegetales.test.js`. D25)*
+      *(capa paralela `especiePlanta`, configuración global en `CONFIG.entidadesEstaticas` y por especie
+      en `CONFIG.plantas`/`CONFIG.micelio` con la misma forma; 8 tests en `tests/especiesVegetales.test.js`. D25)*
 - [x] **T66 · P2** — **Competencia territorial** entre especies vegetales: una desplaza a la otra
       *(solo el micelio desplaza al pasto, codificado como `-2 - j` en `buscarVecinaLibre`;
       `ctx.desplazamientos` cuenta los eventos. Balance a 10 min con seed 1337: ~19.000

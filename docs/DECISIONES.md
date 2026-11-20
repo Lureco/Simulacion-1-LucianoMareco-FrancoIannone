@@ -736,10 +736,9 @@ para herbívoros y depredadores. Se agregó `src/ui/generadorMapa.js`.
    cantidades elegidas**, así no se pierde la configuración al explorar seeds.
 3. **Plantas por cantidad exacta.** `sembrarVegetacion(ctx, cantidad)` elige ese número de celdas
    de tierra con un Fisher-Yates parcial sobre un array cacheado en `ctx`, sin repetir celdas.
-   Sin el parámetro sigue funcionando por `densidadSemilla`: los scripts (`simular.mjs`,
-   `perfilado.mjs`) y los tests viejos no cambian. `CONFIG.plantas.poblacionInicial = 2247` es el
-   valor medido que producía la densidad original con la seed por defecto, así el mapa inicial
-   mantiene la misma cantidad de plantas.
+   Si no se pasa cantidad, usa `CONFIG.entidadesEstaticas.poblacionInicial`.
+   `CONFIG.entidadesEstaticas.poblacionInicial = 2247` es el valor medido que producía la densidad
+   original con la seed por defecto, así el mapa inicial mantiene la misma cantidad de plantas.
 4. **Seed flexible.** Número decimal entero → `>>> 0` (32 bits sin signo). Cualquier otra cadena →
    `hashString(texto)`, que ya existía para este fin. Vacía → seed por defecto. Resultado: frases
    como `isla feliz` son reproducibles.
@@ -770,25 +769,27 @@ objetos.
    plano que `planta`/`terreno`. `planta` sigue diciendo `SEMILLA/JOVEN/ADULTA/MUERTA` y
    `especiePlanta` dice `PASTO` (0) o `MICELIO` (1). Una grilla vieja sin la capa se lee como
    todo pasto, así que no hubo migración.
-2. **Reglas por sobreescritura.** `CONFIG.plantas.especies[especie]` contiene solo lo que difiere
-   de las reglas base; `regla(cfg, especie, clave)` decide en el lugar de uso sin asignar nada en
-   el bucle. El micelio expande menos (`0.05` contra `0.08`), vive más (`900` contra `500` ticks)
-   y tiene `probDesplazamiento`, que el pasto no tiene.
+2. **Configuración separada.** `CONFIG.entidadesEstaticas` concentra los parámetros globales de la
+   vegetación en grilla; `CONFIG.plantas` (pasto) y `CONFIG.micelio` definen por especie, con la
+   misma forma, su fracción de siembra y reglas de crecimiento/expansión/desplazamiento.
+   `plantGrowth` resuelve la regla por celda según la especie sin asignar nada en el bucle. El
+   micelio expande menos (`0.05` contra `0.08`), vive más (`900` contra `500` ticks) y tiene
+   `probDesplazamiento` efectivo, mientras el pasto lo tiene en `0`.
 3. **Competencia sin asignaciones.** `buscarVecinaLibre()` prefiere celdas vacías; si no hay,
    solo el micelio puede arrebatar una celda al pasto. El retorno codifica el desplazamiento como
    `-2 - j` (un entero negativo no puede confundirse con un índice), evitando objetos temporales
    por intento. El conteo acumulado vive en `ctx.desplazamientos`.
 4. **Sin PNG propio.** El atlas reserva claves sintéticas `plantas/micelio/{semilla,joven,adulta}`
-   y dibuja un frame de prueba con los colores `colorMicelio*`. El renderer elige la clave con
-   `framePlanta(estado, especie)`. Cuando haya arte propio basta reemplazar esas entradas del
-   atlas: el simulador no cambia.
+   y dibuja un frame de prueba con colores fijos en `atlas.js`. El
+   renderer elige la clave con `framePlanta(estado, especie)`. Cuando haya arte propio basta
+   reemplazar esas entradas del atlas: el simulador no cambia.
 
-**Balance medido.** `node scripts/simular.mjs 1337 10` con `fraccionMicelio = 0.08` y
-`probDesplazamiento = 0.0002`: al minuto 1 hay ~3.500 micelios sobre ~35.000 plantas; al minuto
-10 conviven ~19.000 micelios y ~16.000 pastos con ~2.600 desplazamientos. Valores más altos
+**Balance medido.** `node scripts/simular.mjs 1337 10` con `micelio.fraccionInicial = 0.08` y
+`micelio.probDesplazamiento = 0.0002`: al minuto 1 hay ~3.500 micelios sobre ~35.000 plantas; al
+minuto 10 conviven ~19.000 micelios y ~16.000 pastos con ~2.600 desplazamientos. Valores más altos
 (0.001) extinguían el pasto antes del minuto 5; valores más bajos (0.0005 con expansión reducida)
-extinguían el micelio. Los parámetros quedaron en `CONFIG.plantas` y el HUD muestra ambas
-poblaciones y los desplazamientos.
+extinguían el micelio. Los parámetros quedaron en `CONFIG.entidadesEstaticas`, `CONFIG.plantas` y
+`CONFIG.micelio`, y el HUD muestra ambas poblaciones y los desplazamientos.
 
 **Descartado:** dar reglas distintas por especie en `plantGrowth.js` con `if (especie === …)`
 (duplicaba la lógica y rompía la regla de "ningún número fuera de `config.js`"), y models de

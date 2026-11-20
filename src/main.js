@@ -390,7 +390,7 @@ function bucle(ahora) {
   }
 
   terrenoRenderer.render(camara);
-  plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.plantas.ticksPorRefrescoRender, camara);
+  plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.entidadesEstaticas.ticksPorRefrescoRender, camara);
   plantRenderer.render(camara);
   renderer.render(manager, camara, ctx.tick);
   necesidadesRenderer.render(camara);

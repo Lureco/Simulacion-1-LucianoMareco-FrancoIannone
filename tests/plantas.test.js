@@ -20,13 +20,19 @@ import { pasoVegetacion, sembrarVegetacion, contarPlantas } from '../src/systems
 
 /**
  * @param {object} [configPlantas] Parámetros a overridear de `CONFIG.plantas`.
+ * @param {object} [overrides] Overrides adicionales por sección (p. ej. `entidadesEstaticas`, `micelio`).
  */
-function contextoConPlantas(configPlantas = {}) {
+function contextoConPlantas(configPlantas = {}, overrides = {}) {
   const ancho = 8;
   const alto = 8;
   const config = {
     ...CONFIG,
+    entidadesEstaticas: {
+      ...CONFIG.entidadesEstaticas,
+      ...(overrides.entidadesEstaticas ?? {}),
+    },
     plantas: { ...CONFIG.plantas, probExpansion: 0, ...configPlantas },
+    micelio: { ...CONFIG.micelio, ...(overrides.micelio ?? {}) },
   };
   const ctx = crearContexto({
     prng: new PRNG(1337),
@@ -143,8 +149,8 @@ describe('siembra con cantidad exacta (F8 · T84)', () => {
     expect(Array.from(a.grid.planta)).toEqual(Array.from(b.grid.planta));
   });
 
-  it('sin cantidad se mantiene el comportamiento por densidad', () => {
-    const ctx = contextoConPlantas({ densidadSemilla: 1 });
+  it('sin cantidad usa la población inicial configurada', () => {
+    const ctx = contextoConPlantas({}, { entidadesEstaticas: { poblacionInicial: 64 } });
     sembrarVegetacion(ctx);
 
     expect(contarPlantas(ctx)).toBe(64);

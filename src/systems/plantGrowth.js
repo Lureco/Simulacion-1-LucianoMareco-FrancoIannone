@@ -32,15 +32,25 @@
 import { ESPECIE_PLANTA, PLANTA, TERRENO } from '../world/cell.js';
 
 /**
- * Regla efectiva de una especie: la sobreescritura por especie si existe,
- * si no el valor base de `CONFIG.plantas`. No asigna nada en el bucle.
- * @param {object} cfg
+ * Configuración propia de una especie vegetal.
+ * @param {object} config Configuración global (`ctx.config`).
+ * @param {number} especie Uno de `ESPECIE_PLANTA`.
+ */
+function configEspecie(config, especie) {
+  return especie === ESPECIE_PLANTA.MICELIO ? config.micelio : config.plantas;
+}
+
+/**
+ * Regla efectiva de una especie: valor de su configuración, con fallback a la
+ * configuración base de plantas (pasto/global) para claves compartidas.
+ * @param {object} config
  * @param {number} especie Uno de `ESPECIE_PLANTA`.
  * @param {string} clave
  */
-function regla(cfg, especie, clave) {
-  const sobre = cfg.especies?.[especie];
-  return sobre !== undefined && sobre[clave] !== undefined ? sobre[clave] : cfg[clave];
+function regla(config, especie, clave) {
+  const cfg = configEspecie(config, especie);
+  if (cfg !== undefined && cfg[clave] !== undefined) return cfg[clave];
+  return config.plantas[clave];
 }
 
 /** Devuelve la especie de una celda (grillas viejas/sin capa ⇒ pasto). */
@@ -79,11 +89,10 @@ function capaEdad(ctx) {
 /**
  * Siembra la vegetación inicial sobre las celdas de tierra (T31).
  *
- * Con `cantidad` siembra **exactamente** ese número de semillas en celdas de
- * tierra elegidas al azar (F8/T84: el menú de generación permite fijarlo). Sin
- * el parámetro mantiene el comportamiento original: una probabilidad
- * `densidadSemilla` por celda. En los dos casos todo el azar sale de `ctx.prng`,
- * así que la misma seed da el mismo mapa.
+ * Siembra **exactamente** `cantidad` semillas en celdas de tierra elegidas al
+ * azar. Si no se indica cantidad, usa `config.entidadesEstaticas.poblacionInicial`.
+ * En todos los casos todo el azar sale de `ctx.prng`, así que la misma seed
+ * da el mismo mapa.
  *
  * @param {object} ctx Contexto con `{ prng, grid, config }`.
  * @param {number} [cantidad] Semillas exactas deseadas (se limita a las celdas de tierra).
@@ -97,17 +106,10 @@ export function sembrarVegetacion(ctx, cantidad) {
   grid.especiePlanta?.fill(ESPECIE_PLANTA.PASTO);
 
   if (cantidad === undefined || cantidad === null) {
-    const { densidadSemilla, fraccionMicelio } = ctx.config.plantas;
-    for (let i = 0; i < grid.total; i++) {
-      if (grid.terreno[i] !== TERRENO.TIERRA) continue;
-      if (prng.float() < densidadSemilla) {
-        grid.planta[i] = PLANTA.SEMILLA;
-        if (grid.especiePlanta !== undefined && prng.float() < fraccionMicelio) {
-          grid.especiePlanta[i] = ESPECIE_PLANTA.MICELIO;
-        }
-      }
-    }
-  } else {
+    cantidad = ctx.config.entidadesEstaticas.poblacionInicial;
+  }
+
+  {
     // Array de celdas de tierra, cacheado y rellenado en cada generación.
     // Se reutiliza en vez de crear uno nuevo por mapa (misma regla que el
     // resto del sistema: sin `new` en el bucle caliente).
@@ -121,7 +123,7 @@ export function sembrarVegetacion(ctx, cantidad) {
     }
 
     const aSembrar = Math.min(Math.max(0, Math.floor(cantidad)), n);
-    const fraccionMicelio = ctx.config.plantas.fraccionMicelio;
+    const fraccionMicelio = ctx.config.micelio.fraccionInicial;
     // Fisher-Yates parcial: solo se barajan las primeras `aSembrar` posiciones.
     // Cada celda elegida se siembra una sola vez (sin duplicados).
     for (let k = 0; k < aSembrar; k++) {
@@ -155,7 +157,8 @@ export function pasoVegetacion(ctx) {
   const { grid, prng } = ctx;
   if (!grid) return 0;
 
-  const cfg = ctx.config.plantas;
+  const config = ctx.config;
+  const umbralVecindadDiagonal = config.entidadesEstaticas.umbralVecindadDiagonal;
   const total = grid.total;
   const ancho = grid.ancho;
   const alto = grid.alto;
@@ -190,23 +193,22 @@ export function pasoVegetacion(ctx) {
       continue;
     }
 
-    // F8/T65: las reglas dependen de la especie de la celda. `regla()` lee la
-    // sobreescritura de la especie o, si no la tiene, el valor base.
+    // F8/T65: las reglas dependen de la especie de la celda.
     const tipo = especieEn(grid, i);
 
     if (estado === PLANTA.SEMILLA) {
-      if (++edades[i] >= regla(cfg, tipo, 'ticksSemillaAJoven')) {
+      if (++edades[i] >= regla(config, tipo, 'ticksSemillaAJoven')) {
         planta[i] = PLANTA.JOVEN;
         edades[i] = 0;
       }
     } else if (estado === PLANTA.JOVEN) {
-      if (++edades[i] >= regla(cfg, tipo, 'ticksJovenAAdulta')) {
+      if (++edades[i] >= regla(config, tipo, 'ticksJovenAAdulta')) {
         planta[i] = PLANTA.ADULTA;
         edades[i] = 0;
       }
     } else {
       // ADULTA: envejece desde que llegó a adulta (T30).
-      if (++edades[i] >= regla(cfg, tipo, 'ticksVidaAdulta')) {
+      if (++edades[i] >= regla(config, tipo, 'ticksVidaAdulta')) {
         planta[i] = PLANTA.MUERTA;
         edades[i] = 0;
         if (especies !== undefined) especies[i] = ESPECIE_PLANTA.PASTO;
@@ -215,8 +217,8 @@ export function pasoVegetacion(ctx) {
 
       // ADULTA: intenta colonizar una vecina con su propia vecindad.
       const vecinos =
-        regla(cfg, tipo, 'radioExpansion') >= cfg.umbralVecindadDiagonal ? VECINOS_8 : VECINOS_4;
-      if (prng.float() < regla(cfg, tipo, 'probExpansion')) {
+        regla(config, tipo, 'radioExpansion') >= umbralVecindadDiagonal ? VECINOS_8 : VECINOS_4;
+      if (prng.float() < regla(config, tipo, 'probExpansion')) {
         const destino = buscarVecinaLibre(
           i,
           ancho,
@@ -227,7 +229,7 @@ export function pasoVegetacion(ctx) {
           vecinos,
           prng,
           tipo,
-          regla(cfg, tipo, 'probDesplazamiento'),
+          regla(config, tipo, 'probDesplazamiento'),
         );
         if (destino !== -1 && nacimientos < buffer.length) {
           // `destino >= 0`: celda libre. `-2 - j`: desplaza al pasto de `j`.

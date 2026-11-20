@@ -23,10 +23,11 @@ import { clavesBase, framePlanta } from '../src/render/atlasDatos.js';
 import { PlantRenderer } from '../src/render/plantRenderer.js';
 
 /** Contexto chico con reglas base y los overrides que pida el test. */
-function contexto(cfgPlantas = {}, prng = new PRNG(1337), ancho = 8, alto = 8) {
+function contexto(cfgPlantas = {}, cfgMicelio = {}, prng = new PRNG(1337), ancho = 8, alto = 8) {
   const config = {
     ...CONFIG,
     plantas: { ...CONFIG.plantas, probExpansion: 0, ...cfgPlantas },
+    micelio: { ...CONFIG.micelio, ...cfgMicelio },
   };
   const ctx = crearContexto({ prng, mundo: { ancho, alto }, config });
   ctx.grid = new Grid(ancho, alto);
@@ -42,8 +43,8 @@ describe('T65 · capa de especie vegetal', () => {
   });
 
   it('la siembra inicial respeta la fracción de micelio y es determinista', () => {
-    const a = contexto({ fraccionMicelio: 0.5 });
-    const b = contexto({ fraccionMicelio: 0.5 });
+    const a = contexto({}, { fraccionInicial: 0.5 });
+    const b = contexto({}, { fraccionInicial: 0.5 });
     sembrarVegetacion(a, 40);
     sembrarVegetacion(b, 40);
 
@@ -55,11 +56,11 @@ describe('T65 · capa de especie vegetal', () => {
   });
 
   it('fracción 0 y 1 siembran una sola especie', () => {
-    const pasto = contexto({ fraccionMicelio: 0 });
+    const pasto = contexto({}, { fraccionInicial: 0 });
     sembrarVegetacion(pasto, 20);
     expect(contarPlantasPorEspecie(pasto).micelio).toBe(0);
 
-    const micelio = contexto({ fraccionMicelio: 1 });
+    const micelio = contexto({}, { fraccionInicial: 1 });
     sembrarVegetacion(micelio, 20);
     expect(contarPlantasPorEspecie(micelio).pasto).toBe(0);
   });
@@ -67,13 +68,7 @@ describe('T65 · capa de especie vegetal', () => {
 
 describe('T65 · reglas de crecimiento por especie', () => {
   it('cada especie puede tener su propio tiempo de maduración', () => {
-    const ctx = contexto({
-      ticksSemillaAJoven: 1,
-      especies: {
-        [ESPECIE_PLANTA.PASTO]: {},
-        [ESPECIE_PLANTA.MICELIO]: { ticksSemillaAJoven: 5 },
-      },
-    });
+    const ctx = contexto({ ticksSemillaAJoven: 1 }, { ticksSemillaAJoven: 5 });
     const pasto = ctx.grid.indice(1, 1);
     const micelio = ctx.grid.indice(6, 6);
     ctx.grid.planta[pasto] = PLANTA.SEMILLA;
@@ -93,13 +88,8 @@ describe('T66 · competencia territorial', () => {
 
   it('el micelio desplaza al pasto vecino y lo cuenta', () => {
     const ctx = contexto(
-      {
-        probExpansion: 1,
-        especies: {
-          [ESPECIE_PLANTA.PASTO]: { probExpansion: 0 },
-          [ESPECIE_PLANTA.MICELIO]: { probExpansion: 1, probDesplazamiento: 1 },
-        },
-      },
+      { probExpansion: 0 },
+      { probExpansion: 1, probDesplazamiento: 1 },
       seguro,
       3,
       3,
@@ -124,7 +114,7 @@ describe('T66 · competencia territorial', () => {
   });
 
   it('el pasto nunca desplaza al micelio', () => {
-    const ctx = contexto({ probExpansion: 1 }, seguro, 3, 3);
+    const ctx = contexto({ probExpansion: 1 }, {}, seguro, 3, 3);
     const pasto = ctx.grid.indice(0, 1);
     const micelio = ctx.grid.indice(1, 1);
     ctx.grid.planta[pasto] = PLANTA.ADULTA;
@@ -139,13 +129,8 @@ describe('T66 · competencia territorial', () => {
 
   it('sin probabilidad de desplazamiento el pasto sobrevive', () => {
     const ctx = contexto(
-      {
-        probExpansion: 1,
-        especies: {
-          [ESPECIE_PLANTA.PASTO]: {},
-          [ESPECIE_PLANTA.MICELIO]: { probExpansion: 1, probDesplazamiento: 0 },
-        },
-      },
+      {},
+      { probExpansion: 1, probDesplazamiento: 0 },
       seguro,
       3,
       3,

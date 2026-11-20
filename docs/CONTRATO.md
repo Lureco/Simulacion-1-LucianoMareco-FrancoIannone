@@ -260,7 +260,7 @@ Contratos:
 - `PlantRenderer.reconstruir()` lee **solo el estado** de `grid.planta` (nunca la edad):
   `SEMILLA`/`JOVEN`/`ADULTA` dibujan; `MUERTA`/`NADA` no. La clave del frame sale de
   `framePlanta(estado, grid.especiePlanta[i])` (F8/T65), sin cambiar la API del renderer.
-  Se ejecuta cada `CONFIG.plantas.ticksPorRefrescoRender` ticks o cuando cambia el
+  Se ejecuta cada `CONFIG.entidadesEstaticas.ticksPorRefrescoRender` ticks o cuando cambia el
   rectángulo visible; `invalidar()` la fuerza tras regenerar la grilla.
 - `EntityRenderer.render()` solo lee arrays SoA del manager (`x`, `y`, `dirX`, `tipo`,
   `velocidad`, `estado`, `vivos`). El nuevo parámetro `tick` alimenta la animación y no avanza

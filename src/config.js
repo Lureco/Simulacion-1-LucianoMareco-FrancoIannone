@@ -170,10 +170,28 @@ export const CONFIG = {
   },
 
   // ─────────────────────────────────────────────────────────────
-  // PLANTAS [P1] — autómata celular
+  // ENTIDADES ESTÁTICAS [P1] — vegetación en la grilla
+  // ─────────────────────────────────────────────────────────────
+  entidadesEstaticas: {
+    /**
+     * Semillas exactas al generar un mapa (menú/R) y siembra por defecto.
+     * Medido en 2247 celdas sobre la isla de la seed por defecto para mantener
+     * el aspecto inicial del mapa.
+     */
+    poblacionInicial: 2247,
+    /** Actualizar el render de plantas cada N ticks (la vegetación cambia lento). */
+    ticksPorRefrescoRender: 10,
+    /** Umbral de `radioExpansion` a partir del cual se incluyen las diagonales. */
+    umbralVecindadDiagonal: 8,
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // PLANTAS [P1] — pasto (especie vegetal)
   // ─────────────────────────────────────────────────────────────
   plantas: {
-    /** Ticks de simulación entre estados de crecimiento. */
+    /** Fracción de la siembra inicial que nace como pasto (0..1). */
+    fraccionInicial: 0.92,
+    /** Reglas de crecimiento/expansión del pasto. */
     ticksSemillaAJoven: 20,
     ticksJovenAAdulta: 60,
     /** Ticks que vive una planta ADULTA antes de morir por edad (T30). Se empieza a contar al llegar a adulta. */
@@ -182,40 +200,24 @@ export const CONFIG = {
     probExpansion: 0.08,
     /** Vecindad usada por el autómata: 4 (ortogonal) u 8 (incluye diagonales). */
     radioExpansion: 1,
-    /** Umbral de `radioExpansion` a partir del cual se incluyen las diagonales. */
-    umbralVecindadDiagonal: 8,
-    /** Densidad inicial de semilla al generar el mundo (0..1 sobre celdas de tierra). */
-    densidadSemilla: 0.06,
-    /**
-     * Semillas exactas al generar un mapa desde el menú o con R (T84). Corresponde
-     * al resultado de `densidadSemilla` sobre la isla de la seed por defecto,
-     * medido en 2247 celdas, para que el mapa inicial no cambie de aspecto.
-     */
-    poblacionInicial: 2247,
-    /** Actualizar el render de plantas cada N ticks (la vegetación cambia lento). */
-    ticksPorRefrescoRender: 10,
+    /** Probabilidad de colonizar una celda vecina ocupada por otra especie. */
+    probDesplazamiento: 0,
+  },
 
-    // ── F8/T65-T66: segunda especie y competencia territorial ──
+  // ─────────────────────────────────────────────────────────────
+  // MICELIO [P1] — micelio (especie vegetal)
+  // ─────────────────────────────────────────────────────────────
+  micelio: {
     /** Fracción de la siembra inicial que nace como micelio (0..1). */
-    fraccionMicelio: 0.08,
-    /**
-     * Reglas por especie. Solo se guarda lo que DIFIERE de las reglas base de
-     * arriba: `pasto` hereda todo ({}), `micelio` crece más despacio y puede
-     * desplazar al pasto (T66). No se hardcodea nada en `plantGrowth.js`.
-     */
-    especies: {
-      [ESPECIE_PLANTA.PASTO]: {},
-      [ESPECIE_PLANTA.MICELIO]: {
-        probExpansion: 0.05,
-        ticksVidaAdulta: 900,
-        /** Probabilidad de colonizar una celda vecina ocupada por pasto. */
-        probDesplazamiento: 0.0002,
-      },
-    },
-    /** Colores del micelio en el frame de prueba del atlas (0xRRGGBB). */
-    colorMicelioSemilla: 0x9a7bc0,
-    colorMicelioJoven: 0xb38ed6,
-    colorMicelioAdulta: 0xd2b3ed,
+    fraccionInicial: 0.08,
+    /** Reglas de crecimiento/expansión del micelio. */
+    ticksSemillaAJoven: 20,
+    ticksJovenAAdulta: 60,
+    ticksVidaAdulta: 900,
+    probExpansion: 0.05,
+    radioExpansion: 1,
+    /** Probabilidad de colonizar una celda vecina ocupada por otra especie (pasto). */
+    probDesplazamiento: 0.0002,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -426,7 +428,8 @@ export const CONFIG = {
     graficoAncho: 260,
     graficoAlto: 120,
     /** Colores CSS de cada serie del gráfico (plantas, herbívoros, carnívoros). */
-    graficoColorPlantas: '#4f9d4f',
+    graficoColorPasto: '#4f9d4f',
+    graficoColorMicelio: '#b38ed6',
     graficoColorHerbivoros: '#6bdc7a',
     graficoColorDepredadores: '#ff5d5d',
     /**
@@ -490,12 +493,13 @@ copiarValidos(CONFIG_BASE, cargarOverrides(), CONFIG);
 export const PRESETS = {
   'Por defecto': {},
   'Bosque frondoso': {
-    plantas: { densidadSemilla: 0.12, probExpansion: 0.14, poblacionInicial: 4000 },
+    entidadesEstaticas: { poblacionInicial: 4000 },
+    plantas: { probExpansion: 0.14 },
     herbivoro: { poblacionInicial: 160 },
     depredador: { poblacionInicial: 12 },
   },
   Cacería: {
-    plantas: { poblacionInicial: 1500 },
+    entidadesEstaticas: { poblacionInicial: 1500 },
     herbivoro: { poblacionInicial: 140 },
     depredador: {
       poblacionInicial: 80,
@@ -511,7 +515,9 @@ export const PRESETS = {
   },
   'Simulación rápida': {
     tiempo: { escalaSimulacion: 4 },
-    plantas: { ticksSemillaAJoven: 8, ticksJovenAAdulta: 24, ticksPorRefrescoRender: 4 },
+    entidadesEstaticas: { ticksPorRefrescoRender: 4 },
+    plantas: { ticksSemillaAJoven: 8, ticksJovenAAdulta: 24 },
+    micelio: { ticksSemillaAJoven: 8, ticksJovenAAdulta: 24 },
   },
 };
 
@@ -531,7 +537,7 @@ export const ESTADO = {
    * las cantidades elegidas.
    */
   inicial: {
-    plantas: CONFIG.plantas.poblacionInicial,
+    plantas: CONFIG.entidadesEstaticas.poblacionInicial,
     herbivoros: CONFIG.herbivoro.poblacionInicial,
     depredadores: CONFIG.depredador.poblacionInicial,
   },

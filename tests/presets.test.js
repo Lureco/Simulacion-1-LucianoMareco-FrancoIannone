@@ -17,7 +17,7 @@ describe('presets', () => {
     const limpio = limpiarValores({
       terreno: { umbralAgua: 0.42, colorAgua: 0x123456, invento: 9 },
       sprites: { generarFallback: false },
-      ui: { graficoColorPlantas: '#ABCDEF' },
+      ui: { graficoColorPasto: '#ABCDEF' },
       spritesExtra: { rutaPlanta: { 1: 'otra/ruta' } },
       invento: 1,
     });
@@ -25,7 +25,7 @@ describe('presets', () => {
     expect(limpio).toEqual({
       terreno: { umbralAgua: 0.42, colorAgua: 0x123456 },
       sprites: { generarFallback: false },
-      ui: { graficoColorPlantas: '#abcdef' },
+      ui: { graficoColorPasto: '#abcdef' },
     });
   });
 

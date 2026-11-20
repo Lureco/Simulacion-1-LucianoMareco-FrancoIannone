@@ -434,7 +434,7 @@ describe('categorías, scroll y tipos de campo', () => {
     const { panel } = crearPanel();
     expect(panel.campos['terreno.umbralAgua'].type).toBe('number');
     expect(panel.campos['terreno.colorAgua'].type).toBe('color');
-    expect(panel.campos['ui.graficoColorPlantas'].type).toBe('color');
+    expect(panel.campos['ui.graficoColorPasto'].type).toBe('color');
     expect(panel.campos['sprites.generarFallback'].type).toBe('checkbox');
     expect(panel.campos['percepcion.mantenerDistanciaAgua'].type).toBe('checkbox');
 
@@ -456,7 +456,7 @@ describe('validación y callback', () => {
     expect(alGenerar).toHaveBeenCalledOnce();
     const valores = alGenerar.mock.calls[0][0];
     expect(valores.mundo.seedPorDefecto).toBe(42);
-    expect(valores.plantas.poblacionInicial).toBe(100);
+    expect(valores.entidadesEstaticas.poblacionInicial).toBe(100);
     expect(valores.herbivoro.poblacionInicial).toBe(10);
     expect(valores.depredador.poblacionInicial).toBe(3);
     expect(valores.terreno.umbralAgua).toBe(CONFIG_BASE.terreno.umbralAgua);
@@ -556,7 +556,7 @@ describe('presets', () => {
     buscarBoton(panel.panel, 'Cargar en el formulario').click();
 
     expect(panel.campos['depredador.poblacionInicial'].value).toBe('80');
-    expect(panel.campos['plantas.poblacionInicial'].value).toBe('1500');
+    expect(panel.campos['entidadesEstaticas.poblacionInicial'].value).toBe('1500');
     expect(panel.mensaje.textContent).toContain('presioná Aplicar y recargar');
     expect(alGenerar).not.toHaveBeenCalled();
   });

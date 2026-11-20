@@ -86,19 +86,18 @@ function dibujarFallback(ctx, clave, x, y, tam) {
   ctx.translate(x + tam / 2, y + tam / 2);
 
   // F8/T65: el micelio no tiene PNG propio. Su frame de prueba se dibuja con
-  // forma de hongo y la paleta del hongo, para distinguirlo del pasto.
+  // forma de hongo y paleta propia fija, para distinguirlo del pasto.
   const rutasMicelio = Object.entries(
     CONFIG.sprites.rutaPlantaPorEspecie?.[ESPECIE_PLANTA.MICELIO] ?? {},
   );
   const estadoMicelio = Number(rutasMicelio.find(([, ruta]) => ruta === clave)?.[0] ?? NaN);
   if (!Number.isNaN(estadoMicelio)) {
-    const cfg = CONFIG.plantas;
     const color =
       estadoMicelio === PLANTA.SEMILLA
-        ? cfg.colorMicelioSemilla
+        ? 0x9a7bc0
         : estadoMicelio === PLANTA.JOVEN
-          ? cfg.colorMicelioJoven
-          : cfg.colorMicelioAdulta;
+          ? 0xb38ed6
+          : 0xd2b3ed;
     const radio =
       estadoMicelio === PLANTA.SEMILLA
         ? tam * 0.12

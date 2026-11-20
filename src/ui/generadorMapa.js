@@ -56,7 +56,7 @@ const ETIQUETAS = { oculto: 'Oculto', abajo: 'Abajo', pantalla: 'Pantalla' };
 /** Campos que antes eran "los cuatro del mapa" (se mantienen como aliases). */
 const ALIAS_INICIALES = {
   seed: 'mundo.seedPorDefecto',
-  plantas: 'plantas.poblacionInicial',
+  plantas: 'entidadesEstaticas.poblacionInicial',
   herbivoros: 'herbivoro.poblacionInicial',
   depredadores: 'depredador.poblacionInicial',
 };
@@ -158,7 +158,7 @@ export class GeneradorMapa {
       alGenerar,
       alRestablecer,
       seed = CONFIG.mundo.seedPorDefecto,
-      plantas = CONFIG.plantas.poblacionInicial,
+      plantas = CONFIG.entidadesEstaticas.poblacionInicial,
       herbivoros = CONFIG.herbivoro.poblacionInicial,
       depredadores = CONFIG.depredador.poblacionInicial,
       maxPlantas = CONFIG.mundo.ancho * CONFIG.mundo.alto,
@@ -836,7 +836,7 @@ export class GeneradorMapa {
       return null;
     }
 
-    const plantas = valores.plantas.poblacionInicial;
+    const plantas = valores.entidadesEstaticas.poblacionInicial;
     if (plantas > this.maxPlantas) {
       this.mensaje.textContent = `Plantas iniciales: el máximo es ${this.maxPlantas}`;
       return null;
