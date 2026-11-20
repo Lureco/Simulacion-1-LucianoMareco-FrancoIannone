@@ -4,7 +4,7 @@
  * Verifican pool fijo, culling, mapeo estado→frame, flip y depuración.
  */
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ParticleContainer, Rectangle, Texture } from 'pixi.js';
 import { CONFIG } from '../src/config.js';
 import { ESPECIE, ESTADO_IA } from '../src/entities/entity.js';
@@ -15,6 +15,11 @@ import { EntityRenderer } from '../src/render/entityRenderer.js';
 import { NecesidadesRenderer } from '../src/render/necesidadesRenderer.js';
 import { PlantRenderer } from '../src/render/plantRenderer.js';
 import { COLOR_ESTADO } from '../src/render/paleta.js';
+
+const OVERLAY_POR_DEFECTO = CONFIG.ui.mostrarBarrasSobreEntidad;
+afterEach(() => {
+  CONFIG.ui.mostrarBarrasSobreEntidad = OVERLAY_POR_DEFECTO;
+});
 
 /** Atlas falso: mismas claves, frames con UV, sin canvas ni PNG. */
 function atlasFalso() {
@@ -241,6 +246,7 @@ describe('T80 · EntityRenderer con ParticleContainer', () => {
 
 describe('T61 · barras de necesidades siguen a la cámara', () => {
   it('recalcula la posición al panear y al hacer zoom aunque el animal esté quieto', () => {
+    CONFIG.ui.mostrarBarrasSobreEntidad = true;
     // Renderer mínimo: solo se usa generateTexture() al construir la barra.
     const app = { renderer: { generateTexture: () => Texture.EMPTY } };
     const manager = new EntityManager();
@@ -285,5 +291,33 @@ describe('T67 · la vista del bicho seleccionado incluye sus genes', () => {
     expect(r.seleccionada.genes.percepcion).toBeCloseTo(1.1, 6);
     expect(r.seleccionada.genes.consumo).toBeCloseTo(0.9, 6);
     expect(r.seleccionada.genes.reproduccion).toBeCloseTo(1.4, 6);
+  });
+});
+
+describe('F8 · overlay sobre el animal seleccionado', () => {
+  it('está desactivado por defecto pero la leyenda sigue teniendo los datos', () => {
+    expect(CONFIG.ui.mostrarBarrasSobreEntidad).toBe(false);
+    const app = { renderer: { generateTexture: () => Texture.EMPTY } };
+    const manager = new EntityManager();
+    const id = manager.crear(ESPECIE.HERBIVORO);
+    manager.x[id] = 4;
+    manager.y[id] = 4;
+    manager.hambre[id] = 0.42;
+    manager.genVelocidad[id] = 1.25;
+
+    const r = new NecesidadesRenderer(app, { tileSize: 8, manager });
+    r.seleccionar(id);
+    const barra = r.barras[0].relleno;
+    const cam = camara({ x: 32, y: 32, zoom: 1, ancho: 128, alto: 128 });
+
+    r.render(cam);
+    expect(barra.visible).toBe(false);
+    expect(r.seleccionada.hambre).toBeCloseTo(0.42, 5);
+    expect(r.seleccionada.genes.velocidad).toBeCloseTo(1.25, 5);
+
+    // Si se activa desde Configuración, vuelve a dibujarse sobre el sprite.
+    CONFIG.ui.mostrarBarrasSobreEntidad = true;
+    r.render(cam);
+    expect(barra.visible).toBe(true);
   });
 });

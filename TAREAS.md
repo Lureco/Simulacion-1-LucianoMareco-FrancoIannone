@@ -482,7 +482,8 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
       *(cinco `Float32Array` SoA, herencia de dos padres calculada al anotar el nacimiento,
       mutación con `CONFIG.genetica` y tupla plana reutilizable; 11 tests en
       `tests/genetica.test.js`. D26. Inspector visual en la leyenda al seleccionar
-      un animal: 6 tests en `tests/geneticaVista.test.js`, D28)*
+      un animal: 6 tests en `tests/geneticaVista.test.js`, D28. Overlay sobre el sprite
+      opcional y desactivado por defecto (`CONFIG.ui.mostrarBarrasSobreEntidad`, D29)*
 - [x] **T68 · P1** — Mostrar y copiar la seed para poder reproducir un escenario interesante
       *(seed en el HUD, botón *copiar seed* y tecla `S` con `navigator.clipboard` + fallback;
       aviso temporal en el HUD)*
@@ -499,7 +500,7 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
       actualizado con genes y `especiePlanta`)*
 - [x] **T74 · Ambos** — Entrega con commits limpios y sin `console.log` de debug
       *(sin `console.*` ejecutable en `src/`, verificado con `npm run lint:prod`;
-      avisos movidos a `hud.avisar()`. `lint`, 217 tests, Prettier y build en verde)*
+      avisos movidos a `hud.avisar()`. `lint`, 218 tests, Prettier y build en verde)*
 - [x] **T84 · Ambos** — **Menú para generar mapas** con seed, plantas y NPCs iniciales elegidos
       *(pedido extra: panel con tres posiciones —oculto, cajón abajo y pantalla completa— y campos
       para seed, plantas, herbívoros y depredadores. `src/ui/generadorMapa.js` valida los rangos,

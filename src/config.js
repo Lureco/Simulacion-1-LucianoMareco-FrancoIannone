@@ -443,6 +443,12 @@ export const CONFIG = {
     graficoColorPlantas: '#4f9d4f',
     graficoColorHerbivoros: '#6bdc7a',
     graficoColorDepredadores: '#ff5d5d',
+    /**
+     * Dibuja las barras de necesidades y genes **sobre** el animal seleccionado.
+     * Desactivado por defecto: el clic sigue llenando la leyenda, pero no tapa
+     * el sprite. Se activa desde Configuración → ui (F8).
+     */
+    mostrarBarrasSobreEntidad: false,
     /** Barras de necesidades del animal seleccionado, en píxeles de mundo. */
     barraAncho: 16,
     barraAlto: 3,

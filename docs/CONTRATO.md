@@ -259,6 +259,9 @@ Contratos:
   hambre/sed/edad incluye `genes` (`velocidad`, `tamano`, `percepcion`, `consumo` y
   `reproduccion`), leídos por `ui/geneticaVista.js`. La leyenda los dibuja como barras
   normalizadas entre `CONFIG.genetica.minRasgo` y `maxRasgo`, sin acceder a los arrays SoA.
+- `CONFIG.ui.mostrarBarrasSobreEntidad` controla **solo** el overlay dibujado encima del
+  sprite. Está en `false` por defecto; con `false` el renderer oculta las barras pero
+  rellena `seleccionada` igual, así la leyenda sigue mostrando los datos del clic.
 - Ambos usan `camara` (`x`, `y`, `zoom`, `vistaAnchoPx`, `vistaAltoPx`) y
   `CONFIG.render.margenCulling` para no cargar partículas fuera de pantalla.
 - Cada renderer aporta **un** `ParticleContainer` (un draw call); no se hace `new` en el bucle.

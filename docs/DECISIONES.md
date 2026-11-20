@@ -871,7 +871,7 @@ definition of done de T74), depender solo de Clipboard API sin fallback y dar
 por bueno el build sin servirlo.
 
 **Verificación:** `npm run lint`, `npm run lint:prod`, `npm test -- --run`
-(22 archivos, 217 tests tras el inspector de D28), `npx prettier --check .`,
+(22 archivos, 218 tests tras D28/D29), `npx prettier --check .`,
 `npm run build`, `npm run preview` y `node scripts/simular.mjs 1337 10`. La corrida final de
 10 min con seed 1337 terminó en 156 herbívoros, 0 depredadores, 19.287
 micelios, 16.470 pastos y 2.642 desplazamientos. El guion de demo y la revisión
@@ -913,7 +913,35 @@ historia de un individuo).
 **Verificación:** `tests/geneticaVista.test.js` (6 tests) y un test nuevo en
 `tests/render.test.js` confirman la lectura SoA, la normalización, los marcadores
 y el HTML de la leyenda. `npm run lint`, `npm test -- --run` (22 archivos,
-217 tests), Prettier y build en verde.
+218 tests tras D29), Prettier y build en verde.
+
+---
+
+## D29 · Overlay sobre el animal, desactivado por defecto
+
+**Contexto.** Las barras de necesidades y genes que aparecen justo encima del
+sprite al hacer clic tapan parte del dibujo y del terreno. La leyenda ya muestra
+los mismos datos abajo a la izquierda, así que el overlay es duplicativo para
+quien solo quiere mirar la simulación.
+
+**Decisión.**
+
+1. `CONFIG.ui.mostrarBarrasSobreEntidad = false` en el estado inicial. Como el
+   panel de configuración recorre `CONFIG_BASE`, aparece solo como un checkbox
+   en la categoría `ui` y se guarda con el resto de overrides.
+2. `NecesidadesRenderer.render()` sigue armando `seleccionada` (la vista plana
+   que lee la leyenda) aunque el overlay esté apagado; solo salta el dibujo de
+   `Graphics`/`Sprite` sobre el animal. Así el clic sigue teniendo efecto.
+3. Al estar apagado se ocultan también los sprites de las barras, que antes
+   podían quedar en `(0,0)` antes del primer clic.
+
+**Descartado:** quitar el overlay por completo (alguien puede querer ver las
+barras pegadas al bicho) y ponerlo en `true` por defecto (el pedido era lo
+contrario).
+
+**Verificación:** `tests/render.test.js` comprueba que con el valor por defecto
+no se dibuja nada sobre el sprite pero `seleccionada` sigue trayendo hambre y
+genes, y que al activar el flag las barras vuelven a hacerse visibles.
 
 ---
 

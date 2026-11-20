@@ -15,6 +15,10 @@
  * Las barras son **sprites con `tint`**: se escalan en X para mostrar la
  * fracción. Escalar un sprite no rompe el batch de Pixi.
  *
+ * El overlay sobre el sprite se activa con
+ * `CONFIG.ui.mostrarBarrasSobreEntidad` (false por defecto). La leyenda sigue
+ * recibiendo `seleccionada` con todos los datos aunque no se dibuje nada encima.
+ *
  * ⚠️ REFACTOR SoA (D13): la selección es un **id** (número) o `null`, y
  * los datos se leen de los arrays tipados del `EntityManager`. Para que
  * la leyenda no necesite saber de SoA, `seleccionada` expone un **objeto
@@ -79,6 +83,7 @@ export class NecesidadesRenderer {
     for (const necesidad of NECESIDADES) {
       const relleno = new Sprite(this.texturaBarra);
       relleno.anchor.set(0, 0.5);
+      relleno.visible = false;
       this.contenedor.addChild(relleno);
       this.barras.push({ necesidad, relleno });
     }
@@ -147,6 +152,16 @@ export class NecesidadesRenderer {
   }
 
   /**
+   * Apaga el overlay sin tocar `seleccionada`: la leyenda sigue mostrando los
+   * datos del animal aunque las barras sobre el sprite estén desactivadas.
+   */
+  ocultarBarras() {
+    this.fondo.clear();
+    for (const barra of this.barras) barra.relleno.visible = false;
+    this.ultimaClave = '';
+  }
+
+  /**
    * Dibuja las barras de la entidad seleccionada.
    * @param {import('./camera.js').Camera} camara
    */
@@ -162,13 +177,11 @@ export class NecesidadesRenderer {
     this.seleccionada = this.crearVista(this.idSeleccionado);
     const seleccion = this.seleccionada;
 
-    // Sin selección: no hay nada que dibujar.
-    if (seleccion === null || !seleccion.vivo) {
-      if (this.ultimaClave !== '') {
-        this.fondo.clear();
-        for (const barra of this.barras) barra.relleno.visible = false;
-        this.ultimaClave = '';
-      }
+    // Sin selección, animal muerto u overlay desactivado en `CONFIG.ui`:
+    // la vista plana sigue disponible para la leyenda, pero no se dibuja nada
+    // encima del sprite (F8: desactivado por defecto).
+    if (seleccion === null || !seleccion.vivo || !CONFIG.ui.mostrarBarrasSobreEntidad) {
+      this.ocultarBarras();
       return;
     }
 

@@ -70,6 +70,11 @@ tirador `◥` de la esquina superior derecha permite agrandar el panel arrastran
 `localStorage` (`ecosistemas.ui.v1`), así que **Aplicar y recargar** lo reabre donde estaba —y en
 la misma parte de la lista— en vez de cerrarlo.
 
+En **Configuración → ui** está `mostrarBarrasSobreEntidad` (desactivado por
+defecto). Al hacer clic en un animal, sus necesidades y genes siempre se muestran en
+la leyenda; ese checkbox solo decide si además se dibujan las barras **sobre**
+el sprite.
+
 Cargá los valores y apretá **Aplicar y recargar** (o **Enter** en un campo): se guardan
 los cambios y la página recarga para que todo se lea desde cero. **Restablecer** vuelve
 a los valores por defecto sin borrar tus presets. La seed acepta un número o cualquier
