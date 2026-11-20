@@ -10,7 +10,7 @@
 
 import { CONFIG } from '../config.js';
 import { ESPECIE } from '../entities/entity.js';
-import { PLANTA } from '../world/cell.js';
+import { ESPECIE_PLANTA, PLANTA } from '../world/cell.js';
 
 /** Cache de claves de animación por especie (se llena una sola vez). @type {Map<number, string[]>} */
 const cacheCycles = new Map();
@@ -46,6 +46,11 @@ export function cuadrosDe(tipo) {
  */
 export function clavesBase() {
   const claves = Object.values(CONFIG.sprites.rutaPlanta);
+  // F8/T65: las claves del micelio también reservan casillero en el atlas,
+  // aunque caigan al frame de prueba (no hay PNG propio).
+  for (const rutas of Object.values(CONFIG.sprites.rutaPlantaPorEspecie ?? {})) {
+    claves.push(...Object.values(rutas));
+  }
   for (const tipo of [ESPECIE.HERBIVORO, ESPECIE.PREDADOR]) {
     for (let i = 0; i < cuadrosDe(tipo); i++) {
       claves.push(frameAnimal(tipo, i));
@@ -60,8 +65,13 @@ export function clavesBase() {
  * @param {number} estado Uno de `PLANTA`.
  * @returns {string|null} clave del frame.
  */
-export function framePlanta(estado) {
-  return CONFIG.sprites.rutaPlanta[estado] ?? null;
+export function framePlanta(estado, especie = ESPECIE_PLANTA.PASTO) {
+  const porEspecie = CONFIG.sprites.rutaPlantaPorEspecie?.[especie];
+  return (
+    (porEspecie !== undefined ? porEspecie[estado] : undefined) ??
+    CONFIG.sprites.rutaPlanta[estado] ??
+    null
+  );
 }
 
 /**

@@ -25,6 +25,15 @@ export const PLANTA = {
   MUERTA: 4,
 };
 
+/**
+ * Especie vegetal de una celda (F8 · T65). Vive en su propia capa
+ * `Uint8Array` (`grid.especiePlanta`), paralela a `grid.planta`.
+ */
+export const ESPECIE_PLANTA = {
+  PASTO: 0,
+  MICELIO: 1,
+};
+
 /** Cantidad de tipos de terreno distintos (para tests y loops). */
 export const CANTIDAD_TERRENO = 3;
 
@@ -66,4 +75,13 @@ export function nombrePlanta(estado) {
     default:
       return 'desconocido';
   }
+}
+
+/**
+ * Nombre legible de una especie vegetal (HUD / informe).
+ * @param {number} especie Uno de `ESPECIE_PLANTA`.
+ * @returns {string}
+ */
+export function nombreEspeciePlanta(especie) {
+  return especie === ESPECIE_PLANTA.MICELIO ? 'micelio' : 'pasto';
 }

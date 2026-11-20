@@ -33,6 +33,11 @@ export class Grid {
     this.terreno = new Uint8Array(this.total);
     /** @type {Uint8Array} Estado de planta por celda (`PLANTA.*`). */
     this.planta = new Uint8Array(this.total);
+    /**
+     * @type {Uint8Array} Especie vegetal por celda (`ESPECIE_PLANTA.*`, F8/T65).
+     * Capa paralela a `planta`: el estado dice *cómo está* y esta capa *qué es*.
+     */
+    this.especiePlanta = new Uint8Array(this.total);
     /** @type {Int32Array} Id de entidad ocupando la celda; -1 = libre. */
     this.ocupante = new Int32Array(this.total).fill(-1);
     /** @type {Float32Array} Altura normalizada 0..1. */

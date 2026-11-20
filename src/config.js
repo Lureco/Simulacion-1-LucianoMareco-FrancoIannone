@@ -10,7 +10,7 @@
  */
 
 import { ESPECIE } from './entities/entity.js';
-import { PLANTA } from './world/cell.js';
+import { ESPECIE_PLANTA, PLANTA } from './world/cell.js';
 import { cargarOverrides } from './core/configPersistencia.js';
 import { clonarConfig, copiarValidos } from './core/configUtils.js';
 
@@ -77,6 +77,18 @@ export const CONFIG = {
       [PLANTA.SEMILLA]: 'plantas/plantaNormal/semilla',
       [PLANTA.JOVEN]: 'plantas/plantaNormal/joven',
       [PLANTA.ADULTA]: 'plantas/plantaNormal/adulta',
+    },
+    /**
+     * F8/T65: segunda especie vegetal. No hay PNG propio para el micelio: estas claves
+     * caen en el frame de prueba del atlas, dibujado con la paleta del hongo.
+     * Si se agregan PNG con estas rutas, se usan automáticamente.
+     */
+    rutaPlantaPorEspecie: {
+      [ESPECIE_PLANTA.MICELIO]: {
+        [PLANTA.SEMILLA]: 'plantas/micelio/semilla',
+        [PLANTA.JOVEN]: 'plantas/micelio/joven',
+        [PLANTA.ADULTA]: 'plantas/micelio/adulta',
+      },
     },
     /**
      * Cycle de caminar por especie. Cada una tiene su propia carpeta, prefijo
@@ -196,6 +208,28 @@ export const CONFIG = {
     escalaSprite: 0.55,
     /** Actualizar el render de plantas cada N ticks (la vegetación cambia lento). */
     ticksPorRefrescoRender: 10,
+
+    // ── F8/T65-T66: segunda especie y competencia territorial ──
+    /** Fracción de la siembra inicial que nace como micelio (0..1). */
+    fraccionMicelio: 0.12,
+    /**
+     * Reglas por especie. Solo se guarda lo que DIFIERE de las reglas base de
+     * arriba: `pasto` hereda todo ({}), `micelio` crece más despacio, vive más
+     * y puede desplazar al pasto (T66). No se hardcodea nada en `plantGrowth.js`.
+     */
+    especies: {
+      [ESPECIE_PLANTA.PASTO]: {},
+      [ESPECIE_PLANTA.MICELIO]: {
+        probExpansion: 0.05,
+        ticksVidaAdulta: 900,
+        /** Probabilidad de colonizar una celda vecina ocupada por pasto. */
+        probDesplazamiento: 0.25,
+      },
+    },
+    /** Colores del micelio en el frame de prueba del atlas (0xRRGGBB). */
+    colorMicelioSemilla: 0x9a7bc0,
+    colorMicelioJoven: 0xb38ed6,
+    colorMicelioAdulta: 0xd2b3ed,
   },
 
   // ─────────────────────────────────────────────────────────────

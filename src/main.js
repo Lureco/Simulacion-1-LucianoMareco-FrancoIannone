@@ -30,7 +30,11 @@ import { NecesidadesRenderer } from './render/necesidadesRenderer.js';
 import { crearAtlas } from './render/atlas.js';
 import { generarTerreno } from './world/terrain.js';
 import { TERRENO, nombreTerreno } from './world/cell.js';
-import { sembrarVegetacion, contarPlantas } from './systems/plantGrowth.js';
+import {
+  sembrarVegetacion,
+  contarPlantas,
+  contarPlantasPorEspecie,
+} from './systems/plantGrowth.js';
 import { Hud } from './ui/hud.js';
 import { Controles } from './ui/controles.js';
 import { Leyenda } from './ui/leyenda.js';
@@ -115,6 +119,7 @@ function regenerarMundo({ seed, plantas, herbivoros, depredadores }) {
   ctx.tick = 0;
   ctx.nacimientosTotales = 0;
   ctx.muertesTotales = 0;
+  ctx.desplazamientos = 0;
   for (const causa of Object.keys(ctx.muertesPorCausa)) ctx.muertesPorCausa[causa] = 0;
   grafico.reiniciar();
   necesidadesRenderer.seleccionar(null);
@@ -390,8 +395,14 @@ function bucle(ahora) {
   renderer.render(manager, camara, ctx.tick);
   necesidadesRenderer.render(camara);
 
+  // Un solo barrido de la grilla por frame (F8: el conteo por especie reemplaza
+  // al conteo total, en vez de sumar otro recorrido de 65.536 celdas).
+  const porEspecie = contarPlantasPorEspecie(ctx);
   const datosPoblacion = {
-    plantas: contarPlantas(ctx),
+    plantas: porEspecie.pasto + porEspecie.micelio,
+    pasto: porEspecie.pasto,
+    micelio: porEspecie.micelio,
+    desplazamientos: porEspecie.desplazamientos,
     herbivoros: manager.contar(ESPECIE.HERBIVORO),
     depredadores: manager.contar(ESPECIE.PREDADOR),
   };

@@ -29,7 +29,24 @@
  * que se crean una sola vez y quedan cacheados en el contexto.
  */
 
-import { PLANTA, TERRENO } from '../world/cell.js';
+import { ESPECIE_PLANTA, PLANTA, TERRENO } from '../world/cell.js';
+
+/**
+ * Regla efectiva de una especie: la sobreescritura por especie si existe,
+ * si no el valor base de `CONFIG.plantas`. No asigna nada en el bucle.
+ * @param {object} cfg
+ * @param {number} especie Uno de `ESPECIE_PLANTA`.
+ * @param {string} clave
+ */
+function regla(cfg, especie, clave) {
+  const sobre = cfg.especies?.[especie];
+  return sobre !== undefined && sobre[clave] !== undefined ? sobre[clave] : cfg[clave];
+}
+
+/** Devuelve la especie de una celda (grillas viejas/sin capa ⇒ pasto). */
+function especieEn(grid, i) {
+  return grid.especiePlanta === undefined ? ESPECIE_PLANTA.PASTO : grid.especiePlanta[i];
+}
 
 /** Desplazamientos ortogonales (vecindad 4), en orden fijo. */
 const VECINOS_4 = [
@@ -76,12 +93,19 @@ export function sembrarVegetacion(ctx, cantidad) {
   if (!grid) return;
 
   grid.planta.fill(PLANTA.NADA);
+  // La capa de especie puede no existir en una grilla creada antes de F8.
+  grid.especiePlanta?.fill(ESPECIE_PLANTA.PASTO);
 
   if (cantidad === undefined || cantidad === null) {
-    const { densidadSemilla } = ctx.config.plantas;
+    const { densidadSemilla, fraccionMicelio } = ctx.config.plantas;
     for (let i = 0; i < grid.total; i++) {
       if (grid.terreno[i] !== TERRENO.TIERRA) continue;
-      if (prng.float() < densidadSemilla) grid.planta[i] = PLANTA.SEMILLA;
+      if (prng.float() < densidadSemilla) {
+        grid.planta[i] = PLANTA.SEMILLA;
+        if (grid.especiePlanta !== undefined && prng.float() < fraccionMicelio) {
+          grid.especiePlanta[i] = ESPECIE_PLANTA.MICELIO;
+        }
+      }
     }
   } else {
     // Array de celdas de tierra, cacheado y rellenado en cada generación.
@@ -97,6 +121,7 @@ export function sembrarVegetacion(ctx, cantidad) {
     }
 
     const aSembrar = Math.min(Math.max(0, Math.floor(cantidad)), n);
+    const fraccionMicelio = ctx.config.plantas.fraccionMicelio;
     // Fisher-Yates parcial: solo se barajan las primeras `aSembrar` posiciones.
     // Cada celda elegida se siembra una sola vez (sin duplicados).
     for (let k = 0; k < aSembrar; k++) {
@@ -104,7 +129,11 @@ export function sembrarVegetacion(ctx, cantidad) {
       const temporal = tierras[k];
       tierras[k] = tierras[j];
       tierras[j] = temporal;
-      grid.planta[tierras[k]] = PLANTA.SEMILLA;
+      const destino = tierras[k];
+      grid.planta[destino] = PLANTA.SEMILLA;
+      if (grid.especiePlanta !== undefined && prng.float() < fraccionMicelio) {
+        grid.especiePlanta[destino] = ESPECIE_PLANTA.MICELIO;
+      }
     }
   }
 
@@ -132,8 +161,8 @@ export function pasoVegetacion(ctx) {
   const alto = grid.alto;
   const terreno = grid.terreno;
   const planta = grid.planta;
+  const especies = grid.especiePlanta;
   const edades = capaEdad(ctx);
-  const vecinos = cfg.radioExpansion >= cfg.umbralVecindadDiagonal ? VECINOS_8 : VECINOS_4;
 
   if (ctx._bufferPlantas === undefined) {
     ctx._bufferPlantas = new Int32Array(total);
@@ -149,6 +178,7 @@ export function pasoVegetacion(ctx) {
       // La materia muerta se descompone: la celda vuelve a estar disponible.
       planta[i] = PLANTA.NADA;
       edades[i] = 0;
+      if (especies !== undefined) especies[i] = ESPECIE_PLANTA.PASTO;
       continue;
     }
 
@@ -156,36 +186,60 @@ export function pasoVegetacion(ctx) {
     if (terreno[i] !== TERRENO.TIERRA) {
       planta[i] = PLANTA.MUERTA;
       edades[i] = 0;
+      if (especies !== undefined) especies[i] = ESPECIE_PLANTA.PASTO;
       continue;
     }
 
+    // F8/T65: las reglas dependen de la especie de la celda. `regla()` lee la
+    // sobreescritura de la especie o, si no la tiene, el valor base.
+    const tipo = especieEn(grid, i);
+
     if (estado === PLANTA.SEMILLA) {
-      if (++edades[i] >= cfg.ticksSemillaAJoven) {
+      if (++edades[i] >= regla(cfg, tipo, 'ticksSemillaAJoven')) {
         planta[i] = PLANTA.JOVEN;
         edades[i] = 0;
       }
     } else if (estado === PLANTA.JOVEN) {
-      if (++edades[i] >= cfg.ticksJovenAAdulta) {
+      if (++edades[i] >= regla(cfg, tipo, 'ticksJovenAAdulta')) {
         planta[i] = PLANTA.ADULTA;
         edades[i] = 0;
       }
     } else {
       // ADULTA: envejece desde que llegó a adulta (T30).
-      if (++edades[i] >= cfg.ticksVidaAdulta) {
+      if (++edades[i] >= regla(cfg, tipo, 'ticksVidaAdulta')) {
         planta[i] = PLANTA.MUERTA;
         edades[i] = 0;
+        if (especies !== undefined) especies[i] = ESPECIE_PLANTA.PASTO;
         continue;
       }
 
-      // ADULTA: intenta colonizar una vecina.
-      if (prng.float() < cfg.probExpansion) {
-        const destino = buscarVecinaLibre(i, ancho, alto, terreno, planta, vecinos, prng);
-        if (destino >= 0 && nacimientos < buffer.length) {
+      // ADULTA: intenta colonizar una vecina con su propia vecindad.
+      const vecinos =
+        regla(cfg, tipo, 'radioExpansion') >= cfg.umbralVecindadDiagonal ? VECINOS_8 : VECINOS_4;
+      if (prng.float() < regla(cfg, tipo, 'probExpansion')) {
+        const destino = buscarVecinaLibre(
+          i,
+          ancho,
+          alto,
+          terreno,
+          planta,
+          especies,
+          vecinos,
+          prng,
+          tipo,
+          regla(cfg, tipo, 'probDesplazamiento'),
+        );
+        if (destino !== -1 && nacimientos < buffer.length) {
+          // `destino >= 0`: celda libre. `-2 - j`: desplaza al pasto de `j`.
+          const desplaza = destino < -1;
+          const j = desplaza ? -2 - destino : destino;
           // Reserva INMEDIATA: sin esto dos adultas pueden elegir la misma
           // vecina, `nacimientos` cuenta 2 y el mapa termina con 1 semilla.
-          planta[destino] = PLANTA.SEMILLA;
-          edades[destino] = 0;
-          buffer[nacimientos++] = destino;
+          planta[j] = PLANTA.SEMILLA;
+          edades[j] = 0;
+          if (especies !== undefined) especies[j] = tipo;
+          if (desplaza) ctx.desplazamientos = (ctx.desplazamientos ?? 0) + 1;
+          buffer[nacimientos++] = j;
         }
       }
     }
@@ -200,7 +254,18 @@ export function pasoVegetacion(ctx) {
  * siempre va hacia el mismo lado (lo que daría crecimiento en cruz).
  * @returns {number} Índice plano de la vecina elegida, o -1 si no hay.
  */
-function buscarVecinaLibre(i, ancho, alto, terreno, planta, vecinos, prng) {
+function buscarVecinaLibre(
+  i,
+  ancho,
+  alto,
+  terreno,
+  planta,
+  especies,
+  vecinos,
+  prng,
+  tipo,
+  probDesplazamiento,
+) {
   const x = i % ancho;
   const y = (i / ancho) | 0;
   const inicio = prng.int(0, vecinos.length);
@@ -214,6 +279,26 @@ function buscarVecinaLibre(i, ancho, alto, terreno, planta, vecinos, prng) {
     if (terreno[j] !== TERRENO.TIERRA) continue;
     if (planta[j] !== PLANTA.NADA) continue;
     return j;
+  }
+
+  // T66: competencia territorial. Si no hay celda libre, el micelio puede
+  // arrebatarle una celda al pasto. Se codifica como `-2 - j` para no crear
+  // objetos en el bucle (un entero negativo no puede confundirse con un índice).
+  if (tipo !== ESPECIE_PLANTA.MICELIO || probDesplazamiento <= 0 || especies === undefined) {
+    return -1;
+  }
+  const inicioDesplazamiento = prng.int(0, vecinos.length);
+  for (let n = 0; n < vecinos.length; n++) {
+    const [dx, dy] = vecinos[(inicioDesplazamiento + n) % vecinos.length];
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= ancho || ny >= alto) continue;
+    const j = ny * ancho + nx;
+    if (terreno[j] !== TERRENO.TIERRA) continue;
+    if (especies[j] !== ESPECIE_PLANTA.PASTO) continue;
+    if (planta[j] === PLANTA.NADA || planta[j] === PLANTA.MUERTA) continue;
+    if (prng.float() >= probDesplazamiento) continue;
+    return -2 - j;
   }
   return -1;
 }
@@ -238,6 +323,7 @@ export function comerPlanta(ctx, indice) {
   if (estado !== PLANTA.ADULTA && estado !== PLANTA.JOVEN) return false;
 
   grid.planta[indice] = PLANTA.NADA;
+  if (grid.especiePlanta !== undefined) grid.especiePlanta[indice] = ESPECIE_PLANTA.PASTO;
   capaEdad(ctx)[indice] = 0;
 
   return true;
@@ -258,4 +344,25 @@ export function contarPlantas(ctx) {
     if (e !== PLANTA.NADA && e !== PLANTA.MUERTA) n++;
   }
   return n;
+}
+
+/**
+ * Cuenta las plantas vivas separadas por especie (F8/T65) y los desplazamientos
+ * acumulados (T66). Devuelve un objeto nuevo: se llama desde la UI, una vez
+ * por segundo, nunca desde el bucle caliente.
+ * @param {object} ctx
+ * @returns {{pasto: number, micelio: number, desplazamientos: number}}
+ */
+export function contarPlantasPorEspecie(ctx) {
+  const grid = ctx.grid;
+  const resultado = { pasto: 0, micelio: 0, desplazamientos: ctx?.desplazamientos ?? 0 };
+  if (!grid) return resultado;
+  const planta = grid.planta;
+  for (let i = 0; i < grid.total; i++) {
+    const e = planta[i];
+    if (e === PLANTA.NADA || e === PLANTA.MUERTA) continue;
+    if (especieEn(grid, i) === ESPECIE_PLANTA.MICELIO) resultado.micelio++;
+    else resultado.pasto++;
+  }
+  return resultado;
 }

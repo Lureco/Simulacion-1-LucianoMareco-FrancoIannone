@@ -160,6 +160,7 @@ export class PlantRenderer {
     this.ultimoTick = tick;
 
     const planta = grid.planta;
+    const especies = grid.especiePlanta;
     const tile = this.tileSize;
     const children = this.contenedor.particleChildren;
     const frames = this.atlas.frames;
@@ -169,7 +170,9 @@ export class PlantRenderer {
     for (let y = r.y0; y <= r.y1; y++) {
       const fila = y * ancho;
       for (let x = r.x0; x <= r.x1; x++) {
-        const clave = framePlanta(planta[fila + x]);
+        const indice = fila + x;
+        // Sin capa de especie (grillas viejas) `undefined` cae en pasto.
+        const clave = framePlanta(planta[indice], especies?.[indice]);
         if (clave === null) continue; // NADA / MUERTA → desaparece
         const frame = frames.get(clave);
         if (frame === undefined || usados >= this.capacidad) continue;

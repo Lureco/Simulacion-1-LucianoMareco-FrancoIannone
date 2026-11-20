@@ -35,6 +35,9 @@ export class Hud {
     this.ultimaActualizacion = 0;
     this.datos = {
       plantas: 0,
+      pasto: 0,
+      micelio: 0,
+      desplazamientos: 0,
       herbivoros: 0,
       depredadores: 0,
       total: 0,
@@ -62,6 +65,9 @@ export class Hud {
     const segundos = (d.ticks / TICKS_POR_SEGUNDO).toFixed(1);
     this.elemento.textContent = [
       `plantas     ${String(d.plantas).padStart(4)}`,
+      `  pasto     ${String(d.pasto).padStart(4)}`,
+      `  micelio   ${String(d.micelio).padStart(4)}`,
+      `  desplaz.  ${String(d.desplazamientos).padStart(4)}`,
       `triceratops ${String(d.herbivoros).padStart(4)}`,
       `ceratosaurios ${String(d.depredadores).padStart(4)}`,
       `total       ${String(d.total).padStart(4)}`,

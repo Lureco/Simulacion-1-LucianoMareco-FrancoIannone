@@ -27,7 +27,7 @@
 import { CanvasSource, Rectangle, Texture } from 'pixi.js';
 import { CONFIG } from '../config.js';
 import { ESPECIE } from '../entities/entity.js';
-import { PLANTA } from '../world/cell.js';
+import { ESPECIE_PLANTA, PLANTA } from '../world/cell.js';
 import { COLOR_ESPECIE } from './paleta.js';
 import { claveDe, clavesBase } from './atlasDatos.js';
 
@@ -84,6 +84,41 @@ function css(color) {
 function dibujarFallback(ctx, clave, x, y, tam) {
   ctx.save();
   ctx.translate(x + tam / 2, y + tam / 2);
+
+  // F8/T65: el micelio no tiene PNG propio. Su frame de prueba se dibuja con
+  // forma de hongo y la paleta del hongo, para distinguirlo del pasto.
+  const rutasMicelio = Object.entries(
+    CONFIG.sprites.rutaPlantaPorEspecie?.[ESPECIE_PLANTA.MICELIO] ?? {},
+  );
+  const estadoMicelio = Number(rutasMicelio.find(([, ruta]) => ruta === clave)?.[0] ?? NaN);
+  if (!Number.isNaN(estadoMicelio)) {
+    const cfg = CONFIG.plantas;
+    const color =
+      estadoMicelio === PLANTA.SEMILLA
+        ? cfg.colorMicelioSemilla
+        : estadoMicelio === PLANTA.JOVEN
+          ? cfg.colorMicelioJoven
+          : cfg.colorMicelioAdulta;
+    const radio =
+      estadoMicelio === PLANTA.SEMILLA
+        ? tam * 0.12
+        : estadoMicelio === PLANTA.JOVEN
+          ? tam * 0.2
+          : tam * 0.28;
+    ctx.fillStyle = css(color);
+    ctx.fillRect(-radio * 0.16, -radio * 0.1, radio * 0.32, radio * 1.2);
+    for (const [ox, oy, r] of [
+      [-0.6, -0.35, 0.6],
+      [0.6, -0.35, 0.6],
+      [0, -0.65, 0.85],
+    ]) {
+      ctx.beginPath();
+      ctx.arc(ox * radio, oy * radio, r * radio, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
 
   const estado = Number(
     Object.keys(CONFIG.sprites.rutaPlanta).find((k) => CONFIG.sprites.rutaPlanta[k] === clave) ??
