@@ -4,14 +4,14 @@
  *
  * ⚠️ REFACTOR SoA (ver `docs/DECISIONES.md` D13).
  *
- * Antes: un objeto `Entity` por animal (con `x`, `y`, `energia` como
+ * Antes: un objeto `Entity` por animal (con `x`, `y`, `hambre` como
  * propiedades) y un pool de objetos. Con 5000 animales eso son 5000 objetos
  * sueltos en el heap: mal uso de caché y presión para el recolector.
  *
  * Ahora: **Structure of Arrays**. No hay un objeto por bicho; hay un array
  * tipado por propiedad, y la identidad de un bicho es su `id` (un entero):
  *
- *     x[id], y[id], energia[id], dirX[id], ...
+ *     x[id], y[id], hambre[id], dirX[id], ...
  *
  * Recorrer las posiciones de 5000 bichos es recorrer 5000 floats contiguos.
  * El "pool" ahora es una lista de ids libres: reciclar una entidad es
@@ -23,7 +23,6 @@
 
 import { ESTADO_IA } from './entity.js';
 import { especieDe } from './especies.js';
-import { CONFIG } from '../config.js';
 
 /** Capacidad con la que arranca el almacén. */
 const CAPACIDAD_INICIAL = 256;
@@ -75,7 +74,6 @@ export class EntityManager {
     /** @type {Float32Array} */ this.y = new Float32Array(0);
     /** @type {Float32Array} */ this.dirX = new Float32Array(0);
     /** @type {Float32Array} */ this.dirY = new Float32Array(0);
-    /** @type {Float32Array} */ this.energia = new Float32Array(0);
     /** @type {Float32Array} */ this.velocidad = new Float32Array(0);
     /** @type {Float32Array} Necesidad de comer, 0..1 (T34). */ this.hambre = new Float32Array(0);
     /** @type {Float32Array} Necesidad de beber, 0..1 (T34). */ this.sed = new Float32Array(0);
@@ -113,7 +111,6 @@ export class EntityManager {
     this.y = crecerF32(this.y, capacidad);
     this.dirX = crecerF32(this.dirX, capacidad);
     this.dirY = crecerF32(this.dirY, capacidad);
-    this.energia = crecerF32(this.energia, capacidad);
     this.velocidad = crecerF32(this.velocidad, capacidad);
     this.hambre = crecerF32(this.hambre, capacidad);
     this.sed = crecerF32(this.sed, capacidad);
@@ -156,7 +153,6 @@ export class EntityManager {
     this.y[id] = 0;
     this.dirX[id] = 1;
     this.dirY[id] = 0;
-    this.energia[id] = CONFIG.entidades.energiaInicial;
     this.edad[id] = 0;
     this.velocidad[id] = especie.velocidad;
     this.hambre[id] = 0;

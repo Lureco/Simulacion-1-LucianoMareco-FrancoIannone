@@ -54,7 +54,7 @@ function correrSimulacion(seed, ticks) {
   return { ctx, manager };
 }
 
-/** Huella de la simulación: posición, edad y energía de cada entidad. */
+/** Huella de la simulación: posición, edad y necesidades de cada entidad. */
 function huella(manager) {
   const salida = [];
   for (const id of manager.vivos) {
@@ -63,7 +63,6 @@ function huella(manager) {
       x: manager.x[id],
       y: manager.y[id],
       edad: manager.edad[id],
-      energia: manager.energia[id],
       hambre: manager.hambre[id],
       sed: manager.sed[id],
       deseoRepro: manager.deseoRepro[id],

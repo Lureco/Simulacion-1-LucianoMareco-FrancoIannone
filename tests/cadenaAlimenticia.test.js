@@ -4,7 +4,7 @@
  *
  * Cubre el lado del **depredador** de la cadena trófica:
  *
- *   1. Caza: detecta al herbívoro cercano, lo mata y gana energía.
+ *   1. Caza: detecta al herbívoro cercano, lo mata y se alimenta.
  *   2. La muerte se cuenta como `depredado` y no se duplica entre cazadores.
  *   3. El herbívoro **huye** del depredador (T43).
  *   4. Al deambular mantiene la distancia al agua (T38).
@@ -23,11 +23,7 @@ import { Grid } from '../src/world/grid.js';
 import { TERRENO } from '../src/world/cell.js';
 import { CONFIG } from '../src/config.js';
 import { calcularCampos } from '../src/world/terrain.js';
-import {
-  actualizarEntidad,
-  aplicarMuertes,
-  pasoDeSimulacion,
-} from '../src/systems/simulacion.js';
+import { actualizarEntidad, aplicarMuertes, pasoDeSimulacion } from '../src/systems/simulacion.js';
 
 /**
  * Contexto con grilla (todo tierra) y hash listos.
@@ -46,7 +42,7 @@ function contextoConGrid(seed = 1, ancho = 16, alto = 16) {
 }
 
 describe('cadena alimenticia (T43/T50)', () => {
-  it('el depredador caza al herbívoro: lo mata y gana energía', () => {
+  it('el depredador caza al herbívoro: lo mata y se alimenta', () => {
     const { ctx, manager } = contextoConGrid();
     const pred = manager.crear(ESPECIE.PREDADOR);
     const herb = manager.crear(ESPECIE.HERBIVORO);
@@ -55,10 +51,8 @@ describe('cadena alimenticia (T43/T50)', () => {
     manager.x[herb] = 8.5;
     manager.y[herb] = 8.5;
     manager.hambre[pred] = 0.9;
-    manager.energia[pred] = 50;
     ctx.hash.reconstruir();
 
-    const energia0 = manager.energia[pred];
     const hambre0 = manager.hambre[pred];
 
     // Primer tick: detecta la presa y apunta. Segundo tick: la alcanza y la mata.
@@ -69,7 +63,6 @@ describe('cadena alimenticia (T43/T50)', () => {
     expect(manager.moribundo[herb]).toBe(1);
     expect(ctx.muertesPorCausa.depredado).toBe(1);
     // El depredador se alimentó.
-    expect(manager.energia[pred]).toBeGreaterThan(energia0);
     expect(manager.hambre[pred]).toBeLessThan(hambre0);
 
     // La muerte se aplica al final del tick.
@@ -113,9 +106,9 @@ describe('cadena alimenticia (T43/T50)', () => {
     manager.hambre[pred] = 0.9;
     // El depredador ya la tiene en la mira: la mata en este tick.
     manager.presa[pred] = herb;
-    // La presa, además, moriría de hambre este tick. Si `pasoDeSimulacion` no
+    // La presa, además, estaría hambrienta este tick. Si `pasoDeSimulacion` no
     // la salteara, se contaría dos veces (depredado + hambre).
-    manager.energia[herb] = 0;
+    manager.hambre[herb] = 1;
     ctx.hash.reconstruir();
 
     pasoDeSimulacion(ctx, CONFIG.tiempo.pasoFijo);

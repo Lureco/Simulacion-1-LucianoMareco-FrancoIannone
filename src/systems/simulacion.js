@@ -12,7 +12,7 @@
  * Orden de un tick (determinista):
  *
  *   1. Cada entidad viva: `especie.actualizar` (envejecer, necesidades,
- *      decidir, moverse, gastar energía). Puede anotar muertes y nacimientos.
+ *      decidir, moverse). Puede anotar muertes y nacimientos.
  *   2. Aplicar muertes (libera `id`s).
  *   3. Aplicar nacimientos (crea crías en celdas anotadas).
  *   4. Reconstruir el Spatial Hash.

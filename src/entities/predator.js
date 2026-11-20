@@ -12,8 +12,9 @@
  *   hambre crítica > sed crítica > reproducirse > explorar
  *
  * La diferencia con el herbívoro (T44): el depredador es **más rápido** pero
- * **menos eficiente**. Gana la carrera, pero cada presa le cuesta energía y se
- * recupera más despacio, así que no puede cazar sin parar.
+ * **menos eficiente**. Gana la carrera, pero cada persecución consume tiempo
+ * (`segundosPersecucion`) y puede cansarse antes de alcanzar la presa, así
+ * que no puede cazar sin parar.
  *
  * La caza es **diferida** como todo lo demás: el depredador anota la muerte de
  * la presa (`anotarMuerte`) y `pasoDeSimulacion` la aplica al final del tick.
@@ -40,7 +41,6 @@ import {
   causaDeMuerte,
   CAUSA_MUERTE,
   quiereReproducir,
-  gastarEnergia,
   registrarMuerte,
 } from '../systems/needs.js';
 import { anotarMuerte, anotarNacimiento } from '../systems/eventos.js';
@@ -87,7 +87,6 @@ export class Depredador extends Especie {
     this.pensar(id, dt, ctx);
     aplicarSeparacion(id, ctx);
     mover(id, dt, ctx);
-    gastarEnergia(id, dt, ctx);
   }
 
   /**
@@ -186,7 +185,7 @@ export class Depredador extends Especie {
   }
 
   /**
-   * Mata a la presa y se alimenta de ella (T43/T45).
+   * Mata a la presa (T43/T45).
    *
    * La muerte se **anota**, no se aplica acá: borrar la presa en medio del
    * recorrido de entidades correría el bucle. Se cuenta como `DEPREDADO` y se
@@ -210,10 +209,6 @@ export class Depredador extends Especie {
     anotarMuerte(ctx, presa);
     registrarMuerte(ctx, CAUSA_MUERTE.DEPREDADO);
 
-    a.energia[id] = Math.min(
-      ctx.config.entidades.energiaMaxima,
-      a.energia[id] + cfg.energiaPorPresa,
-    );
     a.hambre[id] = Math.max(0, a.hambre[id] - cfg.saciedadPorPresa);
   }
 
@@ -295,8 +290,8 @@ export class Depredador extends Especie {
   }
 
   /**
-   * Reproduce a dos depredadores: cobra energía y cooldown, y anota la cría en
-   * una celda de tierra adyacente (T46/T47). La cría se crea al final del tick.
+   * Reproduce a dos depredadores: pone cooldown y anota la cría en una celda
+   * de tierra adyacente (T46/T47). La cría se crea al final del tick.
    * @param {number} id
    * @param {number} pareja
    * @param {object} ctx
@@ -309,8 +304,6 @@ export class Depredador extends Especie {
     a.cooldown[pareja] = cfg.cooldownReproduccion;
     a.deseoRepro[id] = 0;
     a.deseoRepro[pareja] = 0;
-    a.energia[id] = Math.max(0, a.energia[id] - cfg.energiaPorCria);
-    a.energia[pareja] = Math.max(0, a.energia[pareja] - cfg.energiaPorCria);
 
     const indice = this.celdaLibreAdyacente(ctx, a.celdaX(id), a.celdaY(id));
     if (indice >= 0) anotarNacimiento(ctx, a.tipo[id], indice);
@@ -352,11 +345,21 @@ export class Depredador extends Especie {
     const a = ctx.entidades;
     const cfg = ctx.config.depredador;
 
-    const objetivoAgua = distanciaObjetivoAlAgua(a.sed[id], cfg);
-    const rumboAgua = direccionAjustadaAlAgua(ctx, a.x[id], a.y[id], objetivoAgua, objetivoDe(ctx));
-    if (rumboAgua.encontrado) {
-      this.apuntar(id, rumboAgua.x - a.x[id], rumboAgua.y - a.y[id], ctx);
-      return;
+    // El checkbox `mantenerDistanciaAgua` desactiva solo la franja de
+    // deambulación: la sed crítica sigue llevándolo a beber (T38).
+    if (ctx.config?.percepcion?.mantenerDistanciaAgua !== false) {
+      const objetivoAgua = distanciaObjetivoAlAgua(a.sed[id], cfg);
+      const rumboAgua = direccionAjustadaAlAgua(
+        ctx,
+        a.x[id],
+        a.y[id],
+        objetivoAgua,
+        objetivoDe(ctx),
+      );
+      if (rumboAgua.encontrado) {
+        this.apuntar(id, rumboAgua.x - a.x[id], rumboAgua.y - a.y[id], ctx);
+        return;
+      }
     }
 
     a.ticksParaGiro[id] -= 1;

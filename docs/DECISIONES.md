@@ -232,7 +232,7 @@ arrays tipados"*.
 **Structure of Arrays (SoA)**:
 
 - `src/entities/entityManager.js` guarda **un array tipado por propiedad**
-  (`Float32Array x`, `y`, `dirX`, `dirY`, `energia`, `velocidad`; `Int32Array`
+  (`Float32Array x`, `y`, `dirX`, `dirY`, `velocidad`; `Int32Array`
   `edad`, `tipo`, `ticksParaGiro`; `Uint8Array` `estado`, `vivo`).
 - La identidad de un bicho es su **`id`** (entero), que indexa todos los arrays.
 - El **comportamiento** sigue en **clases**, una por **especie** (no por
@@ -263,17 +263,16 @@ en pantalla, sin romper el determinismo ni el presupuesto de `new` por tick.
 **Decisión (implementada):**
 
 1. **Necesidades normalizadas.** `src/systems/needs.js` actualiza por tick
-   `hambre`, `sed` y `deseoRepro` en `[0, 1]`. `energia` se mantiene en
-   `[0, energiaMaxima]` (100) y `edad` en **ticks** (no se normalizan: son
-   magnitudes con unidad propia, normalizarlas solo agregaría una división).
+   `hambre`, `sed` y `deseoRepro` en `[0, 1]`. `edad` se mantiene en **ticks**
+   (no se normaliza: es una magnitud con unidad propia).
 2. **Decisión por prioridad** (T35), en `herbivore.js`, con `if` encadenados y
    *fallthrough*:
    `hambre crítica > sed crítica > reproducirse > explorar`. No hay puntajes:
    el orden del código **es** la política.
 3. **Comer** (T37) no toca la capa de plantas directamente: el herbívoro llama
-   `comerPlanta(ctx, indice)` de `src/systems/plantGrowth.js`, que devuelve la
-   energía y baja el estado de la planta (o la borra). Así **P2 nunca escribe
-   `planta` ni `terreno`**: todo pasa por la API de vegetación.
+   `comerPlanta(ctx, indice)` de `src/systems/plantGrowth.js`, que devuelve si
+   se pudo comer y baja el estado de la planta (o la borra). Así **P2 nunca
+   escribe `planta` ni `terreno`**: todo pasa por la API de vegetación.
 4. **Beber** (T38) usa una celda de agua adyacente: con `radioBeber` un poco
    mayor que 1 el animal bebe **desde la orilla**, sin tener que meterse.
 5. **Navegación de largo alcance sin búsquedas grandes.** `terrain.js` calcula
@@ -327,7 +326,7 @@ sola rama con todo.
    (`buscarPresa` sobre el spatial hash), persecución con timeout
    (`segundosPersecucion`, en arrays `presa`/`ticksPersecucion`), ataque a
    `radioAtaque` y comida de la presa. El carnívoro es más rápido pero menos
-   eficiente: cada presa cuesta energía.
+   eficiente: cada persecución cuesta tiempo.
 5. **Depredación como causa de muerte** (T45): `CAUSA_MUERTE.DEPREDADO`, contada
    en `ctx.muertesPorCausa.depredado`. `anotarMuerte` es **idempotente** (flag
    `moribundo`) para que dos cazadores no cuenten la misma presa dos veces ni
@@ -364,7 +363,7 @@ herbívoro → planta es `comerPlanta()`.
    contador de ticks del estado. No se agrega una capa de humedad; la clave
    `offsetSemillaHumedad` de `config.terreno` hoy no se usa y se puede sacar en una limpieza.
 2. **Sin pisadas.** La interacción herbívoro → planta es **comer**: `comerPlanta()` baja el
-   estado o borra la planta y devuelve energía. Pisar no produce un comportamiento observable
+   estado o borra la planta y devuelve si se pudo comer. Pisar no produce un comportamiento observable
    ni encaja con las reglas del autómata, así que se descarta.
 3. **Muerte por edad (implementada, T30).** `pasoVegetacion()` cuenta los ticks de la adulta en
    la capa de edad; al llegar a `CONFIG.plantas.ticksVidaAdulta` (7200 ticks = 2 min por defecto)
@@ -397,7 +396,7 @@ rama `master` se había perdido en el refactor SoA.
    `factorVelocidad = 1 / coste*` (`costeAgua = 4`, `costeArena = 1.6`). Así no se duplica un
    número de balance en dos lugares.
 3. **Coste y velocidad se aplican en sitios distintos.** `movement.js` mira la celda destino para
-   frenar; `needs.js` mira la celda actual para cobrar energía (T40). Es un desfase de un tick en
+   frenar; el terreno solo afecta la velocidad (T40). Es un desfase de un tick en
    la transición entre terrenos, aceptable y determinista.
 4. **Sin grilla = sin factor.** Los tests de entidades corren en un mundo vacío (`ctx.grid ===
    null`) y siguen moviéndose a velocidad plena.
@@ -576,13 +575,13 @@ el resto de parámetros quedan fijos; el override se registra en la salida.
 |---|---|---|---|---|
 | 1 | `depredador.crecimientoReproduccion` 0.003 → 0.006 | herb 136 · pred 4 | 118 | Descartado |
 | 2 | `depredador.decaimientoReproduccion` 0.02 → 0.005 | herb 136 · pred 4 | 118 | Descartado |
-| 3 | `depredador.energiaPorPresa` 35 → 60 | herb 136 · pred 4 | 118 | Descartado |
+| 3 | `depredador.segundosPersecucion` 30 → 40 | herb 136 · pred 4 | 118 | Descartado |
 
 **Decisión.** No se adoptó ningún cambio: las tres corridas son **idénticas al baseline** hasta
-el último minuto (solo varía la energía media en la corrida 3, sin efecto en la población). El
+el último minuto (solo varía ligeramente en la corrida 3, sin efecto en la población). El
 deseo reproductivo no parece ser el cuello: crece a 0.003/s y decae a 0.02/s, pero duplicar el
 crecimiento o cuadruplicar el tiempo de decaimiento no cambia ningún nacimiento. Tampoco ayuda
-dar más energía por presa.
+dar más tiempo de persecución.
 
 **Queda para el próximo bucle.** No se probaron `radioReproduccion` ni `radioVision`: cada uno
 debe ser su propia corrida (regla de un parámetro por experimento). El declive de depredadores

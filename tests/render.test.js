@@ -247,7 +247,6 @@ describe('T61 · barras de necesidades siguen a la cámara', () => {
     const id = manager.crear(ESPECIE.HERBIVORO);
     manager.x[id] = 4;
     manager.y[id] = 4;
-    manager.energia[id] = CONFIG.entidades.energiaMaxima / 2;
 
     const r = new NecesidadesRenderer(app, { tileSize: 8, manager });
     r.seleccionar(id);

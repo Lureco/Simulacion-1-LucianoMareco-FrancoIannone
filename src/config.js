@@ -188,10 +188,6 @@ export const CONFIG = {
      * medido en 2247 celdas, para que el mapa inicial no cambie de aspecto.
      */
     poblacionInicial: 2247,
-    /** Energía que aporta una planta adulta al ser comida. */
-    energiaPorPlanta: 15,
-    /** Fracción de `energiaPorPlanta` que aporta una planta joven (T37). */
-    fraccionEnergiaJoven: 0.5,
     /** Colores de cada estado de planta para el render (0xRRGGBB). */
     colorSemilla: 0x6f7f4a,
     colorJoven: 0x6fae52,
@@ -210,17 +206,9 @@ export const CONFIG = {
     maxEntidades: 4000,
     /** Vida máxima en ticks antes de morir por edad. */
     edadMaximaTicks: 60 * 60 * 12, // 12 minutos de simulación
-    /** Energía inicial de una entidad recién nacida. */
-    energiaInicial: 70,
-    /** Energía máxima: tope al que se puede llegar comiendo. */
-    energiaMaxima: 100,
-    /** Energía mínima para seguir vivo. */
-    energiaMinima: 0,
-    /** Gasto energético base por segundo, sobre tierra (T40). */
-    gastoEnergiaBase: 0.12,
-    /** Multiplicador de coste energético al atravesar agua. */
+    /** Multiplicador de lentitud al cruzar agua (movement.js, T40). */
     costeAgua: 4,
-    /** Multiplicador de coste energético al atravesar arena. */
+    /** Multiplicador de lentitud al cruzar arena (movement.js, T40). */
     costeArena: 1.6,
     /** Fracción de la vida máxima con la que se reparten edades iniciales (T42). */
     fraccionEdadInicial: 0.5,
@@ -257,14 +245,10 @@ export const CONFIG = {
     consumoHambre: 0.01,
     /** Velocidad a la que sube la sed por segundo (T34). */
     consumoSed: 0.004,
-    /** Energía mínima para reproducirse. */
-    energiaReproduccion: 55,
     /** Ticks entre reproducción y el siguiente intento. */
     cooldownReproduccion: 60 * 8,
     /** Edad mínima (en ticks) para reproducirse. */
     edadMinimaReproduccion: 60 * 15,
-    /** Energía que le cuesta cada cría a cada progenitor. */
-    energiaPorCria: 20,
     /** Multiplicador de velocidad al ir a comer. */
     bonusVelocidadComer: 1.15,
     /** Distancia (celdas) a la que se puede morder una planta (T37). */
@@ -315,8 +299,6 @@ export const CONFIG = {
     consumoHambre: 0.008,
     /** Velocidad a la que sube la sed por segundo. */
     consumoSed: 0.013,
-    /** Energía que aporta una presa al ser cazada (T43). */
-    energiaPorPresa: 35,
     /** Fracción de hambre que se satisface al comer una presa (T43). */
     saciedadPorPresa: 0.8,
     /** Fracción de sed que se satisface de una vez al beber (T38). */
@@ -325,13 +307,10 @@ export const CONFIG = {
     radioAtaque: 0.6,
     /** Distancia (celdas) a la que se considera que está bebiendo (T38). */
     radioBeber: 1.5,
-    energiaReproduccion: 70,
     cooldownReproduccion: 60 * 15,
     edadMinimaReproduccion: 60 * 25,
     /** Distancia (celdas) a la que dos depredadores dispuestos se reproducen (T46). */
     radioReproduccion: 1.5,
-    /** Energía que le cuesta cada cría a cada progenitor. */
-    energiaPorCria: 35,
     /** Velocidad a la que sube el deseo de reproducirse si está bien alimentado (T46). */
     crecimientoReproduccion: 0.003,
     /** Velocidad a la que baja el deseo de reproducirse si tiene hambre o sed (T46). */
@@ -376,6 +355,12 @@ export const CONFIG = {
     distanciaBebida: 1,
     /** Fracción de `distanciaOrilla` usada como objetivo con sed media (T38). */
     factorDistanciaSedMedia: 0.5,
+    /**
+     * Mantiene la franja de distancia al agua al deambular (T38). Si se
+     * desactiva, los animales vagan libremente; con sed crítica SIGUEN yendo
+     * a beber (T38), lo que se quita es el "pegarse a la orilla".
+     */
+    mantenerDistanciaAgua: true,
     /**
      * Separación estilo boids: radio (en celdas) en el que un animal siente a
      * los demás de su especie y ajusta el rumbo para no amontonarse.
@@ -469,7 +454,6 @@ export const PRESETS = {
       poblacionInicial: 80,
       velocidad: 2,
       radioVision: 12,
-      energiaPorPresa: 45,
       segundosPersecucion: 40,
     },
   },

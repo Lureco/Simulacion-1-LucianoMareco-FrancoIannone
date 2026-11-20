@@ -18,6 +18,7 @@ import { TERRENO, PLANTA } from '../src/world/cell.js';
 import { CONFIG } from '../src/config.js';
 import { calcularCampos } from '../src/world/terrain.js';
 import { direccionAlAgua, direccionATierra } from '../src/systems/perception.js';
+import { factorVelocidad } from '../src/systems/movement.js';
 import {
   actualizarEntidad,
   aplicarMuertes,
@@ -81,14 +82,12 @@ describe('decisiones por prioridad (T35)', () => {
     const indice = ctx.grid.indice(8, 8);
     ctx.grid.planta[indice] = PLANTA.ADULTA;
     manager.hambre[id] = 0.9;
-    manager.energia[id] = 40;
 
     actualizarEntidad(id, CONFIG.tiempo.pasoFijo, ctx);
 
     expect(manager.estado[id]).toBe(ESTADO_IA.COMIENDO);
     expect(ctx.grid.planta[indice]).toBe(PLANTA.NADA);
     expect(manager.hambre[id]).toBe(0);
-    expect(manager.energia[id]).toBeGreaterThan(40);
   });
 
   it('bebe cuando tiene sed y está sobre agua (T38)', () => {
@@ -127,19 +126,15 @@ describe('decisiones por prioridad (T35)', () => {
 });
 
 describe('coste por terreno (T40)', () => {
-  it('atravesar agua gasta más energía que la tierra', () => {
-    const tierra = contextoConGrid();
-    const idTierra = herbivoroEnElCentro(tierra.ctx, tierra.manager);
-    actualizarEntidad(idTierra, CONFIG.tiempo.pasoFijo, tierra.ctx);
-    const gastoTierra = CONFIG.entidades.energiaInicial - tierra.manager.energia[idTierra];
+  it('atravesar agua es más lento que la tierra', () => {
+    const tierra = factorVelocidad(TERRENO.TIERRA, CONFIG);
+    const agua = factorVelocidad(TERRENO.AGUA, CONFIG);
+    const arena = factorVelocidad(TERRENO.ARENA, CONFIG);
 
-    const agua = contextoConGrid();
-    const idAgua = herbivoroEnElCentro(agua.ctx, agua.manager, 4.5, 4.5);
-    agua.ctx.grid.terreno[agua.ctx.grid.indice(4, 4)] = TERRENO.AGUA;
-    actualizarEntidad(idAgua, CONFIG.tiempo.pasoFijo, agua.ctx);
-    const gastoAgua = CONFIG.entidades.energiaInicial - agua.manager.energia[idAgua];
-
-    expect(gastoAgua).toBeGreaterThan(gastoTierra);
+    expect(tierra).toBe(1);
+    expect(agua).toBeLessThan(tierra);
+    expect(arena).toBeLessThan(tierra);
+    expect(agua).toBeLessThan(arena);
   });
 });
 
@@ -151,7 +146,6 @@ describe('reproducción', () => {
 
     for (const id of [a, b]) {
       manager.edad[id] = CONFIG.herbivoro.edadMinimaReproduccion;
-      manager.energia[id] = CONFIG.entidades.energiaMaxima;
       manager.deseoRepro[id] = 1;
       manager.cooldown[id] = 0;
     }
@@ -184,7 +178,6 @@ describe('reproducción', () => {
     }
 
     manager.edad[a] = CONFIG.herbivoro.edadMinimaReproduccion;
-    manager.energia[a] = CONFIG.entidades.energiaMaxima;
     manager.deseoRepro[a] = 1;
     ctx.hash.reconstruir();
 
@@ -196,10 +189,10 @@ describe('reproducción', () => {
 });
 
 describe('causas de muerte (T45)', () => {
-  it('muere de hambre cuando la energía llega a 0', () => {
+  it('muere de hambre cuando el hambre llega al máximo', () => {
     const { ctx, manager } = contextoConGrid();
     const id = herbivoroEnElCentro(ctx, manager);
-    manager.energia[id] = 0;
+    manager.hambre[id] = 1;
 
     actualizarEntidad(id, CONFIG.tiempo.pasoFijo, ctx);
     aplicarMuertes(ctx);

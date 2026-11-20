@@ -12,7 +12,8 @@
  *   hambre crítica > sed crítica > reproducirse > explorar
  *
  * Cada tick: se actualizan las necesidades, se decide el estado y el rumbo, y
- * se integra el movimiento. El gasto energético depende del terreno (T40).
+ * se integra el movimiento. El terreno modula la velocidad de movimiento
+ * (T40): cruzar agua o arena es más lento que cruzar tierra.
  *
  * Las búsquedas (plantas, agua, pareja) viven en `systems/perception.js`; las
  * necesidades y la muerte, en `systems/needs.js`; las altas/bajas diferidas,
@@ -40,7 +41,6 @@ import {
   causaDeMuerte,
   CAUSA_MUERTE,
   quiereReproducir,
-  gastarEnergia,
   registrarMuerte,
 } from '../systems/needs.js';
 import { anotarMuerte, anotarNacimiento } from '../systems/eventos.js';
@@ -86,7 +86,6 @@ export class Herbivoro extends Especie {
     this.pensar(id, dt, ctx);
     aplicarSeparacion(id, ctx);
     mover(id, dt, ctx);
-    gastarEnergia(id, dt, ctx);
   }
 
   /**
@@ -146,7 +145,7 @@ export class Herbivoro extends Especie {
   /**
    * Si la celda actual no es tierra, apunta hacia la tierra más cercana
    * (campo precalculado). Evita que un herbívoro quede atrapado en un lago o
-   * en la playa, donde no hay plantas y el terreno cuesta más energía.
+   * en la playa, donde no hay plantas y el terreno es más lento.
    * @returns {boolean} `true` si cambió el rumbo.
    */
   volverATierra(id, ctx, x, y) {
@@ -187,18 +186,16 @@ export class Herbivoro extends Especie {
   }
 
   /**
-   * Muerde la planta de una celda y suma la energía (T37).
+   * Muerde la planta de una celda y sacia el hambre (T37).
    * @param {number} id
    * @param {object} ctx
    * @param {number} indice
    */
   comer(id, ctx, indice) {
-    const ganancia = comerPlanta(ctx, indice);
-    if (ganancia <= 0) return;
+    const comio = comerPlanta(ctx, indice);
+    if (!comio) return;
 
     const a = ctx.entidades;
-    const maxima = ctx.config.entidades.energiaMaxima;
-    a.energia[id] = Math.min(maxima, a.energia[id] + ganancia);
     a.hambre[id] = 0;
   }
 
@@ -272,8 +269,8 @@ export class Herbivoro extends Especie {
   }
 
   /**
-   * Reproduce a dos herbívoros: cobra energía y cooldown, y anota la cría en
-   * una celda de tierra adyacente (T46/T47). La cría se crea al final del tick.
+   * Reproduce a dos herbívoros: pone cooldown y anota la cría en una celda
+   * de tierra adyacente (T46/T47). La cría se crea al final del tick.
    * @param {number} id
    * @param {number} pareja
    * @param {object} ctx
@@ -286,8 +283,6 @@ export class Herbivoro extends Especie {
     a.cooldown[pareja] = cfg.cooldownReproduccion;
     a.deseoRepro[id] = 0;
     a.deseoRepro[pareja] = 0;
-    a.energia[id] = Math.max(0, a.energia[id] - cfg.energiaPorCria);
-    a.energia[pareja] = Math.max(0, a.energia[pareja] - cfg.energiaPorCria);
 
     const indice = this.celdaLibreAdyacente(ctx, a.celdaX(id), a.celdaY(id));
     if (indice >= 0) anotarNacimiento(ctx, a.tipo[id], indice);
@@ -324,12 +319,21 @@ export class Herbivoro extends Especie {
     // T38: mantiene una franja alrededor del agua. Si está más lejos (o más
     // cerca) de lo que quiere según su sed, corrige el rumbo antes de
     // deambular al azar. Sin campo de agua (tests/mundo sin terreno) no hace
-    // nada y sigue el wander de siempre.
-    const objetivoAgua = distanciaObjetivoAlAgua(a.sed[id], cfg);
-    const rumboAgua = direccionAjustadaAlAgua(ctx, a.x[id], a.y[id], objetivoAgua, objetivoDe(ctx));
-    if (rumboAgua.encontrado) {
-      this.apuntar(id, rumboAgua.x - a.x[id], rumboAgua.y - a.y[id], ctx);
-      return;
+    // nada y sigue el wander de siempre. El checkbox `mantenerDistanciaAgua`
+    // permite desactivar este pegote a la orilla sin quitar la bebida.
+    if (ctx.config?.percepcion?.mantenerDistanciaAgua !== false) {
+      const objetivoAgua = distanciaObjetivoAlAgua(a.sed[id], cfg);
+      const rumboAgua = direccionAjustadaAlAgua(
+        ctx,
+        a.x[id],
+        a.y[id],
+        objetivoAgua,
+        objetivoDe(ctx),
+      );
+      if (rumboAgua.encontrado) {
+        this.apuntar(id, rumboAgua.x - a.x[id], rumboAgua.y - a.y[id], ctx);
+        return;
+      }
     }
 
     a.ticksParaGiro[id] -= 1;

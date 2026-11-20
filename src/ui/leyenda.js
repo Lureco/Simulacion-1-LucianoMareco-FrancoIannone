@@ -29,7 +29,7 @@ import {
   aCss,
 } from '../render/paleta.js';
 import { ESPECIE, ESTADO_IA, NOMBRE_ESTADO } from '../entities/entity.js';
-import { CONFIG } from '../config.js';
+import { CONFIG, TICKS_POR_SEGUNDO } from '../config.js';
 
 export class Leyenda {
   /**
@@ -123,15 +123,34 @@ export class Leyenda {
       const nombre = NOMBRE_ESPECIE[seleccion.tipo] ?? 'bicho';
       lineas.push(`<span style="color:#9aa4b2">— ${nombre} —</span>`);
 
-      const fila = (etiqueta, color, valor) =>
+      const fila = (etiqueta, color, valor, textoNumero) =>
         `<span style="color:${aCss(color)}">■</span> ${etiqueta.padEnd(13)} ` +
         `${barra(valor)} ` +
-        `<span style="color:#9aa4b2">${valor.toFixed(2)}</span>`;
+        (textoNumero !== undefined ? `<span style="color:#9aa4b2">${textoNumero}</span>` : '');
 
-      lineas.push(fila('hambre', COLOR_NECESIDAD.hambre, seleccion.hambre));
-      lineas.push(fila('sed', COLOR_NECESIDAD.sed, seleccion.sed));
-      lineas.push(fila('reproducción', COLOR_NECESIDAD.reproduccion, seleccion.reproduccion));
-      lineas.push(fila('energía', COLOR_NECESIDAD.energia, seleccion.energia));
+      const edadSegundos = Math.round(seleccion.edadTicks / TICKS_POR_SEGUNDO);
+      const edadMaximaSegundos = Math.round(seleccion.edadMaximaTicks / TICKS_POR_SEGUNDO);
+
+      lineas.push(
+        fila('hambre', COLOR_NECESIDAD.hambre, seleccion.hambre, seleccion.hambre.toFixed(2)),
+      );
+      lineas.push(fila('sed', COLOR_NECESIDAD.sed, seleccion.sed, seleccion.sed.toFixed(2)));
+      lineas.push(
+        fila(
+          'reproducción',
+          COLOR_NECESIDAD.reproduccion,
+          seleccion.reproduccion,
+          seleccion.reproduccion.toFixed(2),
+        ),
+      );
+      lineas.push(
+        fila(
+          'edad',
+          COLOR_NECESIDAD.edad,
+          seleccion.edad,
+          `${edadSegundos}/${edadMaximaSegundos} s`,
+        ),
+      );
     }
 
     const html = lineas.join('<br>');

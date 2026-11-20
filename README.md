@@ -102,13 +102,15 @@ celda. Las plantas cubren la tierra y crecen por un autómata celular. Sobre
 ese mapa, **120 herbívoros** y **25 carnívoros**. Los herbívoros **comen**
 cuando tienen hambre, **van a beber** a la costa cuando tienen sed (y si no
 ven agua, caminan hacia ella siguiendo un campo precalculado), **se
-reproducen** cuando juntan energía y encuentran pareja, **huyen** si un
+reproducen** cuando encuentran pareja, **huyen** si un
 carnívoro se acerca, y **mueren** de hambre, sed, vejez o **depredación** —
 cada causa contada por separado. Los carnívoros **persiguen y cazan** a los
-herbívoros (más rápidos, pero cada presa les cuesta energía), beben,
-deambulan manteniendo la distancia al agua y también se reproducen. Unos y otros
-ajustan su rumbo para **no amontonarse** con los de su especie (separación estilo
-boids, con radio e intensidad configurables). Todo se ve con
+herbívoros (más rápidos, pero cada persecución les cuesta tiempo), beben,
+deambulan manteniendo la distancia al agua —comportamiento que se puede
+desactivar con el checkbox `mantenerDistanciaAgua` en *Configuración →
+percepción*— y también se reproducen. Unos y otros ajustan su rumbo para **no
+amontonarse** con los de su especie (separación estilo boids, con radio e
+intensidad configurables). Todo se ve con
 **sprites reales**: las plantas pasan de semilla a joven a adulta (y desaparecen al morir), y los
 animales son sprites laterales de **Triceratops** y **Ceratosaurio** que se voltean según su
 dirección y animan su caminata a velocidad distinta por especie.

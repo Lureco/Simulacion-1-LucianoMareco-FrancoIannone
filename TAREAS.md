@@ -236,7 +236,7 @@ simulacion-ecosistemas/
 ### F4 · IA del herbívoro (sistema de necesidades)
 
 - [x] **T34 · P2** — Necesidades `hambre`, `sed`, `deseoRepro` en `[0, 1]`
-      (`energía` y `edad` con su unidad natural; ver `docs/CONTRATO.md` §4)
+      (`edad` con su unidad natural; ver `docs/CONTRATO.md` §4)
 - [x] **T35 · P2** — **Decisión por prioridad**: hambre crítica > sed > reproducirse > explorar
 - [x] **T36 · P2** — Percepción con el spatial hash: detectar plantas, agua y otros herbívoros
       en el radio de visión (`src/systems/perception.js`)
@@ -245,7 +245,7 @@ simulacion-ecosistemas/
 - [x] **T38 · P2** — Conducta de **beber**: ir a la celda de agua adyacente más cercana
       (y campo BFS `aguaDir*` cuando el agua no está a la vista)
 - [x] **T39 · P2** — Conducta de **explorar**: destino aleatorio con *wander* (ruido en el rumbo)
-- [x] **T40 · P2** — Penalización por terreno: arena y agua consumen más energía al atravesarlas
+- [x] **T40 · P2** — Penalización por terreno: arena y agua son más lentas al atravesarlas
 - [x] **T41 · P1** — Ajustar parámetros para que el herbívoro no muera en los primeros 30 s
       (que el resultado se vea: no deambulan sin objetivo, comen y beben de verdad)
 - [x] **T42 · Ambos** — Test de determinismo: misma seed + mismos parámetros ⇒ misma simulación
@@ -255,7 +255,7 @@ simulacion-ecosistemas/
 >
 > **Adelantado desde F5 (lado herbívoro):** T45 (muerte por causas separadas:
 > hambre/sed/vejez, `causaDeMuerte` + `ctx.muertesPorCausa`), T46 (reproducción con
-> energía, deseo, cooldown y pareja) y T47 (cría en celda libre adyacente). El lado del
+> deseo, cooldown y pareja) y T47 (cría en celda libre adyacente). El lado del
 > **depredador** (T43/T44) y la depredación como causa de muerte se completaron en F5.
 
 ---
@@ -265,11 +265,11 @@ simulacion-ecosistemas/
 - [x] **T43 · P2** — Depredador: detección de herbívoros en radio, **persecución** y caza
       (`predator.js` + `buscarPresa`/`buscarDepredador` en `perception.js`)
 - [x] **T44 · P2** — Balance del depredador: más rápido pero menos eficiente (trade-off)
-      (velocidad 1.7 > 1.2, pero cada presa cuesta energía y el consumo es mayor)
+      (velocidad 1.7 > 1.2, pero cada persecución cuesta tiempo)
 - [x] **T45 · P2** — **Muerte por causas separadas y observables**: hambre, sed, edad, depredación
       *(hechas en F4 y completadas en F5: `causaDeMuerte` + `CAUSA_MUERTE.DEPREDADO`, contadas
       por separado en `ctx.muertesPorCausa`)*
-- [x] **T46 · P2** — **Reproducción**: requiere energía, no estar hambriento/sediento, cooldown,
+- [x] **T46 · P2** — **Reproducción**: requiere no estar hambriento/sediento, cooldown,
       y presencia de pareja del mismo tipo y edad mínima
       *(herbívoros en F4 y depredadores en F5: `quiereReproducir` + `aplicarNacimientos`)*
 - [x] **T47 · P2** — Nacimiento de la cría en celda libre adyacente válida
@@ -337,7 +337,7 @@ simulacion-ecosistemas/
       (no cambiar cinco cosas a la vez)
       *(tres corridas de 10 min con `SIM_OVERRIDE=SECCION.CLAVE=VALOR` sobre la misma seed 1337:
       `depredador.crecimientoReproduccion=0.006`, `depredador.decaimientoReproduccion=0.005` y
-      `depredador.energiaPorPresa=60`. Las tres dieron **poblaciones idénticas** al baseline
+      `depredador.segundosPersecucion=40`. Las tres dieron **poblaciones idénticas** al baseline
       (herb 136 · pred 4 en min 10, 118 nacimientos) ⇒ se descartan los tres cambios y **no se
       modifica `config.js`**. El declive de depredadores queda como limitación conocida para un
       próximo bucle (probar `radioReproduccion`/`radioVision`). Ver D20)*

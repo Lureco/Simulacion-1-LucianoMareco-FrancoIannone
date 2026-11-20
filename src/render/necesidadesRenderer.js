@@ -3,7 +3,7 @@
  * ===========================================================
  *
  * Cuando se hace clic en un animal, se le dibujan encima las barras de
- * sus necesidades (hambre, sed, energía). Es la forma de ver **por qué**
+ * sus necesidades (hambre, sed, edad). Es la forma de ver **por qué**
  * un animal está haciendo lo que está haciendo.
  *
  * REGLAS (TAREAS §2):
@@ -20,9 +20,9 @@
  * la leyenda no necesite saber de SoA, `seleccionada` expone un **objeto
  * plano de vista** con todos los valores ya resueltos:
  *
- *     { id, tipo, vivo, hambre, sed, reproduccion, energia, celdaX, celdaY, estado }
+ *     { id, tipo, vivo, hambre, sed, reproduccion, edad, celdaX, celdaY, estado }
  *
- * donde `energia` viene **normalizada 0..1**.
+ * donde `edad` viene **normalizada 0..1**.
  */
 
 import { Container, Graphics, Sprite } from 'pixi.js';
@@ -33,14 +33,14 @@ import { CONFIG } from '../config.js';
  * Necesidades que se muestran, en orden.
  *
  * El orden es el de la **prioridad** de la IA (GDD §5.2): hambre > sed >
- * reproducción > energía. Así, de un vistazo, se ve cuál necesidad está
+ * reproducción > edad. Así, de un vistazo, se ve cuál necesidad está
  * dominando y por tanto qué va a hacer el animal.
  */
 const NECESIDADES = [
   { clave: 'hambre', etiqueta: 'hambre' },
   { clave: 'sed', etiqueta: 'sed' },
   { clave: 'reproduccion', etiqueta: 'reproducción' },
-  { clave: 'energia', etiqueta: 'energía' },
+  { clave: 'edad', etiqueta: 'edad' },
 ];
 
 export class NecesidadesRenderer {
@@ -84,7 +84,7 @@ export class NecesidadesRenderer {
     this.idSeleccionado = null;
     /**
      * Vista plana de la entidad seleccionada, o `null`.
-     * @type {{id: number, tipo: number, vivo: boolean, hambre: number, sed: number, reproduccion: number, energia: number, celdaX: number, celdaY: number, estado: number}|null}
+     * @type {{id: number, tipo: number, vivo: boolean, hambre: number, sed: number, reproduccion: number, edad: number, celdaX: number, celdaY: number, estado: number}|null}
      */
     this.seleccionada = null;
     /** Último valor dibujado (para no redibujar si no cambió). @type {string} */
@@ -125,7 +125,7 @@ export class NecesidadesRenderer {
   crearVista(id) {
     if (id === null || id === undefined) return null;
     const a = this.manager;
-    const max = CONFIG.entidades.energiaMaxima;
+    const edadMaxima = CONFIG.entidades.edadMaximaTicks;
     return {
       id,
       tipo: a.tipo[id],
@@ -133,7 +133,9 @@ export class NecesidadesRenderer {
       hambre: a.hambre[id],
       sed: a.sed[id],
       reproduccion: a.deseoRepro[id],
-      energia: max > 0 ? Math.max(0, Math.min(1, a.energia[id] / max)) : 0,
+      edad: edadMaxima > 0 ? Math.max(0, Math.min(1, a.edad[id] / edadMaxima)) : 0,
+      edadTicks: a.edad[id],
+      edadMaximaTicks: edadMaxima,
       celdaX: a.celdaX(id),
       celdaY: a.celdaY(id),
       estado: a.estado[id],
@@ -227,8 +229,8 @@ export class NecesidadesRenderer {
   /**
    * Valor de una necesidad en `[0, 1]`, listo para dibujar la barra.
    *
-   * **Ojo:** `hambre` y `sed` ya están normalizadas, y `energia` llega
-   * normalizada en la vista. Aun así se recorta por las dudas.
+   * **Ojo:** `hambre`, `sed` y `edad` ya llegan normalizadas en la vista.
+   * Aun así se recorta por las dudas.
    *
    * @param {object} vista Objeto plano de vista.
    * @param {string} clave

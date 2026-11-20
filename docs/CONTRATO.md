@@ -22,7 +22,6 @@
 |---|---|---|---|
 | `tipo` | `Int32Array` | — | `ESPECIE.HERBIVORO` / `ESPECIE.PREDADOR` |
 | `x`, `y` | `Float32Array` | celdas | Posición (float) |
-| `energia` | `Float32Array` | — | Energía actual (`[0, energiaMaxima]`) |
 | `hambre` | `Float32Array` | — | Hambre normalizada `[0, 1]` (F4) |
 | `sed` | `Float32Array` | — | Sed normalizada `[0, 1]` (F4) |
 | `deseoRepro` | `Float32Array` | — | Deseo de reproducirse `[0, 1]` (F4) |
@@ -114,7 +113,7 @@ class Grid {
 
 **Lo que P2 necesita de la `Grid`** (y ya está garantizado):
 
-- Preguntar el **tipo de terreno** de una celda → penalizar energía al cruzar
+- Preguntar el **tipo de terreno** de una celda → penalizar velocidad al cruzar
   arena/agua (T40, T49): `terrenoEn`, `esAgua`, `esArena`, `esTierra`.
 - Preguntar si una celda está **libre** → dónde nace una cría (T47):
   `estaLibre`.
@@ -147,45 +146,42 @@ Además de las constantes, `nombreTerreno(tipo)` y `nombrePlanta(estado)` dan
 ## 4 · Necesidades — `src/systems/needs.js` (P2) — ✅ IMPLEMENTADA (F4)
 
 Sistema de necesidades. **Normalizadas en `[0, 1]`**: `hambre`, `sed` y
-`deseoRepro`, donde `0` es "satisfecha" y `1` es "crítica". `energia` y `edad`
-**no** se normalizan porque tienen unidad propia (`energia` en
-`[0, energiaMaxima]`, `edad` en **ticks**).
+`deseoRepro`, donde `0` es "satisfecha" y `1` es "crítica". `edad` se
+mantiene en **ticks** (`Int32Array`), no normalizada: es una magnitud con
+unidad propia.
 
 | Necesidad | Rango | Significado | Umbral |
 |---|---|---|---|
 | `hambre` | `[0, 1]` | Necesidad de comer | `CONFIG.herbivoro.hambreCritica` |
 | `sed` | `[0, 1]` | Necesidad de beber | `CONFIG.herbivoro.sedCritica` |
 | `deseoRepro` | `[0, 1]` | Necesidad de reproducirse | `CONFIG.herbivoro.umbralReproduccion` |
-| `energia` | `[0, 100]` | Energía física | `<= CONFIG.entidades.energiaMinima` ⇒ muerte por hambre |
+
 | `edad` | ticks | Edad | `>= CONFIG.entidades.edadMaximaTicks` ⇒ muerte por vejez |
 
 Además de actualizar las necesidades, el módulo expone:
 
 - `causaDeMuerte(id, ctx)` → `CAUSA_MUERTE.*` (`HAMBRE`, `SED`, `VEJEZ`,
   `DEPREDADO`) o `NINGUNA` si sigue viva (T45); `NOMBRE_CAUSA_MUERTE` da el
-  nombre legible.
+  nombre legible. `HAMBRE` se dispara cuando `hambre >= 1`.
 - `debeMorir(id, ctx)` → atajo booleano.
 - `registrarMuerte(ctx, causa)` → suma la muerte al contador de su causa
   (`ctx.muertesPorCausa`), compartido por las dos especies (T45).
-- `quiereReproducir(id, ctx, cfg?)` → si el deseo supera el umbral, la energía
-  alcanza y el cooldown terminó. `cfg` permite usar la config de la especie
+- `quiereReproducir(id, ctx, cfg?)` → si el deseo supera el umbral, no hay
+  cooldown y la entidad maduró. `cfg` permite usar la config de la especie
   (`herbivoro` o `depredador`); por defecto, la del herbívoro.
 
 **Deseo de reproducción (F5):** tras madurar, `deseoRepro` sube
 (`crecimientoReproduccion`) **solo si el animal está bien alimentado** (hambre y
 sed por debajo de sus umbrales críticos); con hambre o sed encima, **baja**
 (`decaimientoReproduccion`). Reproducirse en mal momento no tiene sentido.
-- `gastarEnergia(id, dt, ctx)` → descuenta energía según el terreno que pisa
-  (T40): `costeAgua`, `costeArena` multiplican el gasto base.
 
 **Por qué normalizadas:** las dos especies pueden tener escalas distintas
 (una sedienta, otra hambrienta) y al normalizar, la **misma IA por prioridad**
 sirve para las dos sin código duplicado.
 
-**Desviación documentada:** el contrato original (§4, primera versión) pedía
-`energía` y `edad` también en `[0, 1]`. Se implementaron con su unidad natural
-para no introducir divisiones por tick en el bucle caliente; la IA solo compara
-contra umbrales, así que la escala es indistinta.
+El terreno afecta el **movimiento** (T40): cruzar agua o arena es más lento
+que cruzar tierra (`costeAgua`, `costeArena` como factores de lentitud en
+`src/systems/movement.js`).
 
 ---
 

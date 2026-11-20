@@ -437,6 +437,7 @@ describe('categorías, scroll y tipos de campo', () => {
     expect(panel.campos['terreno.colorAgua'].type).toBe('color');
     expect(panel.campos['ui.graficoColorPlantas'].type).toBe('color');
     expect(panel.campos['sprites.generarFallback'].type).toBe('checkbox');
+    expect(panel.campos['percepcion.mantenerDistanciaAgua'].type).toBe('checkbox');
 
     // Las rutas de sprites (objetos anidados) ya no aparecen en el panel.
     expect(panel.campos['sprites.rutaPlanta']).toBeUndefined();

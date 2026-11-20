@@ -55,10 +55,11 @@ export const COLOR_NECESIDAD = {
   hambre: 0xff8c42,
   sed: 0x4aa3ff,
   reproduccion: 0xd980ff,
-  energia: 0x9dff5c,
+  edad: 0x9dff5c,
 };
 
 /** Convierte un color 0xRRGGBB a `#rrggbb` (para CSS). */
 export function aCss(color) {
+  if (color === undefined || color === null) return '#ffffff';
   return `#${color.toString(16).padStart(6, '0')}`;
 }

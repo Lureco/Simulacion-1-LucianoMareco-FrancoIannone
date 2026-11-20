@@ -34,12 +34,13 @@ describe('Especie y almacén (SoA)', () => {
     expect(m.estado).toBeInstanceOf(Uint8Array);
   });
 
-  it('arranca viva, con energía inicial y en estado vago', () => {
+  it('arranca viva, con hambre y sed en 0, y en estado vago', () => {
     const m = new EntityManager();
     const id = m.crear(ESPECIE.HERBIVORO);
     expect(m.vivo[id]).toBe(1);
     expect(m.edad[id]).toBe(0);
-    expect(m.energia[id]).toBe(CONFIG.entidades.energiaInicial);
+    expect(m.hambre[id]).toBe(0);
+    expect(m.sed[id]).toBe(0);
     expect(m.estado[id]).toBe(ESTADO_IA.VAGO);
   });
 

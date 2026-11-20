@@ -223,27 +223,24 @@ function buscarVecinaLibre(i, ancho, alto, terreno, planta, vecinos, prng) {
  *
  * El contrato §2 dice que P2 **no** escribe la capa `planta`. Por eso el
  * bocado no se hace desde la IA: se pide por acá, que es la API del sistema
- * de vegetación. La planta desaparece (`NADA`) y devolvemos la energía del
- * bocado para que el herbívoro se la sume.
+ * de vegetación. La planta desaparece (`NADA`) y devolvemos si el bocado se
+ * pudo hacer (hubo una planta comestible).
  *
  * @param {object} ctx
  * @param {number} indice Índice plano `y * ancho + x` de la celda.
- * @returns {number} Energía del bocado (0 si no había nada comestible).
+ * @returns {boolean} `true` si hubo planta comestible y se consumió.
  */
 export function comerPlanta(ctx, indice) {
   const grid = ctx.grid;
-  if (!grid) return 0;
+  if (!grid) return false;
 
-  const cfg = ctx.config.plantas;
   const estado = grid.planta[indice];
-  if (estado !== PLANTA.ADULTA && estado !== PLANTA.JOVEN) return 0;
+  if (estado !== PLANTA.ADULTA && estado !== PLANTA.JOVEN) return false;
 
   grid.planta[indice] = PLANTA.NADA;
   capaEdad(ctx)[indice] = 0;
 
-  return estado === PLANTA.ADULTA
-    ? cfg.energiaPorPlanta
-    : cfg.energiaPorPlanta * cfg.fraccionEnergiaJoven;
+  return true;
 }
 
 /**
