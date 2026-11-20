@@ -966,19 +966,22 @@ aspecto pixel art.
    muestreo acotado, la interpolación bilineal por tile y la resolución del tipo
    por píxel (`terrenoDePixel`/`alturaDePixel`) en capas `AGUA < ARENA < TIERRA`.
    Es determinista y testeable en Node, sin DOM ni Pixi.
-2. **Textura a resolución configurable.** Con marching squares activo, el
-   `TerrainRenderer` genera un canvas de `ancho*detalle × alto*detalle`
-   (`detalle = CONFIG.terreno.pixelesPorCeldaMarching`, por defecto 4) para
-   limitar memoria, pinta cada píxel según la transición y sube **una sola
-   textura + un solo `Sprite`** con `scaleMode: 'nearest'`. La escala compensa
-   `tileSize/detalle` para cubrir el mundo. Se conserva el sombreado por altura y
-   el jitter determinista por celda; en píxeles de transición se usa altura
-   interpolada.
+2. **Texturas divididas en chunks.** Con marching squares activo, el
+   `TerrainRenderer` genera el terreno a resolución `ancho*detalle × alto*detalle`
+   (`detalle = CONFIG.terreno.pixelesPorCeldaMarching`, por defecto 4) y lo divide
+   en texturas-chunk de como máximo
+   `CONFIG.terreno.maxTamanoTexturaMarching × maxTamanoTexturaMarching` px (por
+   defecto 1024). Cada chunk es un `Sprite` con `scaleMode: 'nearest'` dentro de un
+   único `Container`, así no se crea un canvas/ImageData gigante que pueda disparar
+   `Out of Memory`. La escala del contenedor compensa `tileSize/detalle` para cubrir
+   el mundo. Se conserva el sombreado por altura y el jitter determinista por celda;
+   en píxeles de transición se usa altura interpolada.
 3. **Configurable, reversible y seguro.** `CONFIG.terreno.marchingSquares`
-   (booleano) y `CONFIG.terreno.pixelesPorCeldaMarching` (píxeles por celda)
-   controlan el modo desde Configuración. Al desactivarlo se usa el render clásico
-   de 1 px por celda escalado a `zoom*tileSize`; si la textura marching excede la
-   memoria disponible, el renderer hace fallback automático al modo clásico.
+   (booleano), `CONFIG.terreno.pixelesPorCeldaMarching` (píxeles por celda) y
+   `CONFIG.terreno.maxTamanoTexturaMarching` (límite de chunk) controlan el modo
+   desde Configuración. Al desactivar `marchingSquares` se usa el render clásico de
+   1 px por celda escalado a `zoom*tileSize`; si alguna asignación de textura-chunk
+   falla por memoria, el renderer hace fallback automático al modo clásico.
 4. **Sin trabajo por frame.** La textura se genera solo en `generar(grid)` (carga
    o regeneración); el bucle solo posiciona el sprite, respetando "sin `Graphics`
    ni objetos por celda o por frame".

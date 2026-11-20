@@ -4,19 +4,20 @@
  *
  * REGLAS (TAREAS §2): prohibido `Graphics()` por celda o por frame.
  *
- * Estrategia: el terreno entero se pinta **una sola vez** en un canvas
- * offscreen y se sube como **una única textura**. En pantalla es **un único
- * `Sprite`**, con `scaleMode: 'nearest'` para píxeles nítidos al hacer zoom.
+ * Estrategia: el terreno entero se pinta **una sola vez** en canvases offscreen y
+ * se sube como **una textura por chunk**. En pantalla es un **Container** con un
+ * `Sprite` por chunk, todos con `scaleMode: 'nearest'` para píxeles nítidos al
+ * hacer zoom.
  *
- * - Con `marchingSquares` activo (pixel art): la textura mide
- *   `ancho*detalle × alto*detalle` (`detalle = pixelesPorCeldaMarching`) y las
- *   transiciones agua/arena/tierra se suavizan por píxel con marching squares
- *   (`terrainMarching.js`). El sprite se escala para cubrir el mundo.
- * - Sin marching squares: la textura mide 1 px por celda y el sprite se escala
+ * - Con `marchingSquares` activo (pixel art): cada textura mide como máximo
+ *   `maxTamanoTexturaMarching × maxTamanoTexturaMarching` px y las transiciones
+ *   agua/arena/tierra se suavizan por píxel con marching squares (`terrainMarching.js`).
+ *   El contenedor se escala para cubrir el mundo.
+ * - Sin marching squares: una textura de 1 px por celda y el contenedor se escala
  *   por `zoom * tileSize` (comportamiento original).
  *
  * En ambos modos se conserva el sombreado por altura y un jitter determinista
- * mínimo. Costo por frame: posicionar un sprite.
+ * mínimo. Costo por frame: posicionar/escalar un contenedor.
  */
 
 import { Container, Sprite, Texture } from 'pixi.js';
@@ -44,54 +45,69 @@ function escribirColor(pixeles, p, color, brillo) {
 export class TerrainRenderer {
   /**
    * @param {import('pixi.js').Application} app
-   * @param {{tileSize: number, colores: Record<string, number>, marchingSquares?: boolean, pixelesPorCeldaMarching?: number}} opciones
+   * @param {{tileSize: number, colores: Record<string, number>, marchingSquares?: boolean, pixelesPorCeldaMarching?: number, maxTamanoTexturaMarching?: number}} opciones
    */
-  constructor(app, { tileSize, colores, marchingSquares = true, pixelesPorCeldaMarching = 4 }) {
+  constructor(
+    app,
+    {
+      tileSize,
+      colores,
+      marchingSquares = true,
+      pixelesPorCeldaMarching = 4,
+      maxTamanoTexturaMarching = 1024,
+    },
+  ) {
     this.app = app;
     this.tileSize = tileSize;
     this.colores = colores;
     this.marchingSquares = marchingSquares;
     this.pixelesPorCeldaMarching = Math.max(1, Math.trunc(pixelesPorCeldaMarching) || 4);
+    this.maxTamanoTexturaMarching = Math.max(1, Math.trunc(maxTamanoTexturaMarching) || 1024);
 
-    /** @type {Container} Contenedor del sprite del terreno (debajo de todo). */
+    /** @type {Container} Contenedor del terreno (debajo de todo). */
     this.contenedor = new Container();
 
-    /** @type {Sprite | null} Único sprite del mapa. */
-    this.sprite = null;
-    /** @type {Texture | null} Textura del mapa. */
-    this.textura = null;
+    /** Sprites de chunks (uno por textura generada). */
+    this.sprites = [];
+    /** Texturas generadas (para destruir al regenerar/liberar). */
+    this.texturas = [];
+    /** Indica si el modo marching squares está activo tras la última generación. */
+    this._modoMarchingActivo = false;
   }
 
   /**
-   * Pinta la grilla en una textura nueva. Si ya había una, la destruye para
-   * no acumular texturas.
+   * Pinta la grilla en texturas nuevas. Destruye las texturas/sprites previos
+   * para no acumular memoria al regenerar el mapa.
    * @param {import('../world/grid.js').Grid} grid
    */
   generar(grid) {
+    this._limpiar();
+
     if (this.marchingSquares) {
       try {
         this.generarMarching(grid);
+        this._modoMarchingActivo = true;
       } catch {
-        // Si la textura marching squares es demasiado grande para el entorno,
+        // Si alguna textura-chunk es demasiado grande para el entorno,
         // volver al render clásico (1 px/celda) para no romper la simulación.
         this.generarPlano(grid);
         this._modoMarchingActivo = false;
       }
-      if (this._modoMarchingActivo !== false) this._modoMarchingActivo = true;
     } else {
       this.generarPlano(grid);
       this._modoMarchingActivo = false;
     }
+  }
 
-    if (this.textura) this.textura.source.scaleMode = 'nearest';
-
-    if (!this.sprite) {
-      this.sprite = new Sprite(this.textura);
-      this.sprite.anchor.set(0);
-      this.contenedor.addChild(this.sprite);
-    } else {
-      this.sprite.texture = this.textura;
+  /** Destruye texturas y sprites previos y vacía el contenedor. */
+  _limpiar() {
+    for (const sprite of this.sprites) {
+      if (sprite.texture) sprite.texture.destroy(true);
+      sprite.destroy();
     }
+    this.sprites = [];
+    this.texturas = [];
+    this.contenedor.removeChildren();
   }
 
   /**
@@ -121,80 +137,105 @@ export class TerrainRenderer {
 
     contexto2d.putImageData(imagen, 0, 0);
 
-    if (this.textura) this.textura.destroy(true);
-    this.textura = Texture.from(canvas);
+    const textura = Texture.from(canvas);
+    textura.source.scaleMode = 'nearest';
+    const sprite = new Sprite(textura);
+    sprite.anchor.set(0);
+    sprite.position.set(0, 0);
+    this.contenedor.addChild(sprite);
+    this.sprites.push(sprite);
+    this.texturas.push(textura);
   }
 
   /**
-   * Render con marching squares: resolución configurable por celda para bordes
-   * pixel-art sin exceder la memoria disponible.
+   * Render con marching squares: resolución configurable por celda, dividido en
+   * chunks para evitar crear un canvas/ImageData demasiado grande.
    * @param {import('../world/grid.js').Grid} grid
    */
   generarMarching(grid) {
     const { ancho, alto } = grid;
     const detalle = this.pixelesPorCeldaMarching;
+    const maxTamano = this.maxTamanoTexturaMarching;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = ancho * detalle;
-    canvas.height = alto * detalle;
-    const contexto2d = canvas.getContext('2d');
-    const imagen = contexto2d.createImageData(canvas.width, canvas.height);
-    const pixeles = imagen.data;
-    const anchoPx = canvas.width;
+    const anchoPx = ancho * detalle;
+    const altoPx = alto * detalle;
 
-    for (let ty = 0; ty < alto; ty++) {
-      for (let tx = 0; tx < ancho; tx++) {
-        const i = ty * ancho + tx;
-        const tipoCelda = grid.terreno[i];
-        const ruido = hashInts(tx, ty, 0xa5) / 4294967296 - 0.5;
+    const chunksX = Math.ceil(anchoPx / maxTamano);
+    const chunksY = Math.ceil(altoPx / maxTamano);
 
-        const baseY = ty * detalle;
-        const baseX = tx * detalle;
+    for (let cy = 0; cy < chunksY; cy++) {
+      for (let cx = 0; cx < chunksX; cx++) {
+        const origenX = cx * maxTamano;
+        const origenY = cy * maxTamano;
+        const anchoChunk = Math.min(maxTamano, anchoPx - origenX);
+        const altoChunk = Math.min(maxTamano, altoPx - origenY);
 
-        for (let ly = 0; ly < detalle; ly++) {
-          for (let lx = 0; lx < detalle; lx++) {
+        const canvas = document.createElement('canvas');
+        canvas.width = anchoChunk;
+        canvas.height = altoChunk;
+        const contexto2d = canvas.getContext('2d');
+        const imagen = contexto2d.createImageData(anchoChunk, altoChunk);
+        const pixeles = imagen.data;
+
+        for (let gy = 0; gy < altoChunk; gy++) {
+          const yGlobal = origenY + gy;
+          const ty = Math.floor(yGlobal / detalle);
+          const ly = yGlobal % detalle;
+          for (let gx = 0; gx < anchoChunk; gx++) {
+            const xGlobal = origenX + gx;
+            const tx = Math.floor(xGlobal / detalle);
+            const lx = xGlobal % detalle;
+            const i = ty * ancho + tx;
+            const tipoCelda = grid.terreno[i];
+            const ruido = hashInts(tx, ty, 0xa5) / 4294967296 - 0.5;
+
             const tipoPx = terrenoDePixel(grid, tx, ty, lx, ly, detalle);
             const alturaPx =
               tipoPx === tipoCelda ? grid.altura[i] : alturaDePixel(grid, tx, ty, lx, ly, detalle);
             const color = this.colores[tipoPx] ?? 0xff00ff;
             const brillo = 1 + (alturaPx - 0.5) * 0.9 + ruido * JITTER_BRILLO;
 
-            const p = ((baseY + ly) * anchoPx + (baseX + lx)) * 4;
+            const p = (gy * anchoChunk + gx) * 4;
             escribirColor(pixeles, p, color, brillo);
           }
         }
+
+        contexto2d.putImageData(imagen, 0, 0);
+
+        const textura = Texture.from(canvas);
+        textura.source.scaleMode = 'nearest';
+        const sprite = new Sprite(textura);
+        sprite.anchor.set(0);
+        sprite.position.set(origenX, origenY);
+        this.contenedor.addChild(sprite);
+        this.sprites.push(sprite);
+        this.texturas.push(textura);
       }
     }
-
-    contexto2d.putImageData(imagen, 0, 0);
-
-    if (this.textura) this.textura.destroy(true);
-    this.textura = Texture.from(canvas);
   }
 
   /**
-   * Posiciona el sprite del terreno según la cámara. Mismo cambio de
-   * coordenadas que `EntityRenderer`:
+   * Posiciona y escala el contenedor del terreno según la cámara. Mismo cambio
+   * de coordenadas que `EntityRenderer`:
    *   pantalla = (mundo - camara) * zoom + centro_de_la_vista
    * @param {import('./camera.js').Camera} camara
    */
   render(camara) {
-    if (!this.sprite) return;
+    if (this.sprites.length === 0) return;
     const zoom = camara.zoom;
-    this.sprite.x = (0 - camara.x) * zoom + camara.vistaAnchoPx / 2;
-    this.sprite.y = (0 - camara.y) * zoom + camara.vistaAltoPx / 2;
-    const escalaMarching = (zoom * this.tileSize) / this.pixelesPorCeldaMarching;
-    this.sprite.scale.set(this._modoMarchingActivo ? escalaMarching : zoom * this.tileSize);
+    const escala = this._modoMarchingActivo
+      ? (zoom * this.tileSize) / this.pixelesPorCeldaMarching
+      : zoom * this.tileSize;
+    this.contenedor.x = (0 - camara.x) * zoom + camara.vistaAnchoPx / 2;
+    this.contenedor.y = (0 - camara.y) * zoom + camara.vistaAltoPx / 2;
+    this.contenedor.scale.set(escala);
   }
 
   /**
-   * Libera la textura (si se destruye el renderer).
+   * Libera texturas y sprites (si se destruye el renderer).
    */
   destruir() {
-    if (this.sprite) this.sprite.destroy();
-    if (this.textura) this.textura.destroy(true);
-    this.sprite = null;
-    this.textura = null;
+    this._limpiar();
   }
 }
 

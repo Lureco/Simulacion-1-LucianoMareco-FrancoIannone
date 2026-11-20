@@ -238,18 +238,20 @@ Comparten una única textura base (`atlas.textura`) creada por `crearAtlas()` al
 |---|---|---|
 | `PlantRenderer` | `(app, { atlas, tileSize, capacidad })` | `reconstruir(grid, tick, cadaTicks, camara)`, `render(camara)`, `invalidar()`, `activas` (getter), `destruir()` |
 | `EntityRenderer` | `(app, { atlas, tileSize, capacidad? })` | `render(manager, camara, tick = 0)`, `setDepuracion(valor)`, `activas` (getter), `destruir()` |
-| `TerrainRenderer` | `(app, { tileSize, colores, marchingSquares?, pixelesPorCeldaMarching? })` | `generar(grid)`, `render(camara)`, `destruir()` (F1, mejorado en D30) |
+| `TerrainRenderer` | `(app, { tileSize, colores, marchingSquares?, pixelesPorCeldaMarching?, maxTamanoTexturaMarching? })` | `generar(grid)`, `render(camara)`, `destruir()` (F1, mejorado en D30) |
 
 Contratos:
 
-- `TerrainRenderer` pinta el terreno **una sola vez** en `generar(grid)` como una
-  textura única con `scaleMode: 'nearest'`. Con `marchingSquares` activo
+- `TerrainRenderer` pinta el terreno **una sola vez** en `generar(grid)` como una o
+  más texturas-chunk con `scaleMode: 'nearest'`. Con `marchingSquares` activo
   (`CONFIG.terreno.marchingSquares`, por defecto `true`) usa `terrainMarching.js`
   para bordes pixel-art a resolución `ancho*detalle × alto*detalle`
-  (`CONFIG.terreno.pixelesPorCeldaMarching`, por defecto 4) y `render()` escala el
-  sprite para cubrir el mundo; si se desactiva o falla la asignación por memoria,
-  vuelve a 1 px por celda y escala por `zoom * tileSize`. En ambos casos no hay
-  `Graphics` ni trabajo por celda/frame.
+  (`CONFIG.terreno.pixelesPorCeldaMarching`, por defecto 4), dividida en chunks de
+  como máximo `CONFIG.terreno.maxTamanoTexturaMarching` px por lado; cada chunk es
+  un `Sprite` dentro de un único `Container`. `render()` escala el contenedor para
+  cubrir el mundo; si se desactiva `marchingSquares` o falla la asignación por
+  memoria, vuelve a 1 px por celda y escala por `zoom * tileSize`. En ambos casos no
+  hay `Graphics` ni trabajo por celda/frame.
 - `atlas` es `{ textura, frames: Map<clave, Texture>, claves, ancho, alto }`, resultado de
   `crearAtlas()` (`render/atlas.js`). Las claves y el mapeo estado/especie → frame viven en
   `render/atlasDatos.js`, módulo puro importable desde Node (sin `import.meta.glob`).

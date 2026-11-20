@@ -167,6 +167,9 @@ export const CONFIG = {
     marchingSquares: true,
     /** Resolución del marching squares en píxeles por celda (textura = mundo × este valor). */
     pixelesPorCeldaMarching: 4,
+    /** Tamaño máximo en píxeles de cada textura-chunk del terreno. Se divide el mapa en chunks
+     * para no exceder la memoria de un único canvas/ImageData (evita Out of Memory). */
+    maxTamanoTexturaMarching: 1024,
     /** Colores 0xRRGGBB de cada tipo de terreno (sombreado por altura). */
     colorAgua: 0x2a4d8f,
     colorArena: 0xd8c596,

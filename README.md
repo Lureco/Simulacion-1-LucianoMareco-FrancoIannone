@@ -114,8 +114,9 @@ Hitos según `TAREAS.md`:
 Un **mundo 256×256** con agua, arena y tierra generados por ruido con
 semilla: islas y continentes con costas naturales, reproducibles celda a
 celda. Las transiciones agua/arena/tierra se suavizan con **marching squares**
-en estilo pixel art (configurable en `terreno.marchingSquares` y
-`terreno.pixelesPorCeldaMarching`). Las plantas cubren la tierra y crecen por un autómata celular. Sobre
+en estilo pixel art (configurable en `terreno.marchingSquares`,
+`terreno.pixelesPorCeldaMarching` y `terreno.maxTamanoTexturaMarching`). El
+mapa se divide en texturas-chunk para evitar textures demasiado grandes. Las plantas cubren la tierra y crecen por un autómata celular. Sobre
 ese mapa, **120 herbívoros** y **25 carnívoros**. Los herbívoros **comen**
 cuando tienen hambre, **van a beber** a la costa cuando tienen sed (y si no
 ven agua, caminan hacia ella siguiendo un campo precalculado), **se

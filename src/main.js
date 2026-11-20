@@ -145,6 +145,7 @@ const terrenoRenderer = new TerrainRenderer(app, {
   colores: COLORES_TERRENO,
   marchingSquares: CONFIG.terreno.marchingSquares,
   pixelesPorCeldaMarching: CONFIG.terreno.pixelesPorCeldaMarching,
+  maxTamanoTexturaMarching: CONFIG.terreno.maxTamanoTexturaMarching,
 });
 app.stage.addChild(terrenoRenderer.contenedor);
 
