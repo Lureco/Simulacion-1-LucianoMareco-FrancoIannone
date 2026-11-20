@@ -496,12 +496,6 @@ celdas con planta — sin bajar el framerate ni generar basura por frame. La cap
 - [x] **T71 · Ambos** — Informe/GDD final actualizado con lo realmente implementado
       *(sección 19 de `Gdd-Tdd.txt` + D25/D26/D27 en `docs/DECISIONES.md` y contrato
       actualizado con genes y `especiePlanta`)*
-- [ ] **T72 · Ambos** — Grabar demo en video mostrando: expansión vegetal, crecimiento de
-      poblaciones, un colapso y una recuperación
-      *(guion de 4 escenas listo en `docs/DEMO.md`; no se pudo grabar automáticamente:
-      no hay `ffmpeg`, `chrome`, `msedge` ni `chromium` en este entorno)*
-- [ ] **T73 · Ambos** — Code review cruzado final: cada uno lee y comenta el código del otro
-      *(plantilla y puntos a revisar en `docs/DEMO.md`; requiere la firma de P1 y P2)*
 - [x] **T74 · Ambos** — Entrega con commits limpios y sin `console.log` de debug
       *(sin `console.*` ejecutable en `src/`, verificado con `npm run lint:prod`;
       avisos movidos a `hud.avisar()`. `lint`, 210 tests, Prettier y build en verde)*
