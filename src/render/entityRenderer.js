@@ -131,6 +131,8 @@ export class EntityRenderer {
     const dirs = manager.dirX;
     const tipos = manager.tipo;
     const vels = manager.velocidad;
+    const genesVel = manager.genVelocidad;
+    const genesTam = manager.genTamano;
     const estados = manager.estado;
     const vivos = manager.vivos;
     const depuracion = this.depuracion;
@@ -146,7 +148,7 @@ export class EntityRenderer {
       if (x < -margen || x > anchoVista + margen || y < -margen || y > altoVista + margen) continue;
 
       const tipo = tipos[id];
-      const clave = frameAnimal(tipo, faseCaminar(tick, vels[id]));
+      const clave = frameAnimal(tipo, faseCaminar(tick, vels[id] * genesVel[id]));
       const frame = clave === null ? undefined : frames.get(clave);
       if (frame !== undefined) p.texture = frame;
 
@@ -154,8 +156,9 @@ export class EntityRenderer {
       p.y = y;
       // Los PNG miran hacia la IZQUIERDA: dirX < 0 (izquierda) → sin espejo;
       // dirX > 0 (derecha) → scaleX negativo. Siempre sin rotación.
-      p.scaleX = escala * (dirs[id] < 0 ? 1 : -1);
-      p.scaleY = escala;
+      const escalaGen = escala * genesTam[id];
+      p.scaleX = escalaGen * (dirs[id] < 0 ? 1 : -1);
+      p.scaleY = escalaGen;
       p.tint = depuracion ? (COLOR_ESTADO[estados[id]] ?? 0xffffff) : 0xffffff;
 
       children[usados] = p;

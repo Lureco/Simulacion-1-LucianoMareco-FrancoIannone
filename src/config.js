@@ -249,6 +249,24 @@ export const CONFIG = {
   },
 
   // ─────────────────────────────────────────────────────────────
+  // GENÉTICA [P2 · T67]
+  // ─────────────────────────────────────────────────────────────
+  genetica: {
+    /** Probabilidad de que cada gen mute al nacer. */
+    probMutacion: 0.15,
+    /** Magnitud del salto cuando un gen muta (multiplicador aditivo). */
+    deltaMutacion: 0.12,
+    /** Probabilidad de que el salto sea positivo (si no, es negativo). */
+    probMutacionPositiva: 0.5,
+    /** Peso del primer progenitor en el promedio; el segundo usa 1 - pesoPadre. */
+    pesoPadre: 0.5,
+    /** Valor mínimo permitido para cualquier gen. */
+    minRasgo: 0.5,
+    /** Valor máximo permitido para cualquier gen. */
+    maxRasgo: 1.5,
+  },
+
+  // ─────────────────────────────────────────────────────────────
   // HERBÍVORO [P2]
   // ─────────────────────────────────────────────────────────────
   herbivoro: {

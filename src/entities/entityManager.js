@@ -75,6 +75,16 @@ export class EntityManager {
     /** @type {Float32Array} */ this.dirX = new Float32Array(0);
     /** @type {Float32Array} */ this.dirY = new Float32Array(0);
     /** @type {Float32Array} */ this.velocidad = new Float32Array(0);
+    /** @type {Float32Array} Gen de velocidad, multiplicador (F8/T67). */
+    this.genVelocidad = new Float32Array(0);
+    /** @type {Float32Array} Gen de tamaño, multiplicador (F8/T67). */
+    this.genTamano = new Float32Array(0);
+    /** @type {Float32Array} Gen de percepción, multiplicador (F8/T67). */
+    this.genPercepcion = new Float32Array(0);
+    /** @type {Float32Array} Gen de consumo, multiplicador (F8/T67). */
+    this.genConsumo = new Float32Array(0);
+    /** @type {Float32Array} Gen de reproducción, multiplicador (F8/T67). */
+    this.genReproduccion = new Float32Array(0);
     /** @type {Float32Array} Necesidad de comer, 0..1 (T34). */ this.hambre = new Float32Array(0);
     /** @type {Float32Array} Necesidad de beber, 0..1 (T34). */ this.sed = new Float32Array(0);
     /** @type {Float32Array} Deseo de reproducirse, 0..1 (T34). */ this.deseoRepro =
@@ -112,6 +122,11 @@ export class EntityManager {
     this.dirX = crecerF32(this.dirX, capacidad);
     this.dirY = crecerF32(this.dirY, capacidad);
     this.velocidad = crecerF32(this.velocidad, capacidad);
+    this.genVelocidad = crecerF32(this.genVelocidad, capacidad);
+    this.genTamano = crecerF32(this.genTamano, capacidad);
+    this.genPercepcion = crecerF32(this.genPercepcion, capacidad);
+    this.genConsumo = crecerF32(this.genConsumo, capacidad);
+    this.genReproduccion = crecerF32(this.genReproduccion, capacidad);
     this.hambre = crecerF32(this.hambre, capacidad);
     this.sed = crecerF32(this.sed, capacidad);
     this.deseoRepro = crecerF32(this.deseoRepro, capacidad);
@@ -155,6 +170,12 @@ export class EntityManager {
     this.dirY[id] = 0;
     this.edad[id] = 0;
     this.velocidad[id] = especie.velocidad;
+    // Los genes arrancan neutrales; la herencia los sobreescribe al nacer (T67).
+    this.genVelocidad[id] = 1;
+    this.genTamano[id] = 1;
+    this.genPercepcion[id] = 1;
+    this.genConsumo[id] = 1;
+    this.genReproduccion[id] = 1;
     this.hambre[id] = 0;
     this.sed[id] = 0;
     this.deseoRepro[id] = 0;

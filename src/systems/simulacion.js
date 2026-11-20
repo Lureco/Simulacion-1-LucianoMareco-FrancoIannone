@@ -22,7 +22,8 @@
 import { ESPECIE } from '../entities/entity.js';
 import { celdaHabitableAlAzar } from '../world/terrain.js';
 import { pasoVegetacion } from './plantGrowth.js';
-import { muertesDe, nacimientosDe } from './eventos.js';
+import { muertesDe, nacimientosDe, PASO_NACIMIENTO } from './eventos.js';
+import { aplicarGenesDesde } from './genetica.js';
 
 /**
  * Siembra entidades de una especie en celdas habitables al azar.
@@ -95,11 +96,13 @@ export function aplicarNacimientos(ctx) {
   const grid = ctx.grid;
   let n = 0;
 
-  for (let i = 0; i < nacimientos.length; i += 2) {
+  for (let i = 0; i < nacimientos.length; i += PASO_NACIMIENTO) {
     if (a.total >= ctx.config.entidades.maxEntidades) break;
     const tipo = nacimientos[i];
     const indice = nacimientos[i + 1];
     const id = a.crear(tipo);
+    // F8/T67: `crear` pone genes neutrales; acá se aplican los de la cría.
+    aplicarGenesDesde(a, id, nacimientos, i + 2);
     if (grid) {
       a.x[id] = (indice % grid.ancho) + 0.5;
       a.y[id] = Math.floor(indice / grid.ancho) + 0.5;

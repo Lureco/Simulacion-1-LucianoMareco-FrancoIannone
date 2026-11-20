@@ -31,8 +31,10 @@
 export function actualizarNecesidades(id, dt, ctx, cfg = ctx.config.herbivoro) {
   const a = ctx.entidades;
 
-  a.hambre[id] = Math.min(1, a.hambre[id] + cfg.consumoHambre * dt);
-  a.sed[id] = Math.min(1, a.sed[id] + cfg.consumoSed * dt);
+  // F8/T67: el gen de consumo escala el ritmo al que suben hambre y sed.
+  const consumo = a.genConsumo[id];
+  a.hambre[id] = Math.min(1, a.hambre[id] + cfg.consumoHambre * consumo * dt);
+  a.sed[id] = Math.min(1, a.sed[id] + cfg.consumoSed * consumo * dt);
 
   if (a.cooldown[id] > 0) a.cooldown[id] -= 1;
 

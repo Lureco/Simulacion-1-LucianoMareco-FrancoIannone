@@ -176,7 +176,7 @@ export class Depredador extends Especie {
     if (a.ticksBusqueda[id] > 0) return false;
     a.ticksBusqueda[id] = ctx.config.percepcion.ticksEntreBusqueda;
 
-    const presa = buscarPresa(ctx, x, y, cfg.radioVision, vecinosDe(ctx));
+    const presa = buscarPresa(ctx, x, y, cfg.radioVision * a.genPercepcion[id], vecinosDe(ctx));
     if (presa < 0) return false;
 
     a.presa[id] = presa;
@@ -223,7 +223,13 @@ export class Depredador extends Especie {
    */
   buscarAguaYActuar(id, ctx, x, y) {
     const cfg = ctx.config.depredador;
-    const objetivo = buscarAgua(ctx, x, y, cfg.radioVision, objetivoDe(ctx));
+    const objetivo = buscarAgua(
+      ctx,
+      x,
+      y,
+      cfg.radioVision * ctx.entidades.genPercepcion[id],
+      objetivoDe(ctx),
+    );
 
     if (objetivo.encontrado) {
       const dx = objetivo.x - x;
@@ -260,7 +266,13 @@ export class Depredador extends Especie {
 
     const a = ctx.entidades;
     const cfg = ctx.config.depredador;
-    const vecinos = ctx.hash.consultar(x, y, cfg.radioVision, vecinosDe(ctx), id);
+    const vecinos = ctx.hash.consultar(
+      x,
+      y,
+      cfg.radioVision * a.genPercepcion[id],
+      vecinosDe(ctx),
+      id,
+    );
 
     let mejorId = -1;
     let mejorD2 = Infinity;
@@ -300,13 +312,14 @@ export class Depredador extends Especie {
     const a = ctx.entidades;
     const cfg = ctx.config.depredador;
 
-    a.cooldown[id] = cfg.cooldownReproduccion;
-    a.cooldown[pareja] = cfg.cooldownReproduccion;
+    // F8/T67: cada progenitor tiene su propio tiempo de reproducción.
+    a.cooldown[id] = Math.round(cfg.cooldownReproduccion * a.genReproduccion[id]);
+    a.cooldown[pareja] = Math.round(cfg.cooldownReproduccion * a.genReproduccion[pareja]);
     a.deseoRepro[id] = 0;
     a.deseoRepro[pareja] = 0;
 
     const indice = this.celdaLibreAdyacente(ctx, a.celdaX(id), a.celdaY(id));
-    if (indice >= 0) anotarNacimiento(ctx, a.tipo[id], indice);
+    if (indice >= 0) anotarNacimiento(ctx, a.tipo[id], indice, id, pareja);
   }
 
   /**

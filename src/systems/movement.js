@@ -52,8 +52,11 @@ export function mover(id, dt, ctx) {
 
   // El paso "previsto" (sin penalizar) decide qué celda se quiere cruzar.
   // Se calcula antes de aplicar el factor para que no dependa de sí mismo.
-  const pasoX = a.dirX[id] * a.velocidad[id] * dt;
-  const pasoY = a.dirY[id] * a.velocidad[id] * dt;
+  // F8/T67: el gen de velocidad modula el paso real sin tocar la velocidad
+  // base que la IA escribe en el array (y que usa la animación).
+  const velocidad = a.velocidad[id] * a.genVelocidad[id];
+  const pasoX = a.dirX[id] * velocidad * dt;
+  const pasoY = a.dirY[id] * velocidad * dt;
 
   let factor = 1;
   if (grid) {

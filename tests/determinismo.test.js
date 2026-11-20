@@ -69,6 +69,13 @@ function huella(manager) {
       estado: manager.estado[id],
       dirX: manager.dirX[id],
       dirY: manager.dirY[id],
+      genes: [
+        manager.genVelocidad[id],
+        manager.genTamano[id],
+        manager.genPercepcion[id],
+        manager.genConsumo[id],
+        manager.genReproduccion[id],
+      ],
     });
   }
   return salida;
