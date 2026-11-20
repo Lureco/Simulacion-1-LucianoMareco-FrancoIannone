@@ -20,14 +20,17 @@
  * la leyenda no necesite saber de SoA, `seleccionada` expone un **objeto
  * plano de vista** con todos los valores ya resueltos:
  *
- *     { id, tipo, vivo, hambre, sed, reproduccion, edad, celdaX, celdaY, estado }
+ *     { id, tipo, vivo, hambre, sed, reproduccion, edad, celdaX, celdaY, estado, genes }
  *
- * donde `edad` viene **normalizada 0..1**.
+ * donde `edad` viene **normalizada 0..1** y `genes` tiene los cinco
+ * multiplicadores de T67. Así la leyenda muestra necesidades y genética
+ * del mismo individuo sin leer los arrays tipados.
  */
 
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { COLOR_NECESIDAD } from './paleta.js';
 import { CONFIG } from '../config.js';
+import { leerGenes } from '../ui/geneticaVista.js';
 
 /**
  * Necesidades que se muestran, en orden.
@@ -84,7 +87,7 @@ export class NecesidadesRenderer {
     this.idSeleccionado = null;
     /**
      * Vista plana de la entidad seleccionada, o `null`.
-     * @type {{id: number, tipo: number, vivo: boolean, hambre: number, sed: number, reproduccion: number, edad: number, celdaX: number, celdaY: number, estado: number}|null}
+     * @type {{id: number, tipo: number, vivo: boolean, hambre: number, sed: number, reproduccion: number, edad: number, celdaX: number, celdaY: number, estado: number, genes: object}|null}
      */
     this.seleccionada = null;
     /** Último valor dibujado (para no redibujar si no cambió). @type {string} */
@@ -139,6 +142,7 @@ export class NecesidadesRenderer {
       celdaX: a.celdaX(id),
       celdaY: a.celdaY(id),
       estado: a.estado[id],
+      genes: leerGenes(a, id),
     };
   }
 

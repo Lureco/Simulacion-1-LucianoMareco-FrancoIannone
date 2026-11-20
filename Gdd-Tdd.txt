@@ -478,7 +478,7 @@ Estado: implementado y verificado. Esta sección registra lo que quedó realment
 * Herbivoros y depredadores con necesidades normalizadas (hambre, sed, deseo de reproduccion), percepcion por vecindario, prioridad de decision, comer/beber, reproduccion y muerte por causas separadas.
 * Cadena alimenticia completa: planta -> herbivoro -> depredador, con depredacion contada por separado.
 * Movimiento continuo en coordenadas de celda, con paso fijo de 1/60 s, acumulador y penalizacion del terreno.
-* Cinco genes por animal (velocidad, tamano, percepcion, consumo y reproduccion), heredados de ambos padres con mutacion acotada. Son multiplicadores en arrays tipados (SoA), no objetos por individuo.
+* Cinco genes por animal (velocidad, tamano, percepcion, consumo y reproduccion), heredados de ambos padres con mutacion acotada. Son multiplicadores en arrays tipados (SoA), no objetos por individuo. Al hacer clic en un animal, la leyenda muestra los cinco valores con barra y marca ↑/↓/= respecto del valor base.
 * HUD con poblaciones por especie vegetal, desplazamientos, animales, nacidos, muertos, tiempo, seed, FPS y estado; grafico de poblaciones, leyenda, vista de necesidades y panel de configuracion con presets.
 * Seed visible y copiable con tecla S o boton del HUD, con fallback para navegadores sin Clipboard API.
 * sprites reales en un atlas unico armado al arrancar y dos ParticleContainer con culling por camara.
@@ -498,7 +498,7 @@ Estado: implementado y verificado. Esta sección registra lo que quedó realment
 19.4 Verificacion final
 * npm run lint: OK.
 * npm run lint:prod: OK (sin console en src/).
-* npm test -- --run: 21 archivos y 210 tests en verde.
+* npm test -- --run: 22 archivos y 217 tests en verde (incluye el inspector de genes D28).
 * npx prettier --check .: OK.
 * npm run build: OK; npm run preview -- --host 127.0.0.1 --port 4173 sirve index.html y los assets del build.
 * Las instrucciones de ejecucion, controles y estado por fase estan en README.md; el guion de demo, capturas y revision cruzada en docs/DEMO.md.

@@ -58,6 +58,18 @@ export const COLOR_NECESIDAD = {
   edad: 0x9dff5c,
 };
 
+/**
+ * Colores de los cinco genes en la vista del animal seleccionado (F8/T67).
+ * Cada fila usa uno para que se distingan de las barras de necesidades.
+ */
+export const COLOR_GEN = {
+  velocidad: 0xffd166,
+  tamano: 0x8ecae6,
+  percepcion: 0xb69cff,
+  consumo: 0xff9d6c,
+  reproduccion: 0x8ce99a,
+};
+
 /** Convierte un color 0xRRGGBB a `#rrggbb` (para CSS). */
 export function aCss(color) {
   if (color === undefined || color === null) return '#ffffff';

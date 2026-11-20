@@ -52,7 +52,7 @@ Otros comandos:
 | **G** | Volver al centro del mundo |
 | **D** | Alternar la vista de depuración (color por estado de IA) |
 | **1 / 2 / 4** | Cambiar la velocidad de simulación |
-| **Clic** | Seleccionar un animal y ver sus barras de hambre/sed |
+| **Clic** | Seleccionar un animal y ver sus necesidades y sus cinco genes |
 | **Espacio** | Pausar / reanudar |
 | **R** | Regenerar el mundo y la población con una seed nueva |
 | **S** | Copiar la seed actual al portapapeles (también hay un botón en el HUD) |
@@ -132,7 +132,9 @@ nacen con **genes** que heredan de ambos padres y pueden mutar (T67): un
 individuo veloz se mueve y anima más rápido, uno grande se dibuja más grande,
 uno con más percepción ve más lejos, uno con más consumo come y bebe más
 rápido, y el gen de reproducción acorta o alarga su cooldown. Los cambios son
-visibles en pantalla y reproducibles con la misma seed.
+visibles en pantalla y reproducibles con la misma seed. Haciendo **clic** en un
+animal, la leyenda muestra además sus cinco genes como barras alrededor de `1.00`:
+`↑` significa arriba del valor base de la especie, `↓` abajo y `=` neutro.
 
 ### Lo que ya está garantizado (y se puede romper de una forma detectable)
 

@@ -47,8 +47,9 @@ la competencia es emergente de reglas locales, no de un objeto por planta.
    triceratops y mostrar `buscando comida / bebiendo / huyendo`.
 3. Leer el gráfico: las curvas de plantas, triceratops y ceratosaurios se
    actualizan una vez por segundo; en el HUD aumentan `nacidos` y `muertos`.
-4. Clic sobre un animal para ver sus barras de hambre y sed (sección de
-   necesidades). Mover la cámara: las barras siguen al sprite (T61).
+4. Clic sobre un animal para ver sus barras de hambre y sed y, debajo, sus
+   cinco genes con `↑`/`↓`/`=` (sección de necesidades y genética). Mover la
+   cámara: las barras siguen al sprite (T61).
 
 **Qué debe quedar claro:** la población cambia por nacimientos y muertes
 observables; la depredación es una causa de muerte separada en el contador.
@@ -133,7 +134,7 @@ Ejecutada sobre el estado final de F8:
 |---|---|
 | `npm run lint` | ✅ |
 | `npm run lint:prod` | ✅ (sin `console.*` en `src/`) |
-| `npm test -- --run` | ✅ 21 archivos, 210 tests |
+| `npm test -- --run` | ✅ 22 archivos, 217 tests (incluye el inspector de genes) |
 | `npx prettier --check .` | ✅ |
 | `npm run build` | ✅ `dist/` generado |
 | `npm run preview -- --host 127.0.0.1 --port 4173` | ✅ `index.html` y assets servidos |

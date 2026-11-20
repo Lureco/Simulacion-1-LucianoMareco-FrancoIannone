@@ -871,11 +871,49 @@ definition of done de T74), depender solo de Clipboard API sin fallback y dar
 por bueno el build sin servirlo.
 
 **Verificación:** `npm run lint`, `npm run lint:prod`, `npm test -- --run`
-(21 archivos, 210 tests), `npx prettier --check .`, `npm run build`,
-`npm run preview` y `node scripts/simular.mjs 1337 10`. La corrida final de
+(22 archivos, 217 tests tras el inspector de D28), `npx prettier --check .`,
+`npm run build`, `npm run preview` y `node scripts/simular.mjs 1337 10`. La corrida final de
 10 min con seed 1337 terminó en 156 herbívoros, 0 depredadores, 19.287
 micelios, 16.470 pastos y 2.642 desplazamientos. El guion de demo y la revisión
 cruzada pendiente están en `docs/DEMO.md`.
+
+---
+
+## D28 · Inspector de genes del animal seleccionado
+
+**Contexto.** T67 hizo que los cinco rasgos fueran observables en la simulación
+(velocidad de movimiento, tamaño del sprite, radios de percepción, consumo y
+cooldown), pero no había forma de ver el **valor numérico** de cada gen: solo se
+intuía su efecto. El GDD pide observar la evolución de características, y para
+eso hace falta poder inspeccionar un individuo.
+
+**Decisión.**
+
+1. **La vista plana ya existente se extiende.** `NecesidadesRenderer.crearVista()`
+   agrega `genes` con los cinco multiplicadores. La leyenda sigue sin conocer
+   los arrays tipados: recibe el mismo objeto plano de siempre y solo muestra
+   una sección nueva debajo de hambre/sed/edad.
+2. **Módulo puro para la vista.** `src/ui/geneticaVista.js` concentra
+   `leerGenes`, `normalizarGen`, `indicadorGen` y `filasGenes`. Es testeable en
+   Node, sin DOM ni WebGL, y evita repetir los nombres de los arrays en dos
+   lugares.
+3. **Barra con referencia explícita.** Cada barra va de `minRasgo` a `maxRasgo`
+   y se rotula con `1.00 = base`; `↑`/`↓`/`=` indican si el rasgo está por
+   encima, por debajo o en el valor de la especie. Así no se confunde "barra
+   llena" con "gen bueno": un gen de consumo alto puede ser perjudicial.
+4. **Sin cambios en la simulación.** No se agregó estado ni azar: la vista se arma
+   solo para el animal seleccionado, fuera de la lógica de simulación. La leyenda
+   ya se actualiza una vez por frame y conserva su early-return por HTML idéntico.
+
+**Descartado:** colorear todos los animales por gen en modo permanente (se
+perdería la distinción por especie y por estado de IA, que ya cumple T56), y un
+panel nuevo con los genes promedio de la población (no permite seguir la
+historia de un individuo).
+
+**Verificación:** `tests/geneticaVista.test.js` (6 tests) y un test nuevo en
+`tests/render.test.js` confirman la lectura SoA, la normalización, los marcadores
+y el HTML de la leyenda. `npm run lint`, `npm test -- --run` (22 archivos,
+217 tests), Prettier y build en verde.
 
 ---
 

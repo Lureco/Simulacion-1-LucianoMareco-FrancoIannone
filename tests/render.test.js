@@ -265,3 +265,25 @@ describe('T61 · barras de necesidades siguen a la cámara', () => {
     expect(barra.x).not.toBeCloseTo(xInicial - 600, 5);
   });
 });
+
+describe('T67 · la vista del bicho seleccionado incluye sus genes', () => {
+  it('expone los cinco multiplicadores junto a las necesidades', () => {
+    const app = { renderer: { generateTexture: () => Texture.EMPTY } };
+    const manager = new EntityManager();
+    const id = manager.crear(ESPECIE.HERBIVORO);
+    manager.genVelocidad[id] = 1.2;
+    manager.genTamano[id] = 0.7;
+    manager.genPercepcion[id] = 1.1;
+    manager.genConsumo[id] = 0.9;
+    manager.genReproduccion[id] = 1.4;
+
+    const r = new NecesidadesRenderer(app, { tileSize: 8, manager });
+    r.seleccionar(id);
+
+    expect(r.seleccionada.genes.velocidad).toBeCloseTo(1.2, 6);
+    expect(r.seleccionada.genes.tamano).toBeCloseTo(0.7, 6);
+    expect(r.seleccionada.genes.percepcion).toBeCloseTo(1.1, 6);
+    expect(r.seleccionada.genes.consumo).toBeCloseTo(0.9, 6);
+    expect(r.seleccionada.genes.reproduccion).toBeCloseTo(1.4, 6);
+  });
+});

@@ -255,6 +255,10 @@ Contratos:
 - `EntityRenderer.render()` solo lee arrays SoA del manager (`x`, `y`, `dirX`, `tipo`,
   `velocidad`, `estado`, `vivos`). El nuevo parámetro `tick` alimenta la animación y no avanza
   en pausa. El sprite se voltea con `scaleX` según `dirX`, sin rotación.
+- `NecesidadesRenderer.seleccionada` es la vista plana que consume la leyenda: además de
+  hambre/sed/edad incluye `genes` (`velocidad`, `tamano`, `percepcion`, `consumo` y
+  `reproduccion`), leídos por `ui/geneticaVista.js`. La leyenda los dibuja como barras
+  normalizadas entre `CONFIG.genetica.minRasgo` y `maxRasgo`, sin acceder a los arrays SoA.
 - Ambos usan `camara` (`x`, `y`, `zoom`, `vistaAnchoPx`, `vistaAltoPx`) y
   `CONFIG.render.margenCulling` para no cargar partículas fuera de pantalla.
 - Cada renderer aporta **un** `ParticleContainer` (un draw call); no se hace `new` en el bucle.
