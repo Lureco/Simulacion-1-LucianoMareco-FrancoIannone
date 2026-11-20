@@ -966,17 +966,19 @@ aspecto pixel art.
    muestreo acotado, la interpolación bilineal por tile y la resolución del tipo
    por píxel (`terrenoDePixel`/`alturaDePixel`) en capas `AGUA < ARENA < TIERRA`.
    Es determinista y testeable en Node, sin DOM ni Pixi.
-2. **Textura a resolución de tile.** Con marching squares activo, el
-   `TerrainRenderer` genera un canvas de `ancho*tileSize × alto*tileSize`, pinta
-   cada píxel del tile según la transición y sube **una sola textura + un solo
-   `Sprite`**, con `scaleMode: 'nearest'` y escala de render `zoom` (no
-   `zoom*tileSize`). Se conserva el sombreado por altura y el jitter determinista
-   por celda; en píxeles de transición se usa altura interpolada para evitar
-   bandas planas.
-3. **Configurable y reversible.** `CONFIG.terreno.marchingSquares` (booleano,
-   `true` por defecto, editable desde Configuración) activa/desactiva el modo. Al
-   desactivarlo se usa el render clásico de 1 px por celda escalado a
-   `zoom*tileSize`, sin cambiar la API pública del renderer.
+2. **Textura a resolución configurable.** Con marching squares activo, el
+   `TerrainRenderer` genera un canvas de `ancho*detalle × alto*detalle`
+   (`detalle = CONFIG.terreno.pixelesPorCeldaMarching`, por defecto 4) para
+   limitar memoria, pinta cada píxel según la transición y sube **una sola
+   textura + un solo `Sprite`** con `scaleMode: 'nearest'`. La escala compensa
+   `tileSize/detalle` para cubrir el mundo. Se conserva el sombreado por altura y
+   el jitter determinista por celda; en píxeles de transición se usa altura
+   interpolada.
+3. **Configurable, reversible y seguro.** `CONFIG.terreno.marchingSquares`
+   (booleano) y `CONFIG.terreno.pixelesPorCeldaMarching` (píxeles por celda)
+   controlan el modo desde Configuración. Al desactivarlo se usa el render clásico
+   de 1 px por celda escalado a `zoom*tileSize`; si la textura marching excede la
+   memoria disponible, el renderer hace fallback automático al modo clásico.
 4. **Sin trabajo por frame.** La textura se genera solo en `generar(grid)` (carga
    o regeneración); el bucle solo posiciona el sprite, respetando "sin `Graphics`
    ni objetos por celda o por frame".

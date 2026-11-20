@@ -165,6 +165,8 @@ export const CONFIG = {
     offsetSemillaHumedad: 7919,
     /** Suavizar bordes agua/arena/tierra con marching squares (pixel art). */
     marchingSquares: true,
+    /** Resolución del marching squares en píxeles por celda (textura = mundo × este valor). */
+    pixelesPorCeldaMarching: 4,
     /** Colores 0xRRGGBB de cada tipo de terreno (sombreado por altura). */
     colorAgua: 0x2a4d8f,
     colorArena: 0xd8c596,

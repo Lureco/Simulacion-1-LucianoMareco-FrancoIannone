@@ -9,9 +9,9 @@
  * `Sprite`**, con `scaleMode: 'nearest'` para píxeles nítidos al hacer zoom.
  *
  * - Con `marchingSquares` activo (pixel art): la textura mide
- *   `ancho*tileSize × alto*tileSize` y las transiciones agua/arena/tierra se
- *   suavizan por píxel con marching squares (`terrainMarching.js`), evitando
- *   cortes rectos entre celdas. El sprite se escala solo por el zoom.
+ *   `ancho*detalle × alto*detalle` (`detalle = pixelesPorCeldaMarching`) y las
+ *   transiciones agua/arena/tierra se suavizan por píxel con marching squares
+ *   (`terrainMarching.js`). El sprite se escala para cubrir el mundo.
  * - Sin marching squares: la textura mide 1 px por celda y el sprite se escala
  *   por `zoom * tileSize` (comportamiento original).
  *
@@ -44,13 +44,14 @@ function escribirColor(pixeles, p, color, brillo) {
 export class TerrainRenderer {
   /**
    * @param {import('pixi.js').Application} app
-   * @param {{tileSize: number, colores: Record<string, number>, marchingSquares?: boolean}} opciones
+   * @param {{tileSize: number, colores: Record<string, number>, marchingSquares?: boolean, pixelesPorCeldaMarching?: number}} opciones
    */
-  constructor(app, { tileSize, colores, marchingSquares = true }) {
+  constructor(app, { tileSize, colores, marchingSquares = true, pixelesPorCeldaMarching = 4 }) {
     this.app = app;
     this.tileSize = tileSize;
     this.colores = colores;
     this.marchingSquares = marchingSquares;
+    this.pixelesPorCeldaMarching = Math.max(1, Math.trunc(pixelesPorCeldaMarching) || 4);
 
     /** @type {Container} Contenedor del sprite del terreno (debajo de todo). */
     this.contenedor = new Container();
@@ -68,9 +69,18 @@ export class TerrainRenderer {
    */
   generar(grid) {
     if (this.marchingSquares) {
-      this.generarMarching(grid);
+      try {
+        this.generarMarching(grid);
+      } catch {
+        // Si la textura marching squares es demasiado grande para el entorno,
+        // volver al render clásico (1 px/celda) para no romper la simulación.
+        this.generarPlano(grid);
+        this._modoMarchingActivo = false;
+      }
+      if (this._modoMarchingActivo !== false) this._modoMarchingActivo = true;
     } else {
       this.generarPlano(grid);
+      this._modoMarchingActivo = false;
     }
 
     if (this.textura) this.textura.source.scaleMode = 'nearest';
@@ -116,16 +126,17 @@ export class TerrainRenderer {
   }
 
   /**
-   * Render con marching squares: 1 tile por celda para bordes pixel-art.
+   * Render con marching squares: resolución configurable por celda para bordes
+   * pixel-art sin exceder la memoria disponible.
    * @param {import('../world/grid.js').Grid} grid
    */
   generarMarching(grid) {
     const { ancho, alto } = grid;
-    const tile = this.tileSize;
+    const detalle = this.pixelesPorCeldaMarching;
 
     const canvas = document.createElement('canvas');
-    canvas.width = ancho * tile;
-    canvas.height = alto * tile;
+    canvas.width = ancho * detalle;
+    canvas.height = alto * detalle;
     const contexto2d = canvas.getContext('2d');
     const imagen = contexto2d.createImageData(canvas.width, canvas.height);
     const pixeles = imagen.data;
@@ -137,14 +148,14 @@ export class TerrainRenderer {
         const tipoCelda = grid.terreno[i];
         const ruido = hashInts(tx, ty, 0xa5) / 4294967296 - 0.5;
 
-        const baseY = ty * tile;
-        const baseX = tx * tile;
+        const baseY = ty * detalle;
+        const baseX = tx * detalle;
 
-        for (let ly = 0; ly < tile; ly++) {
-          for (let lx = 0; lx < tile; lx++) {
-            const tipoPx = terrenoDePixel(grid, tx, ty, lx, ly, tile);
+        for (let ly = 0; ly < detalle; ly++) {
+          for (let lx = 0; lx < detalle; lx++) {
+            const tipoPx = terrenoDePixel(grid, tx, ty, lx, ly, detalle);
             const alturaPx =
-              tipoPx === tipoCelda ? grid.altura[i] : alturaDePixel(grid, tx, ty, lx, ly, tile);
+              tipoPx === tipoCelda ? grid.altura[i] : alturaDePixel(grid, tx, ty, lx, ly, detalle);
             const color = this.colores[tipoPx] ?? 0xff00ff;
             const brillo = 1 + (alturaPx - 0.5) * 0.9 + ruido * JITTER_BRILLO;
 
@@ -172,7 +183,8 @@ export class TerrainRenderer {
     const zoom = camara.zoom;
     this.sprite.x = (0 - camara.x) * zoom + camara.vistaAnchoPx / 2;
     this.sprite.y = (0 - camara.y) * zoom + camara.vistaAltoPx / 2;
-    this.sprite.scale.set(this.marchingSquares ? zoom : zoom * this.tileSize);
+    const escalaMarching = (zoom * this.tileSize) / this.pixelesPorCeldaMarching;
+    this.sprite.scale.set(this._modoMarchingActivo ? escalaMarching : zoom * this.tileSize);
   }
 
   /**

@@ -181,8 +181,8 @@ simulacion-ecosistemas/
 - [x] **T14 · P1** — **Test:** misma seed ⇒ mapa idéntico celda a celda (`tests/terreno.test.js`)
 - [x] **T15 · P2/P1** — Render del terreno con Pixi: **un único `Sprite`** con textura
       (prohibido `Graphics` por celda) — `render/terrainRenderer.js`. Mejorado con
-      marching squares pixel art a resolución de tile y toggle
-      `CONFIG.terreno.marchingSquares` (D30); al desactivarlo vuelve a 1 px por celda.
+      marching squares pixel art y parámetros `CONFIG.terreno.marchingSquares` y
+      `pixelesPorCeldaMarching` (D30), con fallback al modo clásico si falta memoria.
 - [x] **T16 · P2** — Input: tecla `R` regenera el mundo y la población con seed nueva, `S` muestra la seed
 - [x] **T17 · P2** — FPS en pantalla (HUD); el tiempo de generación se mide en `scripts/verTerreno.mjs`
 - [x] **T18 · P2** — Probado con 5 seeds (1337/9001/42/2024/7): masas de agua y tierra bien formadas

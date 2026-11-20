@@ -144,6 +144,7 @@ const terrenoRenderer = new TerrainRenderer(app, {
   tileSize: tile,
   colores: COLORES_TERRENO,
   marchingSquares: CONFIG.terreno.marchingSquares,
+  pixelesPorCeldaMarching: CONFIG.terreno.pixelesPorCeldaMarching,
 });
 app.stage.addChild(terrenoRenderer.contenedor);
 
