@@ -56,6 +56,11 @@ export class Hud {
     `;
     this.elemento.appendChild(this.botonSeed);
 
+    /** Aviso temporal: reemplaza los `console.log` de atajos y arranque (T74). */
+    this.aviso = document.createElement('div');
+    this.aviso.style.cssText = 'margin-top: 4px; font-size: 11px; color: #9fd8a0;';
+    this.elemento.appendChild(this.aviso);
+
     /**
      * Callback que instala `main.js`: devuelve una promesa de `true`/`false`
      * según se pudo copiar. Así el HUD no conoce la seed ni el simulador.
@@ -117,16 +122,25 @@ export class Hud {
   }
 
   /**
-   * Muestra el resultado de copiar la seed y vuelve al texto normal.
+   * Muestra un mensaje temporal debajo del botón y lo limpia solo.
+   * Se usa para los atajos y el arranque en vez de escribir en consola (T74).
+   * @param {string} texto
+   */
+  avisar(texto) {
+    this.aviso.textContent = texto;
+    if (this._temporizadorAviso !== null) clearTimeout(this._temporizadorAviso);
+    this._temporizadorAviso = setTimeout(() => {
+      this.aviso.textContent = '';
+      this._temporizadorAviso = null;
+    }, CONFIG.ui.avisoCopiaMs);
+  }
+
+  /**
+   * Muestra el resultado de copiar la seed.
    * @param {boolean} ok
    */
   avisarCopia(ok) {
-    this.botonSeed.textContent = ok ? 'seed copiada ✓' : 'no se pudo copiar';
-    if (this._temporizadorAviso !== null) clearTimeout(this._temporizadorAviso);
-    this._temporizadorAviso = setTimeout(() => {
-      this.botonSeed.textContent = 'copiar seed';
-      this._temporizadorAviso = null;
-    }, CONFIG.ui.avisoCopiaMs);
+    this.avisar(ok ? 'seed copiada ✓' : 'no se pudo copiar');
   }
 
   /** Saca el HUD del DOM. */

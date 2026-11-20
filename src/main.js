@@ -29,7 +29,7 @@ import { PlantRenderer } from './render/plantRenderer.js';
 import { NecesidadesRenderer } from './render/necesidadesRenderer.js';
 import { crearAtlas } from './render/atlas.js';
 import { generarTerreno } from './world/terrain.js';
-import { TERRENO, nombreTerreno } from './world/cell.js';
+import { TERRENO } from './world/cell.js';
 import {
   sembrarVegetacion,
   contarPlantas,
@@ -261,14 +261,6 @@ app.canvas.addEventListener('pointerup', (e) => {
   }
 
   necesidadesRenderer.seleccionar(mejor);
-  if (mejor === null) {
-    console.log('[main] selección: ninguna');
-  } else {
-    console.log(
-      `[main] seleccionado: ${manager.tipo[mejor] === ESPECIE.HERBIVORO ? 'Triceratops' : 'Ceratosaurio'} ` +
-        `en (${manager.celdaX(mejor)}, ${manager.celdaY(mejor)}) · estado ${manager.estado[mejor]}`,
-    );
-  }
 });
 
 window.addEventListener('resize', () => {
@@ -305,12 +297,12 @@ window.addEventListener(
         ESTADO.depuracion = !ESTADO.depuracion;
         leyenda.setDepuracion(ESTADO.depuracion);
         renderer.setDepuracion(ESTADO.depuracion);
-        console.log(`[main] depuración: ${ESTADO.depuracion ? 'ON' : 'OFF'}`);
+        hud.avisar(`depuración ${ESTADO.depuracion ? 'ON' : 'OFF'}`);
         break;
       case ' ':
         ESTADO.pausa = !ESTADO.pausa;
         controles.setPausa(ESTADO.pausa);
-        console.log(`[main] ${ESTADO.pausa ? 'PAUSA' : 'CORRIENDO'}`);
+        hud.avisar(ESTADO.pausa ? 'PAUSA' : 'CORRIENDO');
         break;
       case '1':
       case '2':
@@ -318,7 +310,7 @@ window.addEventListener(
         const velocidad = Number(e.key);
         ESTADO.escalaSimulacion = velocidad;
         controles.setVelocidad(velocidad);
-        console.log(`[main] velocidad de simulación: ${velocidad}×`);
+        hud.avisar(`velocidad ${velocidad}×`);
         break;
       }
       case 'f': {
@@ -326,7 +318,7 @@ window.addEventListener(
         const herbivoros = manager.deTipo(ESPECIE.HERBIVORO);
         if (herbivoros.length > 0) {
           camara.seguir(manager, ctx.prng.pick(herbivoros), tile, CONFIG.camara.dtEnfocar);
-          console.log('[main] siguiendo a un triceratops (F para soltar)');
+          hud.avisar('siguiendo a un triceratops (F para soltar)');
         }
         break;
       }
@@ -339,10 +331,7 @@ window.addEventListener(
         // Nueva seed con las mismas cantidades iniciales elegidas en el menú.
         const seed = ctx.prng.int(1, 2 ** 31);
         regenerarMundo({ seed, ...ESTADO.inicial });
-        console.log(
-          `[main] nueva seed: ${ESTADO.seed} · plantas ${ESTADO.inicial.plantas} · ` +
-            `herbívoros ${ESTADO.inicial.herbivoros} · depredadores ${ESTADO.inicial.depredadores}`,
-        );
+        hud.avisar(`nueva seed ${ESTADO.seed}`);
         break;
       }
       case 's':
@@ -350,10 +339,8 @@ window.addEventListener(
         break;
       case 't': {
         const { agua, arena, tierra } = ctx.grid.contarTerreno();
-        console.log(
-          `[main] terreno — agua: ${agua} · arena: ${arena} · tierra: ${tierra} · ` +
-            `umbrales [${CONFIG.terreno.umbralAgua}, ${CONFIG.terreno.umbralArena}] · ` +
-            `plantas: ${contarPlantas(ctx)}`,
+        hud.avisar(
+          `agua ${agua} · arena ${arena} · tierra ${tierra} · plantas ${contarPlantas(ctx)}`,
         );
         break;
       }
@@ -455,27 +442,9 @@ function bucle(ahora) {
   requestAnimationFrame(bucle);
 }
 
-console.log('[main] PixiJS v8 inicializado');
-console.log(`[main] Atlas: ${atlas.claves.length} frames · ${atlas.ancho}x${atlas.alto} px`);
-console.log(`[main] Mundo: ${CONFIG.mundo.ancho}x${CONFIG.mundo.alto} celdas`);
-console.log(`[main] Seed: ${ESTADO.seed}`);
-{
-  const { agua, arena, tierra } = ctx.grid.contarTerreno();
-  console.log(
-    `[main] Terreno: ${nombreTerreno(TERRENO.AGUA)} ${agua} · ` +
-      `${nombreTerreno(TERRENO.ARENA)} ${arena} · ${nombreTerreno(TERRENO.TIERRA)} ${tierra}`,
-  );
-}
-console.log(
-  `[main] Población: ${manager.contar(ESPECIE.HERBIVORO)} triceratops, ` +
-    `${manager.contar(ESPECIE.PREDADOR)} ceratosaurios`,
-);
-console.log(`[main] Vegetación inicial: ${contarPlantas(ctx)} semillas`);
-console.log(
-  '[main] Controles: arrastrar = pan · rueda = zoom · F = seguir · G = centro · ' +
-    'espacio = pausa · 1/2/4 = velocidad · D = depuración · clic = ver necesidades · ' +
-    'R = nueva seed · S = copiar seed · T = terreno · ⚙ Configuración = editar valores y presets',
-);
+// T74: el arranque también se informa en pantalla; no queda console.log de
+// depuración en `src/`. La leyenda y los controles explican el resto de atajos.
+hud.avisar(`seed ${ESTADO.seed} · ${CONFIG.mundo.ancho}×${CONFIG.mundo.alto} celdas`);
 
 // Pixi crea el buffer de GPU en el PRIMER render con el tamaño de
 // `particleChildren`. Reservar la capacidad completa evita reasignaciones
