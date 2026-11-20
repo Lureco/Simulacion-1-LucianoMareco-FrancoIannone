@@ -23,7 +23,6 @@
 import { Container, Sprite, Texture } from 'pixi.js';
 import { hashInts } from '../core/prng.js';
 import { TERRENO } from '../world/cell.js';
-import { alturaDePixel, terrenoDePixel } from './terrainMarching.js';
 
 /** Jitter de brillo por celda (±). Muy chico: solo rompe la banda plana. */
 const JITTER_BRILLO = 0.03;
@@ -150,18 +149,25 @@ export class TerrainRenderer {
   /**
    * Render con marching squares: resolución configurable por celda, dividido en
    * chunks para evitar crear un canvas/ImageData demasiado grande.
+   * Optimizado: precalcula esquinas por tile y pesos bilineales por píxel.
    * @param {import('../world/grid.js').Grid} grid
    */
   generarMarching(grid) {
     const { ancho, alto } = grid;
     const detalle = this.pixelesPorCeldaMarching;
     const maxTamano = this.maxTamanoTexturaMarching;
+    const terrenoArr = grid.terreno;
+    const alturaArr = grid.altura;
 
     const anchoPx = ancho * detalle;
     const altoPx = alto * detalle;
-
     const chunksX = Math.ceil(anchoPx / maxTamano);
     const chunksY = Math.ceil(altoPx / maxTamano);
+
+    const maxPeso = (detalle - 1) * (detalle - 1);
+    const umbral = maxPeso / 2;
+    const TIERRA = TERRENO.TIERRA;
+    const ARENA = TERRENO.ARENA;
 
     for (let cy = 0; cy < chunksY; cy++) {
       for (let cx = 0; cx < chunksX; cx++) {
@@ -177,26 +183,103 @@ export class TerrainRenderer {
         const imagen = contexto2d.createImageData(anchoChunk, altoChunk);
         const pixeles = imagen.data;
 
+        let tyPrev = -1;
+        let txPrev = -1;
+        let tipoCelda = 0;
+        let ruido = 0;
+        let brilloCelda = 0;
+        let colorCelda = 0;
+        let vt00 = 0,
+          vt10 = 0,
+          vt11 = 0,
+          vt01 = 0;
+        let va00 = 0,
+          va10 = 0,
+          va11 = 0,
+          va01 = 0;
+        let a00 = 0,
+          a10 = 0,
+          a11 = 0,
+          a01 = 0;
+        let uniforme = false;
+
         for (let gy = 0; gy < altoChunk; gy++) {
           const yGlobal = origenY + gy;
-          const ty = Math.floor(yGlobal / detalle);
-          const ly = yGlobal % detalle;
+          const ty = (yGlobal / detalle) | 0;
+          const ly = yGlobal - ty * detalle;
+          const invY = detalle - 1 - ly;
+
           for (let gx = 0; gx < anchoChunk; gx++) {
             const xGlobal = origenX + gx;
-            const tx = Math.floor(xGlobal / detalle);
-            const lx = xGlobal % detalle;
-            const i = ty * ancho + tx;
-            const tipoCelda = grid.terreno[i];
-            const ruido = hashInts(tx, ty, 0xa5) / 4294967296 - 0.5;
+            const tx = (xGlobal / detalle) | 0;
+            const lx = xGlobal - tx * detalle;
 
-            const tipoPx = terrenoDePixel(grid, tx, ty, lx, ly, detalle);
-            const alturaPx =
-              tipoPx === tipoCelda ? grid.altura[i] : alturaDePixel(grid, tx, ty, lx, ly, detalle);
-            const color = this.colores[tipoPx] ?? 0xff00ff;
-            const brillo = 1 + (alturaPx - 0.5) * 0.9 + ruido * JITTER_BRILLO;
+            if (tx !== txPrev || ty !== tyPrev) {
+              txPrev = tx;
+              tyPrev = ty;
+              const i = ty * ancho + tx;
+              tipoCelda = terrenoArr[i];
+              const alturaCelda = alturaArr[i];
+              ruido = hashInts(tx, ty, 0xa5) / 4294967296 - 0.5;
+              brilloCelda = 1 + (alturaCelda - 0.5) * 0.9 + ruido * JITTER_BRILLO;
+              colorCelda = this.colores[tipoCelda] ?? 0xff00ff;
+
+              const tx1 = tx + 1 < ancho ? tx + 1 : ancho - 1;
+              const ty1 = ty + 1 < alto ? ty + 1 : alto - 1;
+
+              const t00 = terrenoArr[ty * ancho + tx];
+              const t10 = terrenoArr[ty * ancho + tx1];
+              const t11 = terrenoArr[ty1 * ancho + tx1];
+              const t01 = terrenoArr[ty1 * ancho + tx];
+
+              vt00 = t00 === TIERRA ? 1 : 0;
+              vt10 = t10 === TIERRA ? 1 : 0;
+              vt11 = t11 === TIERRA ? 1 : 0;
+              vt01 = t01 === TIERRA ? 1 : 0;
+              va00 = t00 >= ARENA ? 1 : 0;
+              va10 = t10 >= ARENA ? 1 : 0;
+              va11 = t11 >= ARENA ? 1 : 0;
+              va01 = t01 >= ARENA ? 1 : 0;
+
+              a00 = alturaArr[ty * ancho + tx];
+              a10 = alturaArr[ty * ancho + tx1];
+              a11 = alturaArr[ty1 * ancho + tx1];
+              a01 = alturaArr[ty1 * ancho + tx];
+
+              uniforme = t00 === t10 && t10 === t11 && t11 === t01;
+            }
 
             const p = (gy * anchoChunk + gx) * 4;
-            escribirColor(pixeles, p, color, brillo);
+
+            if (uniforme) {
+              escribirColor(pixeles, p, colorCelda, brilloCelda);
+              continue;
+            }
+
+            const invX = detalle - 1 - lx;
+            const w00 = invX * invY;
+            const w10 = lx * invY;
+            const w11 = lx * ly;
+            const w01 = invX * ly;
+
+            let tipoPx;
+            if (vt00 * w00 + vt10 * w10 + vt11 * w11 + vt01 * w01 >= umbral) {
+              tipoPx = TIERRA;
+            } else if (va00 * w00 + va10 * w10 + va11 * w11 + va01 * w01 >= umbral) {
+              tipoPx = ARENA;
+            } else {
+              tipoPx = TERRENO.AGUA;
+            }
+
+            if (tipoPx === tipoCelda) {
+              escribirColor(pixeles, p, colorCelda, brilloCelda);
+            } else {
+              const color = this.colores[tipoPx] ?? 0xff00ff;
+              const alturaPx =
+                maxPeso > 0 ? (a00 * w00 + a10 * w10 + a11 * w11 + a01 * w01) / maxPeso : a00;
+              const brillo = 1 + (alturaPx - 0.5) * 0.9 + ruido * JITTER_BRILLO;
+              escribirColor(pixeles, p, color, brillo);
+            }
           }
         }
 
