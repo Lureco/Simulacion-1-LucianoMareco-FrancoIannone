@@ -102,13 +102,23 @@ export class Herbivoro extends Especie {
 
     // Huir tiene prioridad absoluta (T43): un herbívoro que muere no come.
     // Se detecta al depredador con el radio de visión de la especie cazadora.
-    const depredador = buscarDepredador(
-      ctx,
-      x,
-      y,
-      ctx.config.depredador.radioVision * a.genPercepcion[id],
-      vecinosDe(ctx),
-    );
+    // La búsqueda se espacia según el preset (1 = cada tick, valor original):
+    // `ticksHuida` sostiene el rumbo entre revisiones del hash.
+    if (a.ticksBusquedaDepredador[id] > 0) a.ticksBusquedaDepredador[id] -= 1;
+    let depredador = -1;
+    if (a.ticksBusquedaDepredador[id] <= 0) {
+      depredador = buscarDepredador(
+        ctx,
+        x,
+        y,
+        ctx.config.depredador.radioVision * a.genPercepcion[id],
+        vecinosDe(ctx),
+      );
+      a.ticksBusquedaDepredador[id] = Math.max(
+        1,
+        ctx.config.percepcion.ticksEntreBusquedaDepredador,
+      );
+    }
     if (depredador >= 0) {
       a.estado[id] = ESTADO_IA.HUYENDO;
       a.velocidad[id] = cfg.velocidad;

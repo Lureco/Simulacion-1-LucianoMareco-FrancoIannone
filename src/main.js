@@ -368,6 +368,26 @@ let anterior = performance.now();
 let acumulador = 0;
 let fps = TICKS_POR_SEGUNDO;
 
+// El conteo por especie recorre las 65.536 celdas: hacerlo en cada frame es
+// desperdicio, porque el HUD se refresca cada `hudIntervaloMs` ms y el gráfico
+// cada segundo. Se cached con esa cadencia y se invalida al regenerar el mundo.
+let conteoPlantasCache = null;
+let ultimoConteoPlantas = -Infinity;
+let tickUltimoConteo = -1;
+
+function conteoPlantasActual(ahora) {
+  if (
+    conteoPlantasCache === null ||
+    ahora - ultimoConteoPlantas >= CONFIG.ui.hudIntervaloMs ||
+    ctx.tick < tickUltimoConteo
+  ) {
+    conteoPlantasCache = contarPlantasPorEspecie(ctx);
+    ultimoConteoPlantas = ahora;
+    tickUltimoConteo = ctx.tick;
+  }
+  return conteoPlantasCache;
+}
+
 function bucle(ahora) {
   // `delta` es el tiempo real del frame. NUNCA se usa para mover entidades:
   // solo alimenta el acumulador, que produce pasos fijos de 1/60 s.
@@ -390,14 +410,19 @@ function bucle(ahora) {
   }
 
   terrenoRenderer.render(camara);
-  plantRenderer.reconstruir(ctx.grid, ctx.tick, CONFIG.entidadesEstaticas.ticksPorRefrescoRender, camara);
+  plantRenderer.reconstruir(
+    ctx.grid,
+    ctx.tick,
+    CONFIG.entidadesEstaticas.ticksPorRefrescoRender,
+    camara,
+  );
   plantRenderer.render(camara);
   renderer.render(manager, camara, ctx.tick);
   necesidadesRenderer.render(camara);
 
   // Un solo barrido de la grilla por frame (F8: el conteo por especie reemplaza
   // al conteo total, en vez de sumar otro recorrido de 65.536 celdas).
-  const porEspecie = contarPlantasPorEspecie(ctx);
+  const porEspecie = conteoPlantasActual(ahora);
   const datosPoblacion = {
     plantas: porEspecie.pasto + porEspecie.micelio,
     pasto: porEspecie.pasto,

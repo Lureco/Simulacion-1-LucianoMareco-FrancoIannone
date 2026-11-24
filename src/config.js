@@ -386,6 +386,14 @@ export const CONFIG = {
      */
     ticksEntreBusqueda: 6,
     /**
+     * Cada cuántos ticks un herbívoro vuelve a buscar depredadores con el hash.
+     * 1 (default) reproduce el comportamiento original: mirar en cada tick.
+     * Subirlo a 3-4 ahorra varias consultas por animal y tick cuando la
+     * población está cerca del tope; `ticksHuida` sostiene el rumbo entre
+     * búsquedas, así que la reacción sigue siendo inmediata a escala humana.
+     */
+    ticksEntreBusquedaDepredador: 1,
+    /**
      * Cada cuántos ticks una entidad sin agua a la vista vuelve a seguir
      * el campo BFS hacia el agua (T38). El agua no se mueve, así que se
      * busca menos seguido que la comida.

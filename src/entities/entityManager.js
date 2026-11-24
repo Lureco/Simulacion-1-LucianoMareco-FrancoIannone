@@ -102,6 +102,8 @@ export class EntityManager {
     this.ticksBusqueda = new Int32Array(0);
     /** @type {Int32Array} Ticks que faltan para volver a seguir el campo al agua (T38). */
     this.ticksBusquedaAgua = new Int32Array(0);
+    /** @type {Int32Array} Ticks que faltan para la próxima búsqueda de depredadores. */
+    this.ticksBusquedaDepredador = new Int32Array(0);
     /** @type {Uint8Array} */ this.estado = new Uint8Array(0);
     /** @type {Uint8Array} */ this.vivo = new Uint8Array(0);
     /** @type {Uint8Array} 1 = ya anotada para morir este tick (evita duplicados). */
@@ -138,6 +140,7 @@ export class EntityManager {
     this.ticksPersecucion = crecerI32(this.ticksPersecucion, capacidad);
     this.ticksBusqueda = crecerI32(this.ticksBusqueda, capacidad);
     this.ticksBusquedaAgua = crecerI32(this.ticksBusquedaAgua, capacidad);
+    this.ticksBusquedaDepredador = crecerI32(this.ticksBusquedaDepredador, capacidad);
     this.estado = crecerU8(this.estado, capacidad);
     this.vivo = crecerU8(this.vivo, capacidad);
     this.moribundo = crecerU8(this.moribundo, capacidad);
@@ -184,6 +187,7 @@ export class EntityManager {
     this.ticksPersecucion[id] = 0;
     this.ticksBusqueda[id] = 0;
     this.ticksBusquedaAgua[id] = 0;
+    this.ticksBusquedaDepredador[id] = 0;
     this.estado[id] = ESTADO_IA.VAGO;
     this.ticksParaGiro[id] = 0;
     this.vivo[id] = 1;
