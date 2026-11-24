@@ -85,10 +85,19 @@ texto (se hashea de forma determinista); las cantidades de NPCs se limitan a
 cantidades elegidas en el panel.
 
 En **Presets** hay incluidos (*Por defecto*, *Bosque frondoso*, *Cacería*, *Isla
-tranquila*, *Simulación rápida*) y los tuyos. Elegir uno **llena el formulario** para
-que lo revises y recién apliques. Podés guardar el estado actual con **Guardar como…**,
+tranquila*, *Simulación rápida* y ***Máximo estable***) y los tuyos. Elegir uno **llena el
+formulario** para que lo revises y recién apliques. **Máximo estable** arranca con los
+4.000 animales del tope (3.850 herbívoros + 150 depredadores) y mantiene las tres
+especies sin colapso a 60 FPS; los detalles y la medición están en
+`docs/DECISIONES.md` (D32). Podés guardar el estado actual con **Guardar como…**,
 borrar tus presets, descargar el seleccionado o la colección completa en JSON y subirlos
 con **Subir JSON** (los nombres repetidos se actualizan). Todo se guarda en `localStorage`.
+
+Para reproducir la medición del preset:
+
+```bash
+node scripts/validarPreset.mjs 'Máximo estable' 10 1337
+```
 
 ---
 

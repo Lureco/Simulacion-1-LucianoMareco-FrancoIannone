@@ -1020,6 +1020,59 @@ posterior) pueden diferir respecto a versiones anteriores.
 
 ---
 
+## D32 · Preset «Máximo estable»: tope de población dentro del presupuesto de 60 FPS
+
+**Contexto.** Los presets existentes priorizaban ya sea pocos animales o vegetación, pero
+ninguno llevaba la simulación al límite de `maxEntidades = 4000` sin arriesgar una extinción
+o pasar el presupuesto de frame. Con la configuración del preset «Bosque frondoso»-like
+(4.000 animales, visión 11 del depredador), la IA del herbívoro costaba **12,3 ms/tick**
+y el autómata de vegetación **4,2 ms/tick**: 17,5 ms solo de simulación, antes de renderizar.
+
+**Medición del cuello.** `Herbivoro.pensar` llama a `buscarDepredador` con el radio de visión
+del depredador en cada tick y para cada herbívoro. Con 3.800 herbívoros y radio 11 eso son
+~3.800 consultas al hash por tick. El barrido de 65.536 celdas de `pasoVegetacion` y el
+conteo de plantas en `main.js` (otras 65.536 celdas **por frame**, aunque el HUD se refresca
+5 veces/s) sumaban el resto.
+
+**Decisión.**
+- Nuevo preset incluido `Máximo estable`: 3.850 herbívoros + 150 depredadores = 4.000
+  (tope exacto), 6.000 semillas, `radioVision` 4/5, `celdaHash` 4, cadencias de búsqueda 4
+  ticks y reproducción/necesidades aceleradas para compensar la mortalidad por vejez.
+- `percepcion.ticksEntreBusquedaDepredador` (default **1**, comportamiento original) permite
+  espaciar la detección sin tocar el flag `moribundo` ni la idempotencia de las muertes.
+  El preset lo usa en 4; `ticksHuida = 20` sostiene el rumbo entre revisiones.
+- `main.js` cachea `contarPlantasPorEspecie` con la cadencia del HUD (`hudIntervaloMs = 200`)
+  e invalida la caché al regenerar (`ctx.tick` menor que el cacheado). El gráfico sigue
+  muestreando 1 vez/s con el mismo dato.
+- `scripts/validarPreset.mjs` aplica un preset completo antes de generar el mundo (a diferencia
+  de `simular.mjs`, que solo admite un override): varios parámetros cambian el consumo del
+  PRNG desde el tick 1, así que probarlos por separado no reproduce el resultado.
+
+**Resultado** (seed 1337, 10 min, `node scripts/validarPreset.mjs 'Máximo estable' 10 1337`):
+
+| | Sin optimizar | Con preset + optimizaciones |
+|---|---|---|
+| Herbívoros / depredadores al min 10 | 3.897 / 103 | **3.869 / 131** |
+| Mínimo poblacional en toda la corrida | 3.719 / 103 | **3.704 / 131** |
+| Simulación (media) | 14,82 ms/tick | **10,92 ms/tick** |
+| Simulación (pico) | 410,32 ms | 248,90 ms |
+| IA del herbívoro (muestra de 600 ticks) | 6,63 ms/tick | **5,55 ms/tick** |
+| Conteo de plantas en `main.js` | 0,121 ms × 60/s = 7,26 ms/s | 0,121 ms × 5/s = 0,61 ms/s |
+
+Con los datos de render de D18/D23 (1,27 ms en zoom 1 y 4,16 ms con el mundo completo),
+el frame queda entre **12,2 y 15,1 ms**, dentro de los 16,67 ms de 60 FPS. El límite sigue
+siendo `maxEntidades` y no el framerate, como en D23.
+
+**Pendiente / no hecho:** el pico de 249 ms sigue apareciendo en la corrida larga (JIT/GC de Node
+bajo carga, no del bucle de render). Queda como optimización futura el autómata de vegetación
+por conjunto activo de adultos, en vez de barrer las 65.536 celdas cada tick.
+
+**Verificación:** `npm test -- --run` (23 archivos, 232 tests), `npm run lint` y
+`npm run build` en verde; `tests/presets.test.js` valida que el preset usa el tope de
+entidades y que todos sus valores sobreviven `limpiarValores`.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |

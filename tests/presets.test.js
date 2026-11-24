@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { CONFIG_BASE, PRESETS } from '../src/config.js';
 import {
   FORMATO_PRESETS,
   esNombreValido,
@@ -68,5 +69,19 @@ describe('presets', () => {
     expect(esNombreValido('Isla')).toBe(true);
     expect(esNombreValido('   ')).toBe(false);
     expect(esNombreValido('x'.repeat(41))).toBe(false);
+  });
+
+  it('el preset «Máximo estable» usa el tope de entidades y valores válidos', () => {
+    const preset = PRESETS['Máximo estable'];
+    expect(preset).toBeDefined();
+    const valido = limpiarValores(preset);
+    expect(valido).toEqual(preset);
+    expect(preset.herbivoro.poblacionInicial + preset.depredador.poblacionInicial).toBe(
+      CONFIG_BASE.entidades.maxEntidades,
+    );
+    expect(preset.entidadesEstaticas.poblacionInicial).toBeLessThan(
+      CONFIG_BASE.mundo.ancho * CONFIG_BASE.mundo.alto,
+    );
+    expect(preset.percepcion.ticksEntreBusquedaDepredador).toBeGreaterThan(1);
   });
 });

@@ -527,6 +527,45 @@ export const PRESETS = {
     plantas: { ticksSemillaAJoven: 8, ticksJovenAAdulta: 24 },
     micelio: { ticksSemillaAJoven: 8, ticksJovenAAdulta: 24 },
   },
+  /**
+   * Tope de población sin colapso ni caída de FPS (D32). Arranca en 4.000
+   * animales —el límite de `entidades.maxEntidades`— y sostiene tres especies
+   * durante 10 min. Los radios y la cadencia de percepción están ajustados al
+   * coste de IA; la vegetación crece más despacio para no pagar 65.536 celdas
+   * llenas en cada tick. Ver `scripts/validarPreset.mjs`.
+   */
+  'Máximo estable': {
+    entidadesEstaticas: { poblacionInicial: 6000 },
+    plantas: { probExpansion: 0.01, ticksVidaAdulta: 700 },
+    micelio: { probExpansion: 0.008 },
+    percepcion: {
+      celdaHash: 4,
+      ticksEntreBusqueda: 4,
+      ticksEntreBusquedaDepredador: 4,
+    },
+    herbivoro: {
+      poblacionInicial: 3850,
+      radioVision: 4,
+      consumoHambre: 0.006,
+      consumoSed: 0.002,
+      cooldownReproduccion: 240,
+      crecimientoReproduccion: 0.01,
+      umbralReproduccion: 0.5,
+      edadMinimaReproduccion: 480,
+    },
+    depredador: {
+      poblacionInicial: 150,
+      radioVision: 5,
+      velocidad: 2,
+      consumoHambre: 0.005,
+      consumoSed: 0.008,
+      saciedadPorPresa: 0.95,
+      crecimientoReproduccion: 0.008,
+      cooldownReproduccion: 300,
+      edadMinimaReproduccion: 720,
+      segundosPersecucion: 30,
+    },
+  },
 };
 
 /** Ticks de simulación por segundo, derivado de `pasoFijo` (no hardcodear 60). */
