@@ -408,7 +408,7 @@ export const CONFIG = {
      * desactiva, los animales vagan libremente; con sed crítica SIGUEN yendo
      * a beber (T38), lo que se quita es el "pegarse a la orilla".
      */
-    mantenerDistanciaAgua: true,
+    mantenerDistanciaAgua: false,
     /**
      * Separación estilo boids: radio (en celdas) en el que un animal siente a
      * los demás de su especie y ajusta el rumbo para no amontonarse.
@@ -630,6 +630,70 @@ export const PRESETS = {
       ticksEntreBusquedaAgua: 10,
     },
     ui: { graficoIntervaloTicks: 30 },
+  },
+  /**
+   * Igual que «Máximo estable» pero con el tiempo comprimido ×100: tasas y
+   * probabilidades ×100, duraciones en ticks ÷100 (mínimo 1 tick). Sin tocar
+   * el reloj ni los radios espaciales. PRESET SIN VALIDAR: el depredador se
+   * mueve ~3,3 celdas por tick contra un radioAtaque de 0,6, así que puede
+   * pasar de largo junto a la presa (tunneling).
+   */
+  'Máximo estable ×100': {
+    entidadesEstaticas: { poblacionInicial: 6000, ticksPorRefrescoRender: 1 },
+    plantas: {
+      ticksSemillaAJoven: 1,
+      ticksJovenAAdulta: 1,
+      ticksVidaAdulta: 7,
+      probExpansion: 1,
+    },
+    micelio: {
+      ticksSemillaAJoven: 1,
+      ticksJovenAAdulta: 1,
+      ticksVidaAdulta: 9,
+      probExpansion: 0.8,
+      probDesplazamiento: 0.02,
+    },
+    entidades: { edadMaximaTicks: 432 },
+    ia: { ticksGiroMin: 1, ticksGiroMax: 2 },
+    herbivoro: {
+      poblacionInicial: 3850,
+      velocidad: 120,
+      radioVision: 4,
+      consumoHambre: 0.6,
+      consumoSed: 0.2,
+      cooldownReproduccion: 2,
+      crecimientoReproduccion: 1,
+      decaimientoReproduccion: 2,
+      umbralReproduccion: 0.5,
+      edadMinimaReproduccion: 5,
+      ruidoRumbo: 2,
+      ticksGiroMin: 1,
+      ticksGiroMax: 2,
+      ticksHuida: 1,
+    },
+    depredador: {
+      poblacionInicial: 150,
+      velocidad: 200,
+      radioVision: 5,
+      consumoHambre: 0.5,
+      consumoSed: 0.8,
+      saciedadPorPresa: 0.95,
+      crecimientoReproduccion: 0.8,
+      decaimientoReproduccion: 2,
+      cooldownReproduccion: 3,
+      edadMinimaReproduccion: 7,
+      segundosPersecucion: 0.3,
+      ruidoRumbo: 2,
+      ticksGiroMin: 1,
+      ticksGiroMax: 2,
+    },
+    percepcion: {
+      celdaHash: 4,
+      ticksEntreBusqueda: 1,
+      ticksEntreBusquedaDepredador: 1,
+      ticksEntreBusquedaAgua: 1,
+    },
+    ui: { graficoIntervaloTicks: 1 },
   },
 };
 
