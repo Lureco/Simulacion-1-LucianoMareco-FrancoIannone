@@ -137,14 +137,15 @@ framerate**. Con 4.000 animales y todo el mundo visible sobra más del 65 % del 
 - **Scripts de medición versionables:** `perfilado.mjs`, `medirPeorCaso.mjs`,
   `medirCapacidadPantalla.mjs`, `benchmarkCargaTerreno.mjs`, `simular.mjs`, `verTerreno.mjs` —
   headless y repetibles, en vez de fiarse de un profiler interactivo.
-- **Documentación de decisiones:** `docs/DECISIONES.md` registra D1–D31 con el *por qué* de cada
+- **Documentación de decisiones:** `docs/DECISIONES.md` registra D1–D33 con el *por qué* de cada
   decisión arquitectónica (y las limitaciones asumidas); `docs/CONTRATO.md` fija la interfaz entre ambos
   frentes, incluida la regla de que P2 solo escribe `ocupante` en la grilla.
-- **Config en vivo:** panel con una categoría por sección de `config.js`, 6 presets incluidos
-  (el nuevo ***Máximo estable*** llega a 4.000 animales a 60 FPS: 10,92 ms/tick de simulación,
-  3.869 herbívoros y 131 depredadores a los 10 min — `docs/DECISIONES.md` D32),
-  import/export JSON y persistencia en `localStorage` (`ecosistemas.config.v1`, `.presets.v1`,
-  `.ui.v1`). La seed acepta texto y se hashea de forma determinista (`src/ui/generadorMapa.js:365-433,780-850`).
+- **Config en vivo:** panel con una categoría por sección de `config.js`, 7 presets incluidos
+  (***Máximo estable*** llega a 4.000 animales a 60 FPS: 10,92 ms/tick de simulación,
+  3.869 herbívoros y 131 depredadores a los 10 min — D32; ***Máximo estable ×2*** comprime
+  el tiempo al doble sin cambiar el reloj — D33), import/export JSON y persistencia en
+  `localStorage` (`ecosistemas.config.v1`, `.presets.v1`, `.ui.v1`). La seed acepta texto y se
+  hashea de forma determinista (`src/ui/generadorMapa.js:365-433,780-850`).
 
 ---
 

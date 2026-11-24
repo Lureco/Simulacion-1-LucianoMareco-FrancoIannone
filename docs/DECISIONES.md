@@ -1073,6 +1073,62 @@ entidades y que todos sus valores sobreviven `limpiarValores`.
 
 ---
 
+## D33 · «Máximo estable ×2»: comprimir el tiempo por tick sin mover el reloj
+
+**Contexto.** El pedido era que todo pasara más rápido sin aumentar la cantidad de ticks: no
+servía subir `tiempo.escalaSimulacion` (tope 4) ni `maxPasosPorFrame` (tope 5), porque con
+4.000 animales el coste por tick ya es el límite (D32). «Simulación rápida» acelera el reloj
+y las etapas vegetales, pero no acelera hambre, sed, movimiento ni reproducción.
+
+**Decisión.** Nuevo preset incluido `Máximo estable ×2`, derivado directamente de D32 con un
+factor **F = 2** aplicado al modelo, no al reloj:
+
+- **Tasas por segundo ×2:** `velocidad` (1,2 → 2,4 en herbívoro; 2 → 4 en depredador),
+  `consumoHambre`, `consumoSed`, `crecimientoReproduccion`, `decaimientoReproduccion` y
+  `ruidoRumbo` (mismo giro angular en la mitad de ticks).
+- **Probabilidades por tick ×2:** `probExpansion` (0,01 → 0,02; 0,008 → 0,016) y
+  `probDesplazamiento` del micelio (0,0002 → 0,0004).
+- **Duraciones en ticks ÷2:** `edadMaximaTicks` (43.200 → 21.600), etapas de las plantas
+  (20/60 → 10/30), `ticksVidaAdulta` (700 → 350 y 900 → 450), cooldowns y edades de
+  reproducción, `ticksGiroMin/Max`, `ticksHuida`, `ticksEntreBusqueda*`,
+  `segundosPersecucion` (30 → 15), `graficoIntervaloTicks` (60 → 30) y
+  `ticksPorRefrescoRender` (10 → 5).
+- **Sin cambios:** `tiempo` (ni `escalaSimulacion`, ni `pasoFijo`, ni `maxPasosPorFrame`),
+  radios de visión, radios de ataque/comer/beber/reproducirse, `celdaHash`, umbrales de
+  hambre/sed/deseo, `saciedadPorPresa`, `fraccionEdadInicial` y las poblaciones iniciales
+  (3.850 + 150 = 4.000). «Multiplicar todo por 2» habría alargado vidas y cooldowns, es
+  decir, habría hecho la simulación **más lenta**: por eso las duraciones se dividen.
+
+Con 60 ticks/s sin cambios, un minuto real equivale a 2 min del modelo: lo que D32 mostraba
+a los 10 min debería verse a los 5 min reales.
+
+**Verificación parcial** (seed 1337, corrida detenida en el minuto 4 a pedido del usuario;
+por eso no hay media de ms/tick final):
+
+| Tiempo real | Herbívoros | Depredadores | Plantas | Nacimientos | Muertes |
+|---|---|---|---|---|---|
+| 1 min | 3.850 | 150 | 33.172 | 0 | 0 |
+| 2 min | 3.850 | 150 | 33.479 | 167 | 167 |
+| 3 min | 3.821 | 179 | 34.293 | 354 | 354 |
+| 4 min | 3.850 | 150 | 34.486 | 1.667 | 1.667 |
+
+La población se mantiene en el tope y el recambio (1.667 muertes en 4 min, mitad por vejez
+y mitad por depredación) ya es visible en el tramo medido, contra 167 muertes en los primeros
+4 min de D32.
+
+**Limitaciones.** No se registró el coste medio de CPU porque la medición se interrumpió antes
+de la línea final; con el mismo número de entidades y cadencias de búsqueda más frecuentes,
+el coste debería ser comparable al de D32 (10,92 ms/tick) o algo mayor, dentro del
+presupuesto de 16,67 ms/frame. Tampoco se verificó el equivalente completo a 10 min del
+modelo (5 min reales).
+
+**Verificación estática:** `tests/presets.test.js` comprueba que el preset sobrevive
+`limpiarValores`, que no incluye `tiempo`, que las tasas son el doble de D32, que las
+duraciones son la mitad y que los radios y el tope de 4.000 no cambian. `npm test -- --run`
+(23 archivos, 233 tests) y `npm run lint` en verde.
+
+---
+
 ## Registro de acuerdos pendientes
 
 | # | Tema | Quién | Estado |
