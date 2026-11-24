@@ -84,4 +84,36 @@ describe('presets', () => {
     );
     expect(preset.percepcion.ticksEntreBusquedaDepredador).toBeGreaterThan(1);
   });
+
+  it('el preset «Máximo estable ×2» comprime el tiempo sin tocar el reloj', () => {
+    const preset = PRESETS['Máximo estable ×2'];
+    const estable = PRESETS['Máximo estable'];
+    expect(preset).toBeDefined();
+    expect(limpiarValores(preset)).toEqual(preset);
+    // El reloj (escalaSimulacion, pasoFijo, maxPasosPorFrame) queda intacto.
+    expect(preset.tiempo).toBeUndefined();
+
+    // Tasas por segundo y probabilidades por tick: ×2.
+    expect(preset.herbivoro.velocidad).toBeCloseTo(CONFIG_BASE.herbivoro.velocidad * 2, 6);
+    expect(preset.depredador.velocidad).toBe(estable.depredador.velocidad * 2);
+    expect(preset.herbivoro.consumoHambre).toBeCloseTo(estable.herbivoro.consumoHambre * 2, 6);
+    expect(preset.depredador.consumoSed).toBeCloseTo(estable.depredador.consumoSed * 2, 6);
+    expect(preset.plantas.probExpansion).toBeCloseTo(estable.plantas.probExpansion * 2, 6);
+
+    // Todo lo que se mide en ticks: ÷2.
+    expect(preset.herbivoro.cooldownReproduccion).toBe(estable.herbivoro.cooldownReproduccion / 2);
+    expect(preset.depredador.edadMinimaReproduccion).toBe(
+      estable.depredador.edadMinimaReproduccion / 2,
+    );
+    expect(preset.plantas.ticksVidaAdulta).toBe(estable.plantas.ticksVidaAdulta / 2);
+    expect(preset.entidades.edadMaximaTicks).toBe(CONFIG_BASE.entidades.edadMaximaTicks / 2);
+    expect(preset.percepcion.ticksEntreBusqueda).toBe(estable.percepcion.ticksEntreBusqueda / 2);
+
+    // Lo espacial y el tope de población no cambian.
+    expect(preset.herbivoro.radioVision).toBe(estable.herbivoro.radioVision);
+    expect(preset.depredador.radioVision).toBe(estable.depredador.radioVision);
+    expect(preset.herbivoro.poblacionInicial + preset.depredador.poblacionInicial).toBe(
+      CONFIG_BASE.entidades.maxEntidades,
+    );
+  });
 });

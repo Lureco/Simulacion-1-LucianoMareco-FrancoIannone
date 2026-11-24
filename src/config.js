@@ -566,6 +566,71 @@ export const PRESETS = {
       segundosPersecucion: 30,
     },
   },
+  /**
+   * «Máximo estable» con el tiempo comprimido al doble (D33): las tasas por
+   * segundo y las probabilidades por tick se multiplican por 2, y todo lo que
+   * se mide en ticks (vidas, cooldowns, edades, cadencias) se divide por 2.
+   * El reloj NO cambia: 60 ticks/s, sin `escalaSimulacion` ni más pasos por
+   * frame. Lo que antes pasaba en 10 min pasa ahora en 5 min reales.
+   * Radios espaciales, poblaciones y `maxEntidades` se conservan (D32).
+   */
+  'Máximo estable ×2': {
+    entidadesEstaticas: { poblacionInicial: 6000, ticksPorRefrescoRender: 5 },
+    plantas: {
+      ticksSemillaAJoven: 10,
+      ticksJovenAAdulta: 30,
+      ticksVidaAdulta: 350,
+      probExpansion: 0.02,
+    },
+    micelio: {
+      ticksSemillaAJoven: 10,
+      ticksJovenAAdulta: 30,
+      ticksVidaAdulta: 450,
+      probExpansion: 0.016,
+      probDesplazamiento: 0.0004,
+    },
+    entidades: { edadMaximaTicks: 21600, fraccionEdadInicial: 0.5 },
+    ia: { ticksGiroMin: 20, ticksGiroMax: 55 },
+    herbivoro: {
+      poblacionInicial: 3850,
+      velocidad: 2.4,
+      radioVision: 4,
+      consumoHambre: 0.012,
+      consumoSed: 0.004,
+      cooldownReproduccion: 120,
+      crecimientoReproduccion: 0.02,
+      decaimientoReproduccion: 0.04,
+      umbralReproduccion: 0.5,
+      edadMinimaReproduccion: 240,
+      ruidoRumbo: 0.04,
+      ticksGiroMin: 20,
+      ticksGiroMax: 55,
+      ticksHuida: 10,
+    },
+    depredador: {
+      poblacionInicial: 150,
+      velocidad: 4,
+      radioVision: 5,
+      consumoHambre: 0.01,
+      consumoSed: 0.016,
+      saciedadPorPresa: 0.95,
+      crecimientoReproduccion: 0.016,
+      decaimientoReproduccion: 0.04,
+      cooldownReproduccion: 150,
+      edadMinimaReproduccion: 360,
+      segundosPersecucion: 15,
+      ruidoRumbo: 0.04,
+      ticksGiroMin: 20,
+      ticksGiroMax: 55,
+    },
+    percepcion: {
+      celdaHash: 4,
+      ticksEntreBusqueda: 2,
+      ticksEntreBusquedaDepredador: 2,
+      ticksEntreBusquedaAgua: 10,
+    },
+    ui: { graficoIntervaloTicks: 30 },
+  },
 };
 
 /** Ticks de simulación por segundo, derivado de `pasoFijo` (no hardcodear 60). */
